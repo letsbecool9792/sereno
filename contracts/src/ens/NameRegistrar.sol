@@ -91,7 +91,7 @@ contract NameRegistrar {
         if (oracle.firstSeen(githubId, keccak256(publicKey)) == 0) revert KeyNotOnProfile();
 
         address account = accounts.addressOf(githubId);
-        resolver = proxyFactory.deployProxy(resolverImplementation, githubId, _resolverInit(account));
+        resolver = proxyFactory.deployProxy(resolverImplementation, githubId, _resolverInit(account, label));
         uint256 ownerRoles = RegistryRoles.SET_SUBREGISTRY | RegistryRoles.SET_RESOLVER
             | (RegistryRoles.SET_SUBREGISTRY << RegistryRoles.ADMIN_SHIFT)
             | (RegistryRoles.SET_RESOLVER << RegistryRoles.ADMIN_SHIFT) | RegistryRoles.CAN_TRANSFER_ADMIN;
@@ -100,14 +100,20 @@ contract NameRegistrar {
     }
 
     /// Grants every record role (and its admin) to the account only, and sets the default record's address for each
-    /// chain in the same transaction (PermissionedResolver skips role checks during initialize).
-    function _resolverInit(address account) internal view returns (bytes memory) {
+    /// chain plus the `url`, `avatar` and `com.github` text records in the same transaction (PermissionedResolver
+    /// skips role checks during initialize). The text records match what the gateway answers for unclaimed names.
+    function _resolverInit(address account, string calldata login) internal view returns (bytes memory) {
         Grant[] memory grants = new Grant[](1);
         grants[0] = Grant(account, ResolverRoles.ALL_SETTERS | (ResolverRoles.ALL_SETTERS << ResolverRoles.ADMIN_SHIFT));
-        bytes[] memory calls = new bytes[](_coinTypes.length);
-        for (uint256 i = 0; i < _coinTypes.length; i++) {
+        uint256 n = _coinTypes.length;
+        bytes[] memory calls = new bytes[](n + 3);
+        for (uint256 i = 0; i < n; i++) {
             calls[i] = abi.encodeCall(IPermissionedResolver.setAddress, (hex"00", _coinTypes[i], abi.encodePacked(account)));
         }
+        string memory profile = string.concat("https://github.com/", login);
+        calls[n] = abi.encodeCall(IPermissionedResolver.setText, (hex"00", "url", profile));
+        calls[n + 1] = abi.encodeCall(IPermissionedResolver.setText, (hex"00", "avatar", string.concat(profile, ".png")));
+        calls[n + 2] = abi.encodeCall(IPermissionedResolver.setText, (hex"00", "com.github", login));
         return abi.encodeCall(IPermissionedResolver.initialize, (grants, calls));
     }
 }

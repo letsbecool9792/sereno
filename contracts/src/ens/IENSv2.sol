@@ -29,6 +29,7 @@ interface IPermissionedResolver {
     function initialize(Grant[] calldata grants, bytes[] calldata calls) external;
     /// `name` is DNS-encoded; 0x00 is the default record, used by every name without its own record.
     function setAddress(bytes calldata name, uint256 coinType, bytes calldata addressBytes) external;
+    function setText(bytes calldata name, string calldata key, string calldata value) external;
 }
 
 library RegistryRoles {
