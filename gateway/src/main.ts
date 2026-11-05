@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createPublicClient, http, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { accountFactoryAbi, CHAINS, CORE, DEFAULT_CHAIN, ENS_DEPLOYMENT, githubUser } from "@sereno/shared";
+import { accountFactoryAbi, CHAINS, CORE, DEFAULT_CHAIN, ENS_DEPLOYMENT, githubKeys, githubUser, type GithubUser } from "@sereno/shared";
 import { GatewayError, handle, type Lookups } from "./resolve";
 
 if (!CORE || !ENS_DEPLOYMENT) throw new Error("contracts not deployed; run `bun run sync`");
@@ -46,6 +46,18 @@ const lookups: Lookups = {
   },
 };
 
+/// Profile + SSH keys for the pay page, through our token and a short cache (browsers hit GitHub's 60/hour limit fast).
+const profiles = new Map<string, { at: number; body: unknown }>();
+async function profile(login: string) {
+  const hit = profiles.get(login);
+  if (hit && Date.now() - hit.at < 60_000) return hit.body;
+  const u: GithubUser = await githubUser(login, process.env.GITHUB_TOKEN);
+  const body = { login: u.login, id: u.id.toString(), name: u.name, avatarUrl: u.avatarUrl, keys: await githubKeys(u.id, process.env.GITHUB_TOKEN) };
+  ids.set(u.login.toLowerCase(), { id: u.id, at: Date.now() });
+  profiles.set(login, { at: Date.now(), body });
+  return body;
+}
+
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type" };
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: cors });
 
@@ -54,6 +66,14 @@ const server = Bun.serve({
   async fetch(req) {
     const url = new URL(req.url);
     if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+    const lookup = /^\/lookup\/([A-Za-z0-9-]{1,39})$/.exec(url.pathname);
+    if (lookup) {
+      try {
+        return json(await profile(lookup[1]!.toLowerCase()));
+      } catch (e) {
+        return json({ message: (e as Error).message }, (e as { notFound?: boolean }).notFound ? 404 : 502);
+      }
+    }
     if (url.pathname === "/health") return json({ ok: true, parent: ENS_DEPLOYMENT!.parentName, signer: signer.address });
     let sender: string | undefined;
     let data: string | undefined;

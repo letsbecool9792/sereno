@@ -33,6 +33,23 @@ declare global {
 }
 
 const PAY_CHAINS: ChainKey[] = ["base-sepolia", "arbitrum-sepolia"];
+const GATEWAY = import.meta.env.VITE_GATEWAY_URL ?? "http://localhost:8787";
+
+/// Profile and SSH keys through our gateway (token + cache); straight from GitHub if the gateway is unreachable.
+async function fetchProfile(login: string): Promise<{ user: GithubUser; keys: string[] }> {
+  try {
+    const res = await fetch(`${GATEWAY}/lookup/${encodeURIComponent(login)}`);
+    if (res.status === 404) throw Object.assign(new Error("not found"), { notFound: true });
+    if (res.ok) {
+      const p = (await res.json()) as { login: string; id: string; name: string | null; avatarUrl: string; keys: string[] };
+      return { user: { login: p.login, id: BigInt(p.id), name: p.name, avatarUrl: p.avatarUrl }, keys: p.keys };
+    }
+  } catch (e) {
+    if ((e as { notFound?: boolean }).notFound) throw e;
+  }
+  const user = await githubUser(login);
+  return { user, keys: await githubKeys(user.id).catch(() => []) };
+}
 const ensClient = createPublicClient({ chain: CHAINS.sepolia.chain, transport: http(CHAINS.sepolia.rpc) });
 const clientFor = (key: ChainKey) => createPublicClient({ chain: CHAINS[key].chain, transport: http(CHAINS[key].rpc) });
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
@@ -66,7 +83,7 @@ export function App() {
     setPaid(null);
     setLookup(null);
     try {
-      const user = await githubUser(login.trim());
+      const { user, keys: lines } = await fetchProfile(login.trim());
       const name = `${user.login.toLowerCase()}.${ENS_DEPLOYMENT.parentName}`;
       const c = CHAINS[key];
       const pub = clientFor(key);
@@ -75,10 +92,9 @@ export function App() {
         ensClient.getEnsResolver({ name, universalResolverAddress: ENS.universalResolver }).catch(() => null),
         pub.readContract({ address: CORE.AccountFactory, abi: accountFactoryAbi, functionName: "addressOf", args: [user.id] }),
       ]);
-      const [code, balance, lines] = await Promise.all([
+      const [code, balance] = await Promise.all([
         pub.getCode({ address: factoryAddress }),
         pub.readContract({ address: c.usdc, abi: erc20Abi, functionName: "balanceOf", args: [factoryAddress] }),
-        githubKeys(user.id).catch(() => [] as string[]),
       ]);
       const keys = await Promise.all(
         lines.map(async (line) => {
