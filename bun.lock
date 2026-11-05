@@ -37,6 +37,17 @@
         "typescript": "5.9.3",
       },
     },
+    "relayer": {
+      "name": "@tangerine/relayer",
+      "dependencies": {
+        "@tangerine/shared": "workspace:*",
+        "viem": "2.57.7",
+      },
+      "devDependencies": {
+        "bun-types": "1.3.4",
+        "typescript": "5.9.3",
+      },
+    },
   },
   "packages": {
     "@adraffy/ens-normalize": ["@adraffy/ens-normalize@1.11.1", "", {}, "sha512-nhCBV3quEgesuf7c7KYfperqSS14T8bYuvJ8PcLJp6znkZpFc0AuW4qBtr8eKVyPPe/8RSr7sglCWPU5eaxwKQ=="],
@@ -56,6 +67,8 @@
     "@tangerine/gateway": ["@tangerine/gateway@workspace:gateway"],
 
     "@tangerine/ops": ["@tangerine/ops@workspace:packages/ops"],
+
+    "@tangerine/relayer": ["@tangerine/relayer@workspace:relayer"],
 
     "@tangerine/shared": ["@tangerine/shared@workspace:packages/shared"],
 
