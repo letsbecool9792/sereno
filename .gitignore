@@ -1,4 +1,5 @@
-# secrets
+# secrets (the whole .secrets/ folder: deployer, relayer and gateway keys, CRE env file)
+.secrets/
 .env
 .env.*
 !.env.example
