@@ -95,6 +95,10 @@ Branch `ws1/linux-e2e`.
 **Setup on Linux (Arch):** `bun install` works, and `forge test` passes 48/48. `bun run ak account psycocodes` reports the ed25519 key as **listed** (since 5 Nov 16:19 UTC); the account `0x0d39…5809` already holds 0.2 USDC on Base Sepolia.
 - Linux gotcha: run the CLI with `GITHUB_TOKEN=$(gh auth token)`. Without a token, `api.github.com` answered 403 (the unauthenticated limit) on the first call.
 
+**M1 so far, without gas:** `ak commit-pay … --key ~/.ssh/id_ed25519` (no `--relay`) signs the payment commit correctly on Linux.
+- An `eth_call` to the deployed `SshSigVerifier` on Base Sepolia returns `true` for that commit (namespace `git`, sha256). Verification alone costs about **949k gas**.
+- **Linux bug fixed:** `cli/bin/sha256-sign.sh` was committed from Windows without the executable bit, so `git commit -S` failed with "cannot exec … Permission denied". It is now `100755` in git.
+
 **Relayer key (M1/M2):** **`0xd599b2cc187F35D143Df41c95074A0D3200080d5`**, our own key (kept in `.secrets/relayer.key` on Mohikshit's laptop). It needs ETH on Base Sepolia, Arbitrum Sepolia and Sepolia.
 
 **M2 decision:** the relayer runs **on Mohikshit's laptop for now**. The watcher polls GitHub outbound, so it needs no public URL. Once the push-to-pay test works, we move it to a durable host. The likely choice is Vercel serverless, with a GitHub push webhook in place of the 15 s poller. Until then, a payment pushed while the laptop is off is not relayed (the poller skips commits that exist at startup).
