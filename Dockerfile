@@ -15,6 +15,7 @@ RUN bun install --production --ignore-scripts
 COPY packages/shared packages/shared
 COPY gateway gateway
 COPY relayer relayer
+COPY start.sh ./
 ENV PORT=8080
 EXPOSE 8080
-CMD ["sh", "-c", "cd /app/${SERVICE:-gateway} && exec bun src/main.ts"]
+CMD ["sh", "/app/start.sh"]
