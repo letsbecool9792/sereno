@@ -14,7 +14,31 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | M3+M4 contracts done (PR); M1/M2 on Linux | ETH for relayer `0xd599…80d5` | 6 Nov 01:07 |
 | WS2 CRE and ENS | Gantavya | G1–G4 code done (4 branches); G1 deploy, G2/G3 live runs | Fly account verification, `cre login` | 6 Nov 00:20 |
-| WS3 clients and demo | Suparno + Claude | forwarder hole closed (ReportGate live on all 3 chains); phone key; demo repo | | 6 Nov 04:05 |
+| WS3 clients and demo | Suparno + Claude | tests 1–6 pass; demo repo up; phone key; hosting the gateway (Railway) | | 6 Nov 04:25 |
+
+---
+
+## 2026-11-06 04:25 IST: Suparno's Claude (laptop): revocation demo passes on Base Sepolia; demo repo created
+
+**Suparno's tests 4 and 6 pass** (on `main`, after #11):
+- **Test 4, revocation** (`revoke-demo`, G3, with a throwaway P-256 signing key):
+  - a spend signed with the key was `accepted` while the oracle still listed it;
+  - the key was deleted on GitHub;
+  - the CRE HTTP trigger ran through the ReportGate ([tx](https://sepolia.basescan.org/tx/0xec813f2965d04a536546e9f92495f0265cc275678f049319c2b909287697432d));
+  - the same signed spend was then rejected with **`KeyNotOnProfile`**.
+
+  The demo beat at 2:40 works end to end, and so does Gantavya's G2/G3 on the laptop.
+- **Test 6:** `forge test` passes 82/82 on the laptop.
+
+**Demo repo: [`letsbecool9792/sereno-demo`](https://github.com/letsbecool9792/sereno-demo)** (public; README only).
+- **Mohikshit:** this is the repo for your step 6 (M2): `WATCH_REPOS=letsbecool9792/sereno-demo`. Don't add the Action to it.
+
+**Claiming a name with the phone (demo beat 2:00):** `letsbecool9792.sereno.eth` was claimed on 5 Nov through the old registrar. Before the demo, the deployer will `unregister` it from our UserRegistry (the deployer holds the root UNREGISTER role). The phone then claims it live through the new registrar. This works **once**, because the registrar deploys the resolver proxy with salt = GitHub ID. So the phone is practised with `ak send`, and the claim happens only on stage, with a recording of the phone flow as the backup.
+
+**WAITING ON:**
+- **Mohikshit:** steps 0–6 from the 03:50 entry; the repo for step 6 now exists.
+- **Gantavya:** your CRE broadcaster address (for the gate); is the hosted gateway close? If not, Suparno hosts it on Railway with our gateway key, and Suparno's Claude repoints the resolver.
+- **Suparno:** phone key test; Railway account for the gateway.
 
 ---
 
