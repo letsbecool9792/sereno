@@ -6,8 +6,8 @@
 //   ak commit-pay <amount> <to> --as <github-user> --key <ssh key> [--repo .] [--push] [--relay]
 //   ak claim --as <github-user> --key <ssh key>
 //
-// <to> is a 0x address or a GitHub username. Amounts are in USDC. The relayer defaults to http://localhost:8788
-// (AK_RELAYER). AK_SSH_KEYGEN picks the ssh-keygen binary (for a phone key on Windows: Win32-OpenSSH 10.x).
+// <to> is a 0x address or a GitHub username. Amounts are in USDC. The relayer is our hosted one unless
+// AK_RELAYER names another (e.g. http://localhost:8788). AK_SSH_KEYGEN picks the ssh-keygen binary (for a phone key on Windows: Win32-OpenSSH 10.x).
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -30,9 +30,10 @@ import {
   SIGNING_NAMESPACE,
   sshAccountAbi,
   type ChainConfig,
+  HOSTED_RELAYER_URL,
 } from "@sereno/shared";
 
-const RELAYER = process.env.AK_RELAYER ?? "http://localhost:8788";
+const RELAYER = process.env.AK_RELAYER ?? HOSTED_RELAYER_URL;
 const SSH_KEYGEN = process.env.AK_SSH_KEYGEN ?? "ssh-keygen";
 const TOKEN = process.env.GITHUB_TOKEN;
 const DECIMALS = 6;

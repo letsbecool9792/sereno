@@ -24,6 +24,7 @@ import {
   keyOracleAbi,
   type ChainKey,
   type GithubUser,
+  HOSTED_GATEWAY_URL,
 } from "@sereno/shared";
 
 declare global {
@@ -33,7 +34,7 @@ declare global {
 }
 
 const PAY_CHAINS: ChainKey[] = ["base-sepolia", "arbitrum-sepolia"];
-const GATEWAY = import.meta.env.VITE_GATEWAY_URL ?? "http://localhost:8787";
+const GATEWAY = import.meta.env.VITE_GATEWAY_URL ?? HOSTED_GATEWAY_URL;
 
 /// Profile and SSH keys through our gateway (token + cache); straight from GitHub if the gateway is unreachable.
 async function fetchProfile(login: string): Promise<{ user: GithubUser; keys: string[] }> {
