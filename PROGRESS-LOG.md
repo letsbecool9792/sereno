@@ -14,7 +14,66 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | M3+M4 contracts done (PR); M1/M2 on Linux | ETH for relayer `0xd599…80d5` | 6 Nov 01:07 |
 | WS2 CRE and ENS | Gantavya | G1–G4 code done (4 branches); G1 deploy, G2/G3 live runs | Fly account verification, `cre login` | 6 Nov 00:20 |
-| WS3 clients and demo | Suparno + Claude | registrar redeployed, relayer funded; forwarder hole (below) needs a decision; demo prep | | 6 Nov 01:45 |
+| WS3 clients and demo | Suparno + Claude | core tests 1–3 pass; building the ReportGate (forwarder fix); phone key; demo repo | | 6 Nov 03:50 |
+
+---
+
+## 2026-11-06 03:50 IST: Suparno's Claude (laptop): Suparno's tests pass; CRE HTTP trigger works; forwarder fix under way; Mohikshit's next steps
+
+**Suparno's tests on the demo laptop, all passing** (Base Sepolia, account `0xa82F…d4F8`, signing key "yo", P-256, relayer and gateway local):
+1. **Pay page** (`web/`): pay by GitHub username with MetaMask. Pass.
+2. **`ak send 0.1 psycocodes`:** nonce 3, 167k gas ([tx](https://sepolia.basescan.org/tx/0x17ff3d353fc026fdfefdfcd99b7e6d5f2cc833971e994b4376fb7c79d8cdeba6)). Pass.
+3. **`ak commit-pay 0.1 psycocodes --repo <scratch repo> --relay`:** nonce 4, 220k gas ([tx](https://sepolia.basescan.org/tx/0xfda0bf3de68003f2fc937bdad7024301a822d1634f4343ea229f698ccac0a912)). Pass.
+
+Mohikshit's account `0x0d39…5809` now holds 0.51 USDC on Base Sepolia.
+
+**G2 (CRE HTTP trigger) works on Base Sepolia:** `cre workflow simulate github-keys --target base-settings --non-interactive --trigger-index 1 --http-payload '{"githubId":"99113360"}' --broadcast -e ../.secrets/cre.env` wrote letsbecool9792's key set ([tx](https://sepolia.basescan.org/tx/0xc0322edd5a90f015a641e9949505904662f60055e984fa42ab8c40ca9a4473e3)).
+- Gotcha: without `-e`, `cre` exits 1 silently after "Loading settings" when `cre/.env` still holds the template placeholder. `revoke-demo` starts `cre` without `-e`, so its step 4 fails on the laptop. The ReportGate PR adds an env-file option to `revoke-demo`.
+
+**Forwarder hole: Suparno approved the ReportGate fix, and Suparno's Claude is building it now** (`ws3/report-gate`).
+- What we learned from the real report: with the simulation forwarder, the metadata's workflow owner is a fixed dummy (`0xaaaa…aaaa`) for everyone, so only a `tx.origin` allowlist can keep strangers out. The workflow name field is the first 10 hex characters of `sha256(workflow-name)` (for example `github-keys-base` → `d8efb75538`), and the gate routes on it.
+- **What changes for others:** the CRE configs write to the gate instead of the KeyOracle. KeyOracle, BountyBoard and every account keep their addresses. BountyBoard reads `oracle.forwarder()`, which becomes the gate, so it needs no change.
+- **Gantavya:** post the address of the `CRE_ETH_PRIVATE_KEY` you simulate with, so it goes on the gate's broadcaster allowlist. When you write the bounty workflow, post its `workflow-name` per target, so the gate gets a route to BountyBoard.
+
+### Mohikshit: what to do next, in order
+
+0. **Update your checkout.** #5, #7 and #9 are merged. #9 is your #6, rebased onto main with the same commits (I couldn't force-push your branch); #6 is closed.
+   ```sh
+   git checkout main && git pull && git branch -D ws1/bounty-escrow
+   ```
+1. **M1, the core from Linux, with your relayer.** `0xd599…80d5` is funded but has sent no transactions yet. Terminal 1 (the relayer reads `.secrets/relayer.key` itself):
+   ```sh
+   GITHUB_TOKEN=$(gh auth token) bun relayer/src/main.ts
+   ```
+   Terminal 2:
+   ```sh
+   export GITHUB_TOKEN=$(gh auth token)
+   bun run ak send 0.1 letsbecool9792 --as psycocodes --key ~/.ssh/id_ed25519
+   bun run ak commit-pay 0.1 letsbecool9792 --as psycocodes --key ~/.ssh/id_ed25519 --repo <any scratch git repo> --relay
+   ```
+   Wait for the first `paid:` before running the second, because each one uses the account's next nonce. Post both tx links and the gas here (ed25519 should be about 1.1M).
+2. **Fix the bounty griefing before you deploy.** Once BountyBoard is deployed it can't change, and a later change gives it a new address. The issue: the first funder fixes the token, so 1 wei of a junk token blocks USDC bounties on that issue. Put `token` into `bountyId`, or accept only the chain's USDC. Add a test and open a PR.
+3. **Deploy the extras** after (2) merges, on Base Sepolia and Arbitrum Sepolia only. Use `DeployExtras.s.sol`, never `Deploy.s.sol`:
+   ```sh
+   cd contracts
+   DEPLOYER_KEY=$(cat ../.secrets/relayer.key) forge script script/DeployExtras.s.sol --rpc-url base_sepolia --broadcast
+   DEPLOYER_KEY=$(cat ../.secrets/relayer.key) forge script script/DeployExtras.s.sol --rpc-url arbitrum_sepolia --broadcast
+   cd .. && bun run sync
+   ```
+   Commit `contracts/deployments/extras.json` and the regenerated files in `packages/shared`, add the addresses to CLAUDE.md §7, and post them here.
+4. **#7 follow-up:** `.github/workflows/sereno-relay.yml` line 41 still has `bun-version: 1.3.4`. Set it to `1.4.4`, our lockfile's version, so `--frozen-lockfile` doesn't refuse to install. Small PR.
+5. **M5 live test:** add the README's `pay.yml` to a test repo of yours and set its secret `SERENO_RELAYER_KEY` (your relayer key is fine). Then push a commit made with `ak commit-pay … --repo <that repo>` (without `--relay`). Post the Action run link and the tx.
+6. **M2, the relayer for the demo.** The demo repo will be `letsbecool9792/sereno-demo`; Suparno creates it and posts it here. Run your relayer with `WATCH_REPOS=letsbecool9792/sereno-demo` on a machine that stays up during the demo (your laptop is fine for now).
+   - **Done when** a `git push` of an `ak commit-pay` commit to that repo is paid within about 30 s with no manual call, and `/health` lists the repo.
+   - Don't add the Action (5) to the demo repo: only one relayer should watch it.
+
+**WAITING ON:**
+- **Mohikshit:** steps 0–6 above. Tell us here when each one is done.
+- **Gantavya:**
+  - the hosted gateway URL (G1);
+  - your CRE broadcaster address;
+  - the G3 live run.
+- **Suparno:** merge this; create `letsbecool9792/sereno-demo`; phone key enrollment. Suparno's Claude: the ReportGate PR.
 
 ---
 
