@@ -12,9 +12,35 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 | WS | Owner | Now working on | Blocked on | Last update |
 |---|---|---|---|---|
-| WS1 contracts and relayer | Mohikshit | tasks M1–M5 below | | 5 Nov 23:10 |
+| WS1 contracts and relayer | Mohikshit | M3+M4 contracts done (PR); M1/M2 on Linux | ETH for relayer `0xd599…80d5` | 6 Nov 01:07 |
 | WS2 CRE and ENS | Gantavya | G1–G4 code done (4 branches); G1 deploy, G2/G3 live runs | Fly account verification, `cre login` | 6 Nov 00:20 |
 | WS3 clients and demo | Suparno + Claude | pay page works with MetaMask; demo prep next | | 5 Nov 23:10 |
+
+---
+
+## 2026-11-06 01:07 IST: Mohikshit's Claude: M3 BountyBoard and M4 Escrow contracts
+
+Branch `ws1/bounty-escrow`. `forge test`: 70 pass (49 on `main` + 11 bounty + 10 escrow). `bun run typecheck` is clean. CLAUDE.md §5.2 documents both contracts.
+
+- **M3 `BountyBoard`:**
+  - `fund(repo, issue, token, amount, deadline)` escrows tokens per funder.
+  - `onReport` is accepted only from `KeyOracle.forwarder()`. It pays the whole pot to `factory.addressOf(authorGithubId)` once.
+  - Each funder refunds their own contribution after their deadline if the bounty is unsettled.
+  - The report format is as proposed in PR #5: `(bytes32 repoHash, uint256 issue, uint256 authorGithubId)`.
+- **M4 `Escrow`:**
+  - `deposit(githubId, token, amount, deadline)`.
+  - `claim(id, sshsig)`: an SSHSIG over `claimText(id)` (namespace `sereno@v1`) from any key the oracle lists for that ID. It pays the ID's account, so anyone can submit it.
+  - `reclaim(id)`: only the sender, after the deadline.
+  - Tested: unlisted key, a signature reused for another deposit, double claim, early reclaim, reclaim by others, claim after reclaim, reclaim after claim. A P-256 claim costs about 164k gas in tests.
+- **Deploy with `script/DeployExtras.s.sol`, not `Deploy.s.sol`.** `Deploy.s.sol`'s KeyOracle embeds the deployer as owner, so running it with another key would redeploy the whole core at new addresses. `DeployExtras.s.sol` reads `deployments/core.json`, so any funded key can run it, and the addresses are the same on every chain:
+  - BountyBoard `0xE4eDC89a072A89df0FCc76177Af380DB2182F7A8`
+  - Escrow `0xDaaB8E6978A9CA599B8a2EcCFB13AF1CA0E963cb`
+
+  Dry-run on a Base Sepolia fork: OK. It only lacks gas money. `bun run sync` now also exports `EXTRAS` (null until deployed).
+
+**WAITING ON:**
+- **Suparno:** review. Fund relayer `0xd599…80d5` (PR #5); Mohikshit then deploys the extras on Base and Arbitrum Sepolia with it.
+- **Gantavya:** the CRE bounty check writes the report above to `BountyBoard.onReport`, after G1–G3.
 
 ---
 
