@@ -1,0 +1,33 @@
+# Fly.io app for the CCIP-read gateway. From the repo root:
+#   fly deploy --config gateway/fly.toml --dockerfile gateway/Dockerfile --ha=false .
+# Secrets (never in this file): fly secrets set GATEWAY_KEY=0x... GITHUB_TOKEN=... --config gateway/fly.toml
+app = "sereno-gateway"
+primary_region = "sin"
+
+[env]
+  PORT = "8080"
+  CACHE_FILE = "/data/cache.json"
+
+# Username -> ID cache that survives restarts and deploys.
+[[mounts]]
+  source = "gateway_cache"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Always on: ENS's batch gateway gives up long before a cold start finishes.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    path = "/health"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
