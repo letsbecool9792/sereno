@@ -134,6 +134,15 @@ Every line ends with `\n`, including the last; there is no other whitespace. The
 - `Factory.addressOf(uint256 githubId) view returns (address)`, `Factory.deploy(uint256 githubId)`; CREATE2 salt = `bytes32(githubId)`.
 - `KeyOracle.firstSeen(uint256 githubId, bytes32 keyHash) view returns (uint256)` (0 = not listed), `keysOf(uint256 githubId)`. `keyHash = keccak256(raw key blob)`, where the raw blob is the base64-decoded second field of the `authorized_keys` line (`ssh-ed25519 AAAA… comment`).
 - `KeyOracle.onReport(bytes metadata, bytes report)`: accepts only the CRE forwarder. `report = abi.encode(uint256 githubId, string login, bytes32[] keyHashes)`: the lowercase login and the complete current key set. It clears removed keys, keeps `firstSeen` for keys still present, sets `block.timestamp` for new ones, and maps `idOfLoginHash(keccak256(login)) → githubId`, following renames. `NameRegistrar` uses that mapping, so nobody can claim someone else's username. The forwarder is **owner-settable**, not a constructor argument, so the oracle's address is identical on every chain.
+- **`BountyBoard`** (extra D1). It has no owner, and its constructor takes `(oracle, factory)`.
+  - `fund(string repo, uint256 issue, address token, uint256 amount, uint64 deadline)`: the funder approves the token first. `repo` is `owner/repo` in any case. Contributions are tracked per funder, and the first funder fixes the token.
+  - `onReport(bytes metadata, bytes report)`: accepted only from `KeyOracle.forwarder()`. `report = abi.encode(bytes32 repoHash, uint256 issue, uint256 authorGithubId)`, where `repoHash = keccak256(lowercase "owner/repo")` (`repoHashOf`). The CRE workflow sends it only for a merged PR that closes the issue. It pays the whole pot to `factory.addressOf(authorGithubId)`, once per issue.
+  - `refund(bytes32 repoHash, uint256 issue)`: each funder can take back their own contribution after their deadline, while the bounty is unsettled.
+- **`Escrow`** (extra A10). It has no owner, and its constructor takes `(oracle, verifier, factory)`.
+  - `deposit(uint256 githubId, address token, uint256 amount, uint64 deadline) returns (uint256 id)`.
+  - `claim(uint256 id, bytes sshsig)`: `sshsig` is signed over `claimText(id)` in namespace `sereno@v1` by a key the oracle lists for `githubId`. The text is `sereno v1\nchain: <id>\nescrow: <lowercase addr>\nclaim: <id>\ngithub-id: <id>\naccount: <lowercase addr>\n`. It pays `factory.addressOf(githubId)`, so anyone can submit it.
+  - `reclaim(uint256 id)`: only the sender, at or after the deadline, while the deposit is unclaimed.
+  - Deploy both with `script/DeployExtras.s.sol`, not `Deploy.s.sol`. `Deploy.s.sol`'s KeyOracle embeds the deployer as owner, so running it with another key would deploy a new core. `DeployExtras.s.sol` reads `deployments/core.json` and writes `deployments/extras.json`, and `bun run sync` exports them as `EXTRAS`.
 
 ### 5.3 Name gateway (WS2)
 
