@@ -16,6 +16,8 @@ import {
   CHAINS,
   CORE,
   ENS_DEPLOYMENT,
+  fromGithubVerification,
+  githubGet,
   nameRegistrarAbi,
   parseIntent,
   sshAccountAbi,
@@ -31,6 +33,17 @@ export class RelayError extends Error {
   ) {
     super(message);
   }
+}
+
+/// A pushed commit, read from GitHub's API: verification.payload is exactly the signed bytes.
+export async function commitFromGithub(repo: string, sha: string, token?: string) {
+  const c = await githubGet<{ commit: { verification: { payload: string | null; signature: string | null; verified: boolean; reason: string } } }>(
+    `/repos/${repo}/commits/${sha}`,
+    token,
+  );
+  const v = c.commit.verification;
+  if (!v.payload || !v.signature) throw new RelayError(400, "commit is not signed");
+  return { commit: fromGithubVerification(v.payload, v.signature), githubVerified: v.verified, reason: v.reason };
 }
 
 export interface Relayed {

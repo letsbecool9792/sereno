@@ -50,6 +50,21 @@ CLI: `bun run ak account <github-user>`, `bun run ak send 0.1 <user> --as <you> 
 
 Contracts: `cd contracts && forge test`.
 
+### Relay payment commits from your own repo (no server)
+
+Add `.github/workflows/pay.yml` to any repo. Every push then pays the commits made with `ak commit-pay`, using a relayer key you hold. That key needs a little ETH on the payment's chain, and you store it as the repo secret `SERENO_RELAYER_KEY`:
+
+```yaml
+on: push
+jobs:
+  relay:
+    uses: letsbecool9792/sereno/.github/workflows/sereno-relay.yml@main
+    secrets:
+      RELAYER_KEY: ${{ secrets.SERENO_RELAYER_KEY }}
+```
+
+The relayer can only submit or refuse. The signed commit fixes the recipient, the amount and the fee.
+
 ## CROPS
 
 Lead property: **S (secure).**
