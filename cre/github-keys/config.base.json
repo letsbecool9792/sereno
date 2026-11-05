@@ -1,0 +1,8 @@
+{
+  "schedule": "0 */10 * * * *",
+  "githubIds": ["99113360", "172588240", "1024025"],
+  "chainName": "ethereum-testnet-sepolia-base-1",
+  "oracle": "0xA148F6D709A844dC3862325E84984c85F5341e56",
+  "gasLimit": "1500000",
+  "githubTokenSecret": "GITHUB_TOKEN"
+}

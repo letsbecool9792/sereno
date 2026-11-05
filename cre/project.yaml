@@ -1,0 +1,15 @@
+# RPCs per target. Simulate: cre workflow simulate github-keys --target base-settings --non-interactive --trigger-index 0 --broadcast
+base-settings:
+  rpcs:
+    - chain-name: ethereum-testnet-sepolia-base-1
+      url: https://sepolia.base.org
+
+arbitrum-settings:
+  rpcs:
+    - chain-name: ethereum-testnet-sepolia-arbitrum-1
+      url: https://sepolia-rollup.arbitrum.io/rpc
+
+sepolia-settings:
+  rpcs:
+    - chain-name: ethereum-testnet-sepolia
+      url: https://ethereum-sepolia-rpc.publicnode.com

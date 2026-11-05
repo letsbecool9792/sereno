@@ -1,0 +1,27 @@
+# One target per chain; the oracle has the same address on each.
+base-settings:
+  user-workflow:
+    workflow-name: "github-keys-base"
+    deployment-registry: "private"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.base.json"
+    secrets-path: "../secrets.yaml"
+
+arbitrum-settings:
+  user-workflow:
+    workflow-name: "github-keys-arbitrum"
+    deployment-registry: "private"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.arbitrum.json"
+    secrets-path: "../secrets.yaml"
+
+sepolia-settings:
+  user-workflow:
+    workflow-name: "github-keys-sepolia"
+    deployment-registry: "private"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.sepolia.json"
+    secrets-path: "../secrets.yaml"
