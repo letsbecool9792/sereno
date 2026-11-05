@@ -1,0 +1,7 @@
+# LF everywhere, also on Windows checkouts.
+* text=auto eol=lf
+
+# Signed fixtures must keep their exact bytes; line-ending conversion breaks every signature.
+**/fixtures/** -text
+*.sig -text
+*.msg -text

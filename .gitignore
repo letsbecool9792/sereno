@@ -1,0 +1,22 @@
+# secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# deps and builds
+node_modules/
+dist/
+.cache/
+
+# foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# cre
+cre/**/.cre_build_tmp.js
+
+# local state written by scripts
+.state/
