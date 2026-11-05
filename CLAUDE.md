@@ -22,8 +22,8 @@ The slug `sereno` appears in the ENS parent name (`sereno.eth`), the signing nam
 | Who | GitHub | Machine | Workstream |
 |---|---|---|---|
 | Suparno | `letsbecool9792` | Windows (demo laptop; phone-as-key works only here) | WS3 clients and demo; reviews every PR |
-| Mohikshit | `psycocodes` | Linux | WS1 contracts and relayer |
-| Gantavya | | | WS2 identity: CRE and ENS |
+| Mohikshit | `psycocodes` | Linux | WS1 contracts and relayer (built by Suparno's Claude for now; Mohikshit joins later) |
+| Gantavya | `g4ntavya` | | WS2 identity: CRE and ENS (tasks in `PROGRESS-LOG.md`) |
 
 **Git workflow (strict):**
 1. Never push to `main`. Work on a branch named `<ws>/<topic>`, for example `ws1/account-execute`, `ws2/cre-keys`, `ws3/pay-page`.
