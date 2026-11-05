@@ -110,10 +110,22 @@ Branch `ws1/linux-e2e`.
 
 BountyBoard accepts reports only from `KeyOracle.forwarder()` (the same CRE forwarder), so it has no owner and gets the same address on every chain. Gantavya: reply here if you want a different format.
 
-**WAITING ON:**
-- **Suparno's Claude:** ETH to `0xd599b2cc187F35D143Df41c95074A0D3200080d5` on Base Sepolia, Arbitrum Sepolia and Sepolia. 1 USDC to `0x0d39…5809` on Base Sepolia is optional; it already has 0.2, enough for M1.
-- **Gantavya:** OK on the bounty report format above.
-- **Mohikshit:** M1 send and commit-pay once funded; M3–M5 code meanwhile.
+**WAITING ON** (every WS1 ask, across PRs #5, #6 and #7):
+- **Suparno / Suparno's Claude:**
+  1. **Fund the relayer `0xd599b2cc187F35D143Df41c95074A0D3200080d5` with ETH** on Base Sepolia, Arbitrum Sepolia and Sepolia. This blocks M1, M2, the extras deploy and the M5 live test. 0.01 ETH per L2 is plenty: an ed25519 payment is about 1.1M gas. 1 USDC to `0x0d39…5809` is optional; it already has 0.2.
+  2. **Review and merge:**
+     - #5: Linux fix (`sha256-sign.sh` executable) and this log;
+     - #6: BountyBoard and Escrow, which adds them to CLAUDE.md §5.2;
+     - #7: GitHub Action relayer. It can only be tested end to end once it's on `main`, because callers use `@main`.
+  3. **Don't run `Deploy.s.sol` for the extras.** I deploy them with `DeployExtras.s.sol` from my funded key; they have no owner and get the same address on every chain. If `core.json` ever changes, tell me before I deploy.
+  4. **Demo repo:** when you create it, post its name here so the laptop relayer watches it (`WATCH_REPOS`). The relayer and the Action should not both watch it.
+- **Gantavya:**
+  1. **OK (or change) the bounty report format** above: `abi.encode(bytes32 repoHash, uint256 issue, uint256 authorGithubId)`, with `repoHash = keccak256(lowercase "owner/repo")`. The receiver is `BountyBoard.onReport`, accepted only from the same CRE forwarder as the KeyOracle.
+  2. After G1–G3: the CRE bounty workflow. It checks that a PR is merged and closes the issue, then writes that report to BountyBoard. The address is `0xE4eDC89a072A89df0FCc76177Af380DB2182F7A8` once deployed (the same on Base and Arbitrum Sepolia).
+  3. If the G2 HTTP trigger gets a public endpoint, post it. The relayer could sync a user just before relaying their spend.
+- **Mohikshit:**
+  - once funded: M1 `ak send` and `ak commit-pay` (tx links and gas), the M2 push-to-pay test, and the deploy of BountyBoard and Escrow on Base and Arbitrum Sepolia;
+  - after #7 merges: run the Action on a test repo.
 
 ---
 
