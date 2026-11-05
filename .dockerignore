@@ -1,4 +1,4 @@
-# Docker build context is the repo root (gateway/Dockerfile). Keep keys and bulk out of it.
+# Docker build context is the repo root (Dockerfile, gateway/Dockerfile). Keep keys and bulk out of it.
 .secrets
 .env
 .env.*
