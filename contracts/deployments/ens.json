@@ -1,8 +1,7 @@
 {
-  "parentName": "authorizedkeys.eth",
+  "parentName": "sereno.eth",
   "gatewaySigner": "0xb6935dE3E8510d7A119Cbcd42325FFaC80904a41",
-  "resolver": "0x8ea21d6c3dc1983a1fcf2d8cf40dd9134b4e1d69",
-  "userRegistry": "0xDabe633Cd63f1EE2E1282156A8a3a25556E26d6c",
-  "previousNameRegistrar": "0xd6dcca36ea04f368ec3e667c45d235e1c8cb50e4",
-  "nameRegistrar": "0xb58a0f04a46cd874bdbc2610985d050358eb0c86"
+  "resolver": "0xd7695337e225d34f4583862923c6b979fcf319c4",
+  "userRegistry": "0x4BE80595522f0E143b2D34392EA031e29e3652ba",
+  "nameRegistrar": "0x81636f503d9517d3f47e1abc87f05d4b23f447c5"
 }

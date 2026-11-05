@@ -173,11 +173,11 @@ packages/shared/  intent builder, ABIs, addresses, chain config
 | KeyOracle (owner `0x11c0…0588`) | `0x6b7303f5F5fc8A9220910eB3097e38603B777D6E` | Base Sepolia, Arbitrum Sepolia, Sepolia |
 | SshSigVerifier | `0xc4830Cb511c6a1B1a011489aEa0834e4EA76c411` | Base Sepolia, Arbitrum Sepolia, Sepolia |
 | Ed25519Verifier | `0xb02e08fC377DF33E66640B738eAE1BB13505E9fB` | Base Sepolia, Arbitrum Sepolia (not Sepolia) |
-| OffchainResolver (wildcard; gateway signer `0xb693…4a41`) | `0x8ea21d6c3dc1983a1fcf2d8cf40dd9134b4e1d69` | Sepolia (ENS) |
-| UserRegistry (subregistry of the parent name) | `0xDabe633Cd63f1EE2E1282156A8a3a25556E26d6c` | Sepolia (ENS) |
-| NameRegistrar | `0xb58a0f04a46cd874bdbc2610985d050358eb0c86` | Sepolia (ENS) |
+| OffchainResolver for `sereno.eth` (wildcard; gateway signer `0xb693…4a41`) | `0xd7695337e225d34f4583862923c6b979fcf319c4` | Sepolia (ENS) |
+| UserRegistry (subregistry of `sereno.eth`) | `0x4BE80595522f0E143b2D34392EA031e29e3652ba` | Sepolia (ENS) |
+| NameRegistrar | `0x81636f503d9517d3f47e1abc87f05d4b23f447c5` | Sepolia (ENS) |
 
-**ENS parent name: `authorizedkeys.eth` for now** (we own it); `sereno.eth` is free on Sepolia and replaces it once we have 8 Circle Sepolia USDC (`PARENT_NAME=sereno.eth bun run ens-setup` in `packages/ops`). Sepolia deploys: `sh script/deploy-sepolia.sh` (node gas estimates, explicit fees, no Ed25519).
+**ENS parent name: `sereno.eth`** (registered 6 Nov on Sepolia ENSv2, owned by the deployer; `packages/ops/src/ens-register.ts`, then `PARENT_NAME=sereno.eth bun src/ens-setup.ts`). The earlier temporary setup under `authorizedkeys.eth` is in `contracts/deployments/ens.authorizedkeys.json`. Sepolia deploys: `sh script/deploy-sepolia.sh` (node gas estimates, explicit fees, no Ed25519).
 
 Redeploy (idempotent): `DEPLOYER_KEY=$(cat .secrets/deployer.key) forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast`, then `bun run sync`. The deployer and relayer key live in git-ignored `.secrets/`.
 

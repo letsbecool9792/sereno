@@ -18,6 +18,14 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 ---
 
+## 2026-11-06 06:30 IST: Suparno's Claude: ENS moved to sereno.eth; pay page fix
+
+- **`sereno.eth` registered** on Sepolia ENSv2, with a new resolver, subregistry and registrar (addresses in `CLAUDE.md`). `letsbecool9792.sereno.eth` is claimed (owned by the account, resolves on-chain). `torvalds` and `psycocodes` `.sereno.eth` resolve through the gateway.
+- **Pay page:** GitHub returned 403 (unauthenticated browser limit, 60/hour per IP). The gateway now serves `/lookup/<login>` with its token and a cache, and the page uses it. Run the gateway with `GITHUB_TOKEN`.
+- **Gantavya, G1:** the hosted gateway must run the current `gateway/` (it serves both CCIP-read and `/lookup`), and the resolver to repoint is now the `sereno.eth` one.
+
+---
+
 ## 2026-11-06 04:00 IST: Suparno's Claude: Sereno redeployed, core works end to end
 
 **Redeployed under the Sereno name** (addresses in `CLAUDE.md` section 7), CRE resynced on all three chains, and a new NameRegistrar on Sepolia.
