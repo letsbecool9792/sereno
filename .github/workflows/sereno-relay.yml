@@ -1,0 +1,48 @@
+# Reusable workflow: a repo that adds it becomes its own Sereno relayer. On every push, each new commit whose message
+# is a payment intent (made with `ak commit-pay`) is submitted on-chain with the repo's own relayer key, so paying by
+# `git push` needs no server of ours. The relayer can't change the payment: the signed text fixes recipient and fee.
+#
+# In your repo, .github/workflows/pay.yml:
+#
+#   on: push
+#   jobs:
+#     relay:
+#       uses: letsbecool9792/sereno/.github/workflows/sereno-relay.yml@main
+#       secrets:
+#         RELAYER_KEY: ${{ secrets.SERENO_RELAYER_KEY }}   # a key holding a little ETH on the payment's chain
+name: sereno-relay
+
+on:
+  workflow_call:
+    inputs:
+      sereno-ref:
+        description: Sereno git ref to run the relayer from
+        type: string
+        default: main
+    secrets:
+      RELAYER_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: letsbecool9792/sereno
+          ref: ${{ inputs.sereno-ref }}
+          path: sereno
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.4
+      - run: bun install --frozen-lockfile
+        working-directory: sereno
+      - run: bun relayer/src/action.ts
+        working-directory: sereno
+        env:
+          RELAYER_KEY: ${{ secrets.RELAYER_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}

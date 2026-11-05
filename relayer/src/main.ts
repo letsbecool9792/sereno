@@ -5,8 +5,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getAddress, type Hex } from "viem";
-import { fromGithubVerification, githubGet, parseCommitObject, parseIntent } from "@sereno/shared";
-import { makeRelayer, RelayError } from "./relay";
+import { githubGet, parseCommitObject, parseIntent } from "@sereno/shared";
+import { commitFromGithub, makeRelayer, RelayError } from "./relay";
 
 const secret = (n: string) => {
   const p = join(import.meta.dir, "../../.secrets", `${n}.key`);
@@ -21,17 +21,6 @@ const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers
 const json = (body: unknown, status = 200) =>
   Response.json(JSON.parse(JSON.stringify(body, (_, v) => (typeof v === "bigint" ? v.toString() : v))), { status, headers: cors });
 const log = (msg: string) => console.log(`${new Date().toISOString()} ${msg}`);
-
-/// A pushed commit, read from GitHub's API: verification.payload is exactly the signed bytes.
-async function commitFromGithub(repo: string, sha: string) {
-  const c = await githubGet<{ commit: { verification: { payload: string | null; signature: string | null; verified: boolean; reason: string } } }>(
-    `/repos/${repo}/commits/${sha}`,
-    token,
-  );
-  const v = c.commit.verification;
-  if (!v.payload || !v.signature) throw new RelayError(400, "commit is not signed");
-  return { commit: fromGithubVerification(v.payload, v.signature), githubVerified: v.verified, reason: v.reason };
-}
 
 async function route(req: Request): Promise<Response> {
   const url = new URL(req.url);
@@ -56,7 +45,7 @@ async function route(req: Request): Promise<Response> {
     if (url.pathname === "/commit") {
       const { commit, githubVerified } = body.raw
         ? { commit: parseCommitObject(body.raw), githubVerified: undefined }
-        : await commitFromGithub(body.repo!, body.sha!);
+        : await commitFromGithub(body.repo!, body.sha!, token);
       const r = await relayer.commit(commit);
       log(`commit ${body.sha ?? "(raw)"} -> ${r.url}`);
       return json({ ...r, githubVerified });
@@ -89,7 +78,7 @@ async function poll() {
         // Commits that existed before the relayer started are history, not new payments.
         if (!primed || !parseIntent(c.commit.message.endsWith("\n") ? c.commit.message : `${c.commit.message}\n`)) continue;
         try {
-          const { commit, githubVerified } = await commitFromGithub(repo, c.sha);
+          const { commit, githubVerified } = await commitFromGithub(repo, c.sha, token);
           const r = await relayer.commit(commit);
           log(`push ${repo}@${c.sha.slice(0, 7)} (GitHub verified: ${githubVerified}) paid: ${r.url}`);
         } catch (e) {
