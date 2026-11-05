@@ -1,9 +1,10 @@
 // CCIP-read gateway for <github-user>.<parent> (ENS on Sepolia). Every answer is signed with the gateway key that
 // the OffchainResolver trusts.
 //
-//   GATEWAY_KEY=0x... [GITHUB_TOKEN=...] [PORT=8787] bun src/main.ts   (GATEWAY_KEY defaults to .secrets/gateway.key)
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+//   GATEWAY_KEY=0x... [GITHUB_TOKEN=...] [PORT=8787] [CACHE_FILE=path] bun src/main.ts
+//   (GATEWAY_KEY defaults to .secrets/gateway.key; CACHE_FILE keeps username -> ID lookups across restarts)
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { createPublicClient, http, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { accountFactoryAbi, CHAINS, CORE, DEFAULT_CHAIN, ENS_DEPLOYMENT, githubKeys, githubUser, type GithubUser } from "@sereno/shared";
@@ -22,6 +23,37 @@ const pub = createPublicClient({ chain: chain.chain, transport: http(chain.rpc, 
 const ids = new Map<string, { id: bigint | null; at: number }>();
 const accounts = new Map<bigint, Address>();
 
+// Username -> ID cache on disk, so a restart doesn't refetch everyone and a GitHub outage still answers known names.
+const cacheFile = process.env.CACHE_FILE;
+type CacheJson = { ids: Record<string, { id: string | null; at: number }>; accounts: Record<string, Address> };
+if (cacheFile && existsSync(cacheFile)) {
+  try {
+    const c = JSON.parse(readFileSync(cacheFile, "utf8")) as CacheJson;
+    for (const [login, v] of Object.entries(c.ids ?? {})) ids.set(login, { id: v.id === null ? null : BigInt(v.id), at: v.at });
+    for (const [id, a] of Object.entries(c.accounts ?? {})) accounts.set(BigInt(id), a);
+    console.log(`cache: ${ids.size} logins, ${accounts.size} accounts from ${cacheFile}`);
+  } catch (e) {
+    console.warn(`cache: ignoring unreadable ${cacheFile}: ${(e as Error).message}`);
+  }
+}
+let saveTimer: ReturnType<typeof setTimeout> | undefined;
+function save() {
+  if (!cacheFile || saveTimer) return;
+  saveTimer = setTimeout(() => {
+    saveTimer = undefined;
+    const c: CacheJson = { ids: {}, accounts: {} };
+    for (const [login, v] of ids) c.ids[login] = { id: v.id === null ? null : v.id.toString(), at: v.at };
+    for (const [id, a] of accounts) c.accounts[id.toString()] = a;
+    try {
+      mkdirSync(dirname(cacheFile), { recursive: true });
+      writeFileSync(`${cacheFile}.tmp`, JSON.stringify(c));
+      renameSync(`${cacheFile}.tmp`, cacheFile);
+    } catch (e) {
+      console.warn(`cache: write failed: ${(e as Error).message}`);
+    }
+  }, 1_000);
+}
+
 const lookups: Lookups = {
   async githubId(login) {
     const hit = ids.get(login);
@@ -30,10 +62,15 @@ const lookups: Lookups = {
     try {
       id = (await githubUser(login, process.env.GITHUB_TOKEN)).id;
     } catch (e) {
-      if (!(e as { notFound?: boolean }).notFound) throw e;
+      if (!(e as { notFound?: boolean }).notFound) {
+        // GitHub is down or rate-limited: a stale answer beats no answer (IDs don't change; renames are rare).
+        if (hit) return hit.id;
+        throw e;
+      }
       id = null;
     }
     ids.set(login, { id, at: Date.now() });
+    save();
     return id;
   },
   async accountOf(githubId) {
@@ -41,6 +78,7 @@ const lookups: Lookups = {
     if (!a) {
       a = await pub.readContract({ address: core.AccountFactory, abi: accountFactoryAbi, functionName: "addressOf", args: [githubId] });
       accounts.set(githubId, a);
+      save();
     }
     return a;
   },
@@ -54,6 +92,7 @@ async function profile(login: string) {
   const u: GithubUser = await githubUser(login, process.env.GITHUB_TOKEN);
   const body = { login: u.login, id: u.id.toString(), name: u.name, avatarUrl: u.avatarUrl, keys: await githubKeys(u.id, process.env.GITHUB_TOKEN) };
   ids.set(u.login.toLowerCase(), { id: u.id, at: Date.now() });
+  save();
   profiles.set(login, { at: Date.now(), body });
   return body;
 }
