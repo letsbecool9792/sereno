@@ -259,6 +259,7 @@ Redeploy (idempotent): `DEPLOYER_KEY=$(cat .secrets/deployer.key) forge script s
 - Pattern: `runtime.runInNodeMode(fetchFn, consensusIdenticalAggregation())(args)` → `runtime.report({ encodedPayload, encoderName: "evm", signingAlgo: "ecdsa", hashingAlgo: "keccak256" })` → `new EVMClient(selector).writeReport(runtime, { receiver, report, gasConfig: { gasLimit } })`.
 - **Secrets:** `secrets.yaml` maps an id to an environment variable (`secretsNames: { GITHUB_TOKEN: [GITHUB_TOKEN_ALL] }`). The target's `secrets-path` in `workflow.yaml` points to it. Read it with `runtime.getSecret({ id }).result().value` **in DON mode** and pass it into the node-mode function as an argument (`NodeRuntime` has no `getSecret`). For simulation, pass the value through the environment only.
 - Simulate: `cre workflow simulate github-keys --target <target> --non-interactive --trigger-index 0 [--broadcast]`. Each target in `project.yaml` lists its chain's RPC.
+- `github-keys` triggers: **0 = cron** (every ID in `githubIds`), **1 = HTTP** (one user on demand: `--trigger-index 1 --http-payload '{"githubId":"172588240"}'`). Deployed, the HTTP trigger only accepts callers listed in `httpAuthorizedKeys`.
 - **gasLimit about 2M on Sepolia** (L2s are fine with 1.5M). A forwarder transaction can report "success" while the receiver ran out of gas, so always read the oracle's state afterwards.
 - Simulation is enough for the CRE prize; production deployment needs `cre account access`.
 
