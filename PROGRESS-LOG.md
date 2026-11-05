@@ -14,7 +14,62 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | tasks M1–M5 below | | 5 Nov 23:10 |
 | WS2 CRE and ENS | Gantavya | G1–G4 code done (4 branches); G1 deploy, G2/G3 live runs | Fly account verification, `cre login` | 6 Nov 00:20 |
-| WS3 clients and demo | Suparno + Claude | README CROPS and AI usage drafted; demo prep next | | 6 Nov 01:30 |
+| WS3 clients and demo | Suparno + Claude | registrar redeployed, relayer funded; forwarder hole (below) needs a decision; demo prep | | 6 Nov 01:45 |
+
+---
+
+## 2026-11-06 01:45 IST: Suparno's Claude (laptop): Mohikshit's relayer funded; NameRegistrar redeployed; reviews of #5–#7; a forwarder hole
+
+Branch `ws3/crops-registrar`: the cloud session's two commits (revoke-demo cherry-picked onto `main`, README CROPS and AI usage), plus this.
+
+**Done:**
+- **Mohikshit's relayer `0xd599…80d5` is funded:**
+  - Base Sepolia, 0.002 ETH: `0x50ed959c…7492e`
+  - Arbitrum Sepolia, 0.002 ETH: `0xe1d42960…3ffc3`
+  - Sepolia, 0.0005 ETH: `0x0f82bd74…dab65`
+
+  At L2 gas prices, an ed25519 payment of about 1.1M gas costs about 0.000001 ETH. The deployer has about 0.008 ETH left on each L2, so ask if you run low.
+- **NameRegistrar redeployed on Sepolia with #1's text records:** `0x55e81868098759409757a341c0818e0b203b3845`.
+  - Deploy: `0x478a314a…0595`
+  - `grantRootRoles`: `0x811c0421…e238`
+  - The old registrar `0x8163…47c5` had its roles on the UserRegistry revoked (`0xfda1944f…2ae6`; its role bitmap now reads 0).
+
+  `ens.json` keeps the old registrar under `previousNameRegistrar`. `bun run sync` and CLAUDE.md §7 are updated. `letsbecool9792.sereno.eth` was claimed through the old registrar and stays as it is, without text records. A fresh claim needs a P-256 or phone key, because Sepolia has no Ed25519 verifier.
+
+**Reviews:**
+- **#5:** fine. The exec-bit fix is right.
+- **#6:** 70 tests pass. The code is clean and matches §5.2. A minor griefing case: the first funder fixes the token, so anyone can fund an issue with 1 wei of a junk token and block USDC bounties on it. Fix: put `token` into `bountyId`, or accept only USDC.
+- **#7:** typecheck is clean. `setup-bun` pins 1.3.4 while our lockfile is from 1.4.4, and `--frozen-lockfile` may refuse it. Pin `bun-version: 1.4.4`.
+- All three add entries to the top of this file, so whichever merges second needs a rebase that keeps both entries.
+
+**Security: anyone can write to the KeyOracle through the CRE simulation forwarder (all three chains).**
+- **The check:** an `eth_call` on Base Sepolia, from `0xdEaD` with no signatures. It called `MockForwarder.report(KeyOracle, <fake metadata ‖ abi.encode(1024025, "torvalds", [0xabab…])>, 0x, [])`.
+  - The forwarder routed it.
+  - `KeyOracle.onReport` accepted it and emitted `KeysUpdated`.
+- **Impact:**
+  - **KeyOracle:** an attacker can add their own key to any GitHub ID and spend up to 50 USDC from that account at once (the 72 h delay only covers larger spends).
+  - **#6's BountyBoard and Escrow:** they trust the same forwarder, so the same attacker could settle any bounty to any GitHub ID.
+  - It's testnet money, but the README leads CROPS with *secure*, and a judge can find this.
+- **Cause:**
+  - The simulation forwarder doesn't verify DON signatures.
+  - `onReport` doesn't check the report metadata (workflow owner and name), so even the production forwarder, which all CRE users share, would accept reports from anyone's workflow.
+- **Proposed fix, with no core redeploy and no account addresses changing:** a small `ReportGate` receiver.
+  - It's owner-managed, with an allowlist of broadcasters (`tx.origin`, the `CRE_ETH_PRIVATE_KEY` addresses that run `--broadcast`) and of expected workflow owners and names from the metadata. Each workflow name routes to a target (KeyOracle, BountyBoard).
+  - Then `KeyOracle.setForwarder(gate)` on all three chains, and the CRE configs write to the gate.
+  - BountyBoard reads `oracle.forwarder()`, so it's covered automatically.
+  - `tx.origin` is the simulation-only guard. The metadata check is the production story.
+
+**WAITING ON:**
+- **Suparno:**
+  - merge this branch (it has the cloud session's commits too);
+  - decide on the forwarder fix and who builds it;
+  - create the public demo repo and post its name here (Mohikshit's laptop relayer watches it).
+- **Mohikshit:**
+  - M1/M2 (now funded) and the extras deploy;
+  - the #7 `bun-version` pin;
+  - optionally #6's token griefing fix;
+  - rebase #5–#7 one after another as they merge.
+- **Gantavya:** post the gateway URL; OK the bounty report format (#5).
 
 ---
 
