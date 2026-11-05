@@ -12,13 +12,55 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 | WS | Owner | Now working on | Blocked on | Last update |
 |---|---|---|---|---|
-| WS1 contracts and relayer | Suparno's Claude (Mohikshit later) | done for core; redeployed under Sereno | | 6 Nov 04:00 |
-| WS2 CRE and ENS | Gantavya | tasks G1–G4 below | | 6 Nov 03:30 |
-| WS3 clients and demo | Suparno's Claude | pay page (web/) | | 6 Nov 04:00 |
+| WS1 contracts and relayer | Mohikshit | tasks M1–M5 below | | 5 Nov 23:10 |
+| WS2 CRE and ENS | Gantavya | tasks G1–G4 below | | 5 Nov 23:10 |
+| WS3 clients and demo | Suparno + Claude | pay page works with MetaMask; demo prep next | | 5 Nov 23:10 |
 
 ---
 
-## 2026-11-06 06:30 IST: Suparno's Claude: ENS moved to sereno.eth; pay page fix
+## 2026-11-05 23:10 IST: Suparno's Claude: pay page works; Mohikshit's tasks
+
+**Pay page works with a real wallet:** Suparno paid 0.001 USDC on Base Sepolia from MetaMask through `web/` to a GitHub user's Sereno account (tx `0x41539…a23f0`). Fixes on the way: GitHub 403 (lookups now go through the gateway with a token), chain switching (the page now checks the wallet really switched), EIP-6963 wallet picker, and per-network re-authorization for newer MetaMask.
+
+**The repo is public** at github.com/letsbecool9792/sereno. (The times in the three entries below were written wrong; they're corrected to the real ones.)
+
+### Mohikshit (`psycocodes`): WS1, your tasks, in order
+
+Setup as in Gantavya's entry below (`bun install`, `forge test`: 48 pass), and read `CLAUDE.md` sections 2, 4, 5 and 8.1–8.3. Branches `ws1/<topic>`, PRs to `main`; Suparno reviews and rebase-merges. Never commit `.secrets/`.
+
+**M1. The core from Linux, with your ed25519 GitHub key (P0, about 30 min).** The oracle already tracks you (172588240) on all three chains.
+1. `bun run ak account psycocodes`: your key should show "listed".
+2. Post in this log; Suparno's Claude funds your account `0x0d39…5809` on Base Sepolia with 1 USDC.
+3. Run a relayer locally (`bun relayer/src/main.ts`; you need a funded relayer key, see M2), then `bun run ak send 0.1 letsbecool9792 --as psycocodes --key ~/.ssh/id_ed25519`.
+4. `ak commit-pay 0.1 letsbecool9792 --as psycocodes --key ~/.ssh/id_ed25519 --repo <a scratch repo> --relay`.
+5. Report gas (ed25519 should be about 1.1M), tx links, and anything that broke on Linux.
+
+**M2. Host the relayer on a durable URL (P0; demo beat 1:00 "the push is the broadcast").**
+- Deploy `relayer/` (Bun) next to Gantavya's gateway or anywhere with HTTPS.
+- **Use your own relayer key:** generate one, post only its address here, and Suparno's Claude funds it with ETH on Base, Arbitrum and Sepolia.
+- Set `GITHUB_TOKEN` and `WATCH_REPOS=<demo repo>` (we'll create a public demo repo; until then, a test repo of yours).
+- **Done when:** `git push` of a commit made with `ak commit-pay` is paid within about 30 seconds without calling the relayer by hand, and `/health` shows the watched repo.
+
+**M3. Issue bounty, extra #2 (contract side).** `contracts/src/BountyBoard.sol`:
+- `fund(repo, issue, amount)` escrows USDC;
+- `settle(...)` is callable only by the CRE forwarder with a report `(bytes32 repoHash, uint256 issue, uint256 authorGithubId)` for a merged PR that closes the issue, and pays `factory.addressOf(authorGithubId)`;
+- the funder can refund after a deadline;
+- Foundry tests.
+
+Agree the report format with Gantavya here first (he writes the CRE side after G1–G3).
+
+**M4. Escrow with refund, extra #3.** Pay a GitHub ID with a deadline; anyone submits a claim signed by a key listed for that ID and the money goes to the ID's account; after the deadline the sender can reclaim. Tests for: unlisted key, double claim, early reclaim, reclaim by others.
+
+**M5. GitHub Action relayer, extra #4.** A reusable workflow (`.github/workflows/sereno-relay.yml` + a small script) that a repo adds: on push, for each new commit whose message is an intent, it calls `executeCommit` with a relayer key from repo secrets. That makes relaying permissionless, which helps CROPS.
+
+**WAITING ON:**
+- **Mohikshit:** M1 and M2. Post your relayer address for funding.
+- **Gantavya:** G1–G3 (entry below).
+- **Suparno:** demo prep (phone key enrollment on the demo laptop, demo repo).
+
+---
+
+## 2026-11-05 ~22:30 IST: Suparno's Claude: ENS moved to sereno.eth; pay page fix
 
 - **`sereno.eth` registered** on Sepolia ENSv2, with a new resolver, subregistry and registrar (addresses in `CLAUDE.md`). `letsbecool9792.sereno.eth` is claimed (owned by the account, resolves on-chain). `torvalds` and `psycocodes` `.sereno.eth` resolve through the gateway.
 - **Pay page:** GitHub returned 403 (unauthenticated browser limit, 60/hour per IP). The gateway now serves `/lookup/<login>` with its token and a cache, and the page uses it. Run the gateway with `GITHUB_TOKEN`.
@@ -26,7 +68,7 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 ---
 
-## 2026-11-06 04:00 IST: Suparno's Claude: Sereno redeployed, core works end to end
+## 2026-11-05 ~22:00 IST: Suparno's Claude: Sereno redeployed, core works end to end
 
 **Redeployed under the Sereno name** (addresses in `CLAUDE.md` section 7), CRE resynced on all three chains, and a new NameRegistrar on Sepolia.
 
@@ -45,7 +87,7 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 ---
 
-## 2026-11-06 03:30 IST: Suparno's Claude: core built, Sereno named, Gantavya's tasks
+## 2026-11-05 ~21:45 IST: Suparno's Claude: core built, Sereno named, Gantavya's tasks
 
 **State of `main`** (all on testnets, details in `CLAUDE.md`):
 - **Contracts, 48 tests:** SSH-signature verifier (every key type), KeyOracle, SshAccount (pay by signed text or by signed commit, 72 h new-key delay, can own ENS names), AccountFactory, ENS OffchainResolver, NameRegistrar (claim your name).
@@ -76,15 +118,12 @@ Setup: clone, `bun install`, Foundry (`foundryup`), `cd contracts && forge test`
 After G1–G3: the issue-bounty extra (CRE confirms a merged PR and the author is paid). We'll plan it here when you get there.
 
 **WAITING ON:**
-- **Suparno:**
-  - create the GitHub repo and push (Claude Code's auto mode blocks Claude from doing it);
-  - add `g4ntavya` as a collaborator;
-  - get **Circle Sepolia USDC** (faucet.circle.com) for `0x11c06c02424cab83238A7747eBc6584b4B680588`: we have 3.79 and `sereno.eth` costs 8.
+- **Suparno:** ~~create the repo and push~~ done; ~~Sepolia USDC~~ done (`sereno.eth` registered). Add `g4ntavya` and `psycocodes` as collaborators.
 - **Gantavya:** G1, G2, G3.
 
 ---
 
-## 2026-11-05: Suparno's Claude: repo scaffold
+## 2026-11-05 ~21:00 IST: Suparno's Claude: repo scaffold
 
 **Done:** the initial commit on `main`:
 - monorepo scaffold (see `CLAUDE.md` section 6);
