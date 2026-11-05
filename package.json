@@ -2,7 +2,7 @@
   "name": "tangerine",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/*"],
+  "workspaces": ["packages/*", "gateway"],
   "scripts": {
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun test",
