@@ -3,6 +3,7 @@ pragma solidity 0.8.37;
 
 import {INTENT_HEADER, SIGNING_NAMESPACE, GIT_NAMESPACE} from "./Constants.sol";
 import {IKeyOracle} from "./interfaces/IKeyOracle.sol";
+import {Text} from "./libraries/Text.sol";
 import {ISshSigVerifier} from "./SshSigVerifier.sol";
 
 /// A GitHub user's account. Any SSH key currently listed on their GitHub profile (per the key oracle) can spend by
@@ -51,21 +52,21 @@ contract SshAccount {
         return abi.encodePacked(
             INTENT_HEADER,
             "\nchain: ",
-            _dec(block.chainid),
+            Text.dec(block.chainid),
             "\naccount: ",
-            _hex(address(this)),
+            Text.hexAddress(address(this)),
             "\ngithub-id: ",
-            _dec(githubId),
+            Text.dec(githubId),
             "\nnonce: ",
-            _dec(n),
+            Text.dec(n),
             "\nsend: ",
-            _dec(amount),
+            Text.dec(amount),
             " of ",
-            _hex(token),
+            Text.hexAddress(token),
             "\nto: ",
-            _hex(to),
+            Text.hexAddress(to),
             "\nrelayer-fee: ",
-            _dec(fee),
+            Text.dec(fee),
             "\n"
         );
     }
@@ -144,25 +145,5 @@ contract SshAccount {
     function _transfer(address token, address to, uint256 amount) internal {
         (bool success, bytes memory ret) = token.call(abi.encodeWithSelector(0xa9059cbb, to, amount));
         if (!success || (ret.length != 0 && !abi.decode(ret, (bool)))) revert TransferFailed();
-    }
-
-    function _dec(uint256 v) internal pure returns (bytes memory out) {
-        if (v == 0) return "0";
-        uint256 len;
-        for (uint256 t = v; t > 0; t /= 10) len++;
-        out = new bytes(len);
-        for (; v > 0; v /= 10) out[--len] = bytes1(uint8(48 + (v % 10)));
-    }
-
-    function _hex(address a) internal pure returns (bytes memory out) {
-        bytes memory digits = "0123456789abcdef";
-        out = new bytes(42);
-        out[0] = "0";
-        out[1] = "x";
-        uint160 v = uint160(a);
-        for (uint256 i = 41; i > 1; i--) {
-            out[i] = digits[v & 15];
-            v >>= 4;
-        }
     }
 }
