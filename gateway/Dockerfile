@@ -1,6 +1,6 @@
 # CCIP-read gateway image. Build from the repo root (the gateway imports the @sereno/shared workspace):
 #   fly deploy --config gateway/fly.toml --dockerfile gateway/Dockerfile .
-FROM oven/bun:1.3.4-slim
+FROM oven/bun:1.4.4-slim
 WORKDIR /app
 # Every workspace manifest, so bun can resolve the lockfile; only shared and gateway sources are copied.
 COPY package.json bun.lock tsconfig.base.json ./
