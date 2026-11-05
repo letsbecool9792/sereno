@@ -35,6 +35,14 @@ contract MockPermissionedResolver {
         require(name.length == 1 && name[0] == 0, "default record only");
         defaultAddress[coinType] = addressBytes;
     }
+
+    mapping(string => string) public defaultText;
+
+    function setText(bytes calldata name, string calldata key, string calldata value) external {
+        require(_initializing || rootRoles[msg.sender] & (1 << 4) != 0, "no role");
+        require(name.length == 1 && name[0] == 0, "default record only");
+        defaultText[key] = value;
+    }
 }
 
 contract MockVerifiableFactory is IVerifiableFactory {
@@ -126,6 +134,14 @@ contract NameRegistrarTest is Test {
         uint256 roles = ResolverRoles.ALL_SETTERS | (ResolverRoles.ALL_SETTERS << 128);
         assertEq(pr.rootRoles(account), roles, "account does not hold the record roles");
         assertEq(pr.rootRoles(address(registrar)), 0, "registrar kept roles");
+    }
+
+    function test_claim_sets_github_text_records() public {
+        address resolver = registrar.claim("letsbecool9792", ID, _claimSig(KEY, "letsbecool9792", ID));
+        MockPermissionedResolver pr = MockPermissionedResolver(resolver);
+        assertEq(pr.defaultText("url"), "https://github.com/letsbecool9792");
+        assertEq(pr.defaultText("avatar"), "https://github.com/letsbecool9792.png");
+        assertEq(pr.defaultText("com.github"), "letsbecool9792");
     }
 
     function test_cannot_claim_someone_elses_login() public {
