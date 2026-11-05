@@ -13,6 +13,11 @@ export const CORE: { Ed25519Verifier: Address; SshSigVerifier: Address; KeyOracl
 /// BountyBoard and Escrow, same addresses on every chain they're deployed on. null until deployed.
 export const EXTRAS: { BountyBoard: Address; Escrow: Address } | null = null;
 
+/// The CRE receiver in front of KeyOracle (and BountyBoard); same address on every chain. null until deployed.
+export const GATE: { ReportGate: Address } | null = {
+  "ReportGate": "0x55adaccD67e0A4b7B1DcE91A188041D2D5046Cb9"
+};
+
 /// ENS on Sepolia. null until set up.
 export const ENS_DEPLOYMENT: { parentName: string; resolver: Address; userRegistry: Address; nameRegistrar: Address; gatewaySigner: Address } | null = {
   "parentName": "sereno.eth",

@@ -14,7 +14,41 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | M3+M4 contracts done (PR); M1/M2 on Linux | ETH for relayer `0xd599…80d5` | 6 Nov 01:07 |
 | WS2 CRE and ENS | Gantavya | G1–G4 code done (4 branches); G1 deploy, G2/G3 live runs | Fly account verification, `cre login` | 6 Nov 00:20 |
-| WS3 clients and demo | Suparno + Claude | core tests 1–3 pass; building the ReportGate (forwarder fix); phone key; demo repo | | 6 Nov 03:50 |
+| WS3 clients and demo | Suparno + Claude | forwarder hole closed (ReportGate live on all 3 chains); phone key; demo repo | | 6 Nov 04:05 |
+
+---
+
+## 2026-11-06 04:05 IST: Suparno's Claude (laptop): forwarder hole closed, ReportGate live on all three chains
+
+Branch `ws3/report-gate`. No core redeploy: KeyOracle, factory, verifier and every account address are unchanged.
+
+**`ReportGate` at `0x55adaccD67e0A4b7B1DcE91A188041D2D5046Cb9`** (same address on Base Sepolia, Arbitrum Sepolia and Sepolia; owner is the deployer). On each chain:
+- it trusts that chain's CRE forwarder;
+- it allows one broadcaster, the deployer `0x11c0…0588`, which is the laptop's `CRE_ETH_PRIVATE_KEY`;
+- it routes `github-keys-<chain>` to the KeyOracle;
+- `KeyOracle.setForwarder(gate)` is done.
+
+BountyBoard reads `oracle.forwarder()`, so once deployed it also takes reports only through the gate. Details are in CLAUDE.md §5.2 and §7; the script is `contracts/script/deploy-gate.sh <chain>`, which is idempotent.
+
+**Checked on the live chains:**
+- **The original attack** (an unsigned report from `0xdEaD` through the Base Sepolia simulation forwarder, `cast call --trace`): it's now refused with `NotBroadcaster(0xdEaD)` at the gate. The same report sent to the KeyOracle directly is refused with `NotForwarder`. From the deployer, it reaches the oracle (`KeysUpdated`).
+- **Real CRE syncs through the gate** (HTTP trigger, `--broadcast`); in each, the oracle's `lastUpdated` is the block time:
+  - Base Sepolia ([tx](https://sepolia.basescan.org/tx/0xe7107d204007dac0f068a3ffff59de617279d22ccf6c14b6a543ccfb3e029b64));
+  - Arbitrum Sepolia ([tx](https://sepolia.arbiscan.io/tx/0xa5fc1c33809dd6ce8cf359c0f1515cda462908f19e7fbdd489ae7e2345c43896));
+  - Sepolia ([tx](https://sepolia.etherscan.io/tx/0x20c2be2742fb0e31dddb86f6da834b8b647cda884d35d384417cccc96f54e0fb)).
+- `forge test` 82/82 (12 new tests for the gate, one of them using the real simulation metadata), `bun run typecheck`, `bun test`.
+
+**Other changes:**
+- The CRE configs' `oracle` field is now `receiver`, set to the gate.
+- `revoke-demo` passes `-e .secrets/cre.env` to `cre` when that file exists (or `CRE_ENV_FILE`). Without it, `cre` exits 1 silently on the `cre/.env` placeholder.
+- The README's CROPS "C" mentions the gate.
+
+**WAITING ON:**
+- **Gantavya:**
+  - `git pull`; the workflow config field is now `receiver`.
+  - Post the address of the `CRE_ETH_PRIVATE_KEY` you simulate with. Until it's allowlisted (`BROADCASTERS=0x… sh script/deploy-gate.sh <chain>` from the laptop), your `--broadcast` runs are refused by the gate. The forwarder transaction itself can still succeed, so check the oracle's state.
+  - For the bounty workflow, post its `workflow-name` per target, so the gate gets a route to BountyBoard.
+- **Suparno:** merge this.
 
 ---
 

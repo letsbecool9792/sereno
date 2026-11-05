@@ -77,7 +77,7 @@ Lead property: **S (secure).** Sereno exists so that developers can hold and spe
   - The nonce stops replay, including a payment commit pushed to many forks.
   - **Trust assumptions:**
     - GitHub decides which keys are on a profile.
-    - The CRE oracle: in a deployed workflow, multiple nodes must agree on GitHub's answer before anything is written on-chain. For the hackathon it runs as a CRE simulation.
+    - The CRE oracle: in a deployed workflow, multiple nodes must agree on GitHub's answer before anything is written on-chain. For the hackathon it runs as a CRE simulation, whose forwarder checks no signatures, so reports pass through our `ReportGate`: only our broadcaster keys and our own workflows get through.
 - **C (censorship resistance).** We run a relayer, a CCIP-read gateway and a CRE workflow, and none of them is a gatekeeper.
   - **The relayer:** `execute` and `executeCommit` are permissionless. Anyone can run `relayer/` with their own key or submit the signed payment themselves. The signed text fixes the recipient and fee, so a relayer can't redirect money.
   - **The gateway:** anyone can run `gateway/`. The account address is also computable without it: `AccountFactory.addressOf(githubId)`.

@@ -10,7 +10,8 @@
 // 5. Dry-runs (or, with --relay, submits) the same signed spend: rejected with KeyNotOnProfile.
 //
 // Practise with a throwaway key on a test GitHub account, never someone's real key. Needs the `cre` CLI (CRE_BIN),
-// `cre login`, and CRE_ETH_PRIVATE_KEY (a funded testnet key) in the environment for the broadcast.
+// `cre login`, and CRE_ETH_PRIVATE_KEY (a funded testnet key on the ReportGate broadcaster allowlist) in
+// .secrets/cre.env or the env file named by CRE_ENV_FILE.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -159,8 +160,12 @@ if (flag("skip-sync")) console.log("   skipped (--skip-sync)");
 else {
   const cre = process.env.CRE_BIN ?? "cre";
   const payload = JSON.stringify({ githubId: user.id.toString() });
-  console.log(`   ${cre} workflow simulate github-keys --target ${target} --non-interactive --trigger-index 1 --http-payload '${payload}' --broadcast`);
-  const r = spawnSync(cre, ["workflow", "simulate", "github-keys", "--target", target, "--non-interactive", "--trigger-index", "1", "--http-payload", payload, "--broadcast"], {
+  // cre reads CRE_ETH_PRIVATE_KEY from an env file (default cre/.env, a template placeholder until filled in) and
+  // exits 1 without a message if the key there is invalid, so pass our secrets file when there is one.
+  const envFile = process.env.CRE_ENV_FILE ?? (existsSync(join(ROOT, ".secrets/cre.env")) ? join(ROOT, ".secrets/cre.env") : undefined);
+  const envArgs = envFile ? ["-e", envFile] : [];
+  console.log(`   ${cre} workflow simulate github-keys --target ${target} --non-interactive --trigger-index 1 --http-payload '${payload}' --broadcast${envFile ? " -e <env file>" : ""}`);
+  const r = spawnSync(cre, ["workflow", "simulate", "github-keys", "--target", target, "--non-interactive", "--trigger-index", "1", "--http-payload", payload, "--broadcast", ...envArgs], {
     cwd: join(ROOT, "cre"),
     stdio: "inherit",
     env: { ...process.env, GITHUB_TOKEN_ALL: process.env.GITHUB_TOKEN_ALL ?? token ?? "" },

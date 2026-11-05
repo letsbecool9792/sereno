@@ -2,7 +2,7 @@
 
 Keeps `KeyOracle` in sync with GitHub. Each node fetches every tracked user's login, authentication keys and signing
 keys (`/user/{id}`, `/user/{id}/keys`, `/user/{id}/ssh_signing_keys`), the nodes must agree, and the report
-`(githubId, login, keyHashes)` is written to the oracle.
+`(githubId, login, keyHashes)` is written to the oracle, through the `ReportGate` (only allowlisted broadcasters and our own workflows get through).
 
 Two triggers:
 - **0, cron:** syncs every ID listed in `config.<chain>.json` (`githubIds`).

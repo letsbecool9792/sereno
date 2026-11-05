@@ -26,7 +26,8 @@ export type Config = {
   schedule: string;
   githubIds: string[];
   chainName: string;
-  oracle: string;
+  /// The ReportGate (contracts/src/ReportGate.sol), which checks the broadcaster and workflow, then calls the KeyOracle.
+  receiver: string;
   gasLimit: string;
   /// CRE secret id holding a GitHub token (5,000 requests/hour instead of 60). Optional.
   githubTokenSecret?: string;
@@ -78,7 +79,7 @@ const fetchUser = (nodeRuntime: NodeRuntime<Config>, githubId: string, token: st
   return JSON.stringify(fetched);
 };
 
-/// Fetches one user with node consensus and writes the report to the oracle; returns the transaction hash.
+/// Fetches one user with node consensus and writes the report to the oracle (through the ReportGate); returns the transaction hash.
 const syncUser = (runtime: Runtime<Config>, id: string): string => {
   const cfg = runtime.config;
   const network = getNetwork({ chainFamily: "evm", chainSelectorName: cfg.chainName });
@@ -105,7 +106,7 @@ const syncUser = (runtime: Runtime<Config>, id: string): string => {
       hashingAlgo: "keccak256",
     })
     .result();
-  const reply = evm.writeReport(runtime, { receiver: cfg.oracle, report, gasConfig: { gasLimit: cfg.gasLimit } }).result();
+  const reply = evm.writeReport(runtime, { receiver: cfg.receiver, report, gasConfig: { gasLimit: cfg.gasLimit } }).result();
   const tx = reply.txHash ? bytesToHex(reply.txHash) : "none";
   runtime.log(`  wrote to ${cfg.chainName}: status ${reply.txStatus}, tx ${tx}${reply.errorMessage ? `, error ${reply.errorMessage}` : ""}`);
   return tx;
