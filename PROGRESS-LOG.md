@@ -14,7 +14,28 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | M3+M4 contracts done (PR); M1/M2 on Linux | ETH for relayer `0xd599…80d5` | 6 Nov 01:07 |
 | WS2 CRE and ENS | Gantavya | G1–G4 code done (4 branches); G1 deploy, G2/G3 live runs | Fly account verification, `cre login` | 6 Nov 00:20 |
-| WS3 clients and demo | Suparno + Claude | core tested end to end (pay page, send, commit-pay, push-to-pay + Verified, revocation, phone key, hosted ENS gateway); demo prep | | 6 Nov 05:20 |
+| WS3 clients and demo | Suparno + Claude | gateway and relayer hosted (Railway); everything in the demo tested; demo prep | | 6 Nov 05:35 |
+
+---
+
+## 2026-11-06 05:35 IST: Suparno's Claude (laptop): relayer hosted on Railway; push-to-pay needs no laptop
+
+**The relayer runs on Railway** at `https://happy-curiosity-production-7074.up.railway.app`, next to the gateway.
+- One image for both services: the root `Dockerfile` plus `start.sh`, which runs the relayer with `SERVICE=relayer` (or with `RELAYER_KEY` set and no `GATEWAY_KEY`). Its first log lines list which variables arrived.
+- **Its own key:** `0xc0EE8ae219aE12B924BfeCb7793ed93f7a71F16f`, funded with 0.001 ETH on Base and Arbitrum Sepolia and 0.0003 on Sepolia. The deployer key stays on the laptop.
+- `WATCH_REPOS=letsbecool9792/sereno-demo`.
+- **The CLI and the pay page now default to the hosted relayer and gateway** (`HOSTED_RELAYER_URL` and `HOSTED_GATEWAY_URL` in `@sereno/shared`). `AK_RELAYER` and `VITE_GATEWAY_URL` override them.
+
+**Checked:**
+- `ak send` through the hosted relayer ([tx](https://sepolia.basescan.org/tx/0xcd04a4f9d6bd4c317aabbbfd8b683945ae8296584b09e12811492e2c378f95f5)).
+- **Push to pay with no local services:** `ak commit-pay … --push` to the demo repo. GitHub shows it **Verified**, and the hosted relayer paid it within about 20 s ([tx](https://sepolia.basescan.org/tx/0x1b641a8ae9488426724011ae2f4716c9ae25b4a81639d6927eee48abdff6de42), 219k gas).
+
+**Railway gotchas:**
+- **New services can't use config-as-code** (since 28 Aug 2026), which is why both services share one image.
+- **Variables pasted into the Raw Editor with quotes** never reached the container.
+- **Pushes to `main` don't redeploy:** after a change to `Dockerfile`, `start.sh`, `gateway/`, `relayer/` or `packages/shared/`, redeploy by hand (Ctrl+K → "Deploy latest commit").
+
+**Mohikshit: M2 is done this way, so drop step 6.** Don't point any relayer at `sereno-demo`. Steps 1–3 and 5 still stand; for M1, `ak` now talks to the hosted relayer unless you set `AK_RELAYER=http://localhost:8788`.
 
 ---
 
