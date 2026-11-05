@@ -2,7 +2,7 @@
   "name": "sereno",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/*", "gateway", "relayer", "cli"],
+  "workspaces": ["packages/*", "gateway", "relayer", "cli", "web"],
   "scripts": {
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun test",

@@ -1,0 +1,54 @@
+:root {
+  --bg: #f7f5f0;
+  --fg: #1d1b16;
+  --muted: #6b665c;
+  --card: #ffffff;
+  --line: #e2ddd2;
+  --accent: #b5651d;
+  --ok: #2f7a3e;
+  --err: #a8322d;
+  color-scheme: light dark;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15140f;
+    --fg: #ece8df;
+    --muted: #a39d90;
+    --card: #1e1c17;
+    --line: #34312a;
+    --accent: #e09a52;
+    --ok: #6cc07d;
+    --err: #e37b74;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); }
+main { max-width: 720px; margin: 0 auto; padding: 48px 16px; }
+h1 { margin: 0; font-size: 2.2rem; letter-spacing: -0.02em; }
+.tagline { color: var(--muted); margin: 6px 0 28px; }
+.search { display: flex; gap: 8px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 8px 8px 14px; flex-wrap: wrap; }
+.search .at { color: var(--muted); }
+.search input { flex: 1; min-width: 140px; border: 0; background: transparent; color: inherit; font-size: 1.05rem; outline: none; }
+select, input[type="number"] { background: var(--bg); color: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 8px; font-size: 0.95rem; }
+button { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 10px 16px; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: default; }
+.busy { color: var(--muted); }
+.error { color: var(--err); }
+.ok-msg { color: var(--ok); }
+.card { margin-top: 20px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+.who { display: flex; gap: 14px; align-items: center; }
+.who img { border-radius: 50%; }
+.login { font-weight: 600; font-size: 1.1rem; }
+.muted { color: var(--muted); font-size: 0.9rem; }
+dl { display: grid; grid-template-columns: 170px 1fr; gap: 10px 14px; margin: 20px 0; }
+dt { color: var(--muted); }
+dd { margin: 0; overflow-wrap: anywhere; }
+a { color: var(--accent); }
+code { font-size: 0.85rem; }
+.tag { display: inline-block; font-size: 0.75rem; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.tag.ok { color: var(--ok); border-color: var(--ok); }
+.pay { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pay input { width: 110px; }
+footer { margin-top: 40px; color: var(--muted); font-size: 0.85rem; }
+@media (max-width: 560px) { dl { grid-template-columns: 1fr; } }

@@ -3,19 +3,18 @@ import type { Address } from "viem";
 
 /// Same addresses on every chain (deterministic deployment). null until deployed.
 export const CORE: { Ed25519Verifier: Address; SshSigVerifier: Address; KeyOracle: Address; AccountFactory: Address; owner: Address } | null = {
-  "AccountFactory": "0x33915d5B5e104aA6A1F8683362ec0C49FFE5D74b",
   "Ed25519Verifier": "0xb02e08fC377DF33E66640B738eAE1BB13505E9fB",
-  "KeyOracle": "0x6b7303f5F5fc8A9220910eB3097e38603B777D6E",
   "SshSigVerifier": "0xc4830Cb511c6a1B1a011489aEa0834e4EA76c411",
+  "KeyOracle": "0x6b7303f5F5fc8A9220910eB3097e38603B777D6E",
+  "AccountFactory": "0x33915d5B5e104aA6A1F8683362ec0C49FFE5D74b",
   "owner": "0x11c06c02424cab83238A7747eBc6584b4B680588"
 };
 
 /// ENS on Sepolia. null until set up.
 export const ENS_DEPLOYMENT: { parentName: string; resolver: Address; userRegistry: Address; nameRegistrar: Address; gatewaySigner: Address } | null = {
   "parentName": "authorizedkeys.eth",
-  "gatewaySigner": "0xb6935dE3E8510d7A119Cbcd42325FFaC80904a41",
   "resolver": "0x8ea21d6c3dc1983a1fcf2d8cf40dd9134b4e1d69",
   "userRegistry": "0xDabe633Cd63f1EE2E1282156A8a3a25556E26d6c",
-  "previousNameRegistrar": "0xd6dcca36ea04f368ec3e667c45d235e1c8cb50e4",
-  "nameRegistrar": "0xb58a0f04a46cd874bdbc2610985d050358eb0c86"
+  "nameRegistrar": "0xb58a0f04a46cd874bdbc2610985d050358eb0c86",
+  "gatewaySigner": "0xb6935dE3E8510d7A119Cbcd42325FFaC80904a41"
 };
