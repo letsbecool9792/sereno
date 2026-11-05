@@ -2,7 +2,7 @@
   "schedule": "0 */10 * * * *",
   "githubIds": ["99113360", "172588240", "1024025"],
   "chainName": "ethereum-testnet-sepolia",
-  "oracle": "0xA148F6D709A844dC3862325E84984c85F5341e56",
+  "oracle": "0x6b7303f5F5fc8A9220910eB3097e38603B777D6E",
   "gasLimit": "2000000",
   "githubTokenSecret": "GITHUB_TOKEN"
 }

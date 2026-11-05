@@ -169,10 +169,15 @@ packages/shared/  intent builder, ABIs, addresses, chain config
 
 | Contract | Address | Chains |
 |---|---|---|
-| AccountFactory | `0x9b8a9fDBf2Be414F8d07b5cB8f3b855c9d6279E3` | Base Sepolia, Arbitrum Sepolia, Sepolia |
-| KeyOracle (owner `0x11c0…0588`) | `0xA148F6D709A844dC3862325E84984c85F5341e56` | Base Sepolia, Arbitrum Sepolia, Sepolia |
-| SshSigVerifier | `0x58099409617E2A0912816b70D27B355376b7abc0` | Base Sepolia, Arbitrum Sepolia, Sepolia |
-| Ed25519Verifier | `0xE6EB12128330cD447d3Cd13A0f1BF7EE8a7B53CE` | Base Sepolia, Arbitrum Sepolia (not Sepolia) |
+| AccountFactory | `0x33915d5B5e104aA6A1F8683362ec0C49FFE5D74b` | Base Sepolia, Arbitrum Sepolia, Sepolia |
+| KeyOracle (owner `0x11c0…0588`) | `0x6b7303f5F5fc8A9220910eB3097e38603B777D6E` | Base Sepolia, Arbitrum Sepolia, Sepolia |
+| SshSigVerifier | `0xc4830Cb511c6a1B1a011489aEa0834e4EA76c411` | Base Sepolia, Arbitrum Sepolia, Sepolia |
+| Ed25519Verifier | `0xb02e08fC377DF33E66640B738eAE1BB13505E9fB` | Base Sepolia, Arbitrum Sepolia (not Sepolia) |
+| OffchainResolver (wildcard; gateway signer `0xb693…4a41`) | `0x8ea21d6c3dc1983a1fcf2d8cf40dd9134b4e1d69` | Sepolia (ENS) |
+| UserRegistry (subregistry of the parent name) | `0xDabe633Cd63f1EE2E1282156A8a3a25556E26d6c` | Sepolia (ENS) |
+| NameRegistrar | `0xb58a0f04a46cd874bdbc2610985d050358eb0c86` | Sepolia (ENS) |
+
+**ENS parent name: `authorizedkeys.eth` for now** (we own it); `sereno.eth` is free on Sepolia and replaces it once we have 8 Circle Sepolia USDC (`PARENT_NAME=sereno.eth bun run ens-setup` in `packages/ops`). Sepolia deploys: `sh script/deploy-sepolia.sh` (node gas estimates, explicit fees, no Ed25519).
 
 Redeploy (idempotent): `DEPLOYER_KEY=$(cat .secrets/deployer.key) forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast`, then `bun run sync`. The deployer and relayer key live in git-ignored `.secrets/`.
 
