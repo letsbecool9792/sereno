@@ -12,9 +12,28 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 | WS | Owner | Now working on | Blocked on | Last update |
 |---|---|---|---|---|
-| WS1 contracts and relayer | Suparno's Claude (Mohikshit later) | redeploy under the Sereno name | | 6 Nov 03:30 |
+| WS1 contracts and relayer | Suparno's Claude (Mohikshit later) | done for core; redeployed under Sereno | | 6 Nov 04:00 |
 | WS2 CRE and ENS | Gantavya | tasks G1–G4 below | | 6 Nov 03:30 |
-| WS3 clients and demo | Suparno's Claude | CLI end-to-end, then the pay page | | 6 Nov 03:30 |
+| WS3 clients and demo | Suparno's Claude | pay page (web/) | | 6 Nov 04:00 |
+
+---
+
+## 2026-11-06 04:00 IST: Suparno's Claude: Sereno redeployed, core works end to end
+
+**Redeployed under the Sereno name** (addresses in `CLAUDE.md` section 7), CRE resynced on all three chains, and a new NameRegistrar on Sepolia.
+
+**End to end on Base Sepolia with the CLI**, using letsbecool9792's GitHub signing key "yo" (P-256), relayer and gateway running locally:
+1. Paid 1 USDC to letsbecool9792's account `0xa82F…d4F8` before it existed.
+2. `ak send 0.1 psycocodes`: the relayer deployed the account and paid ([tx](https://sepolia.basescan.org/tx/0x7731ae72a2fad2902a88429ad75ac7d5a16e4baf8a68d5a9a753f445f477ec2a)).
+3. `ak commit-pay 0.1 psycocodes --relay`: a signed git commit paid ([tx](https://sepolia.basescan.org/tx/0xd72b391666bed3ee24dbb6701d4ccd01ec0bf1e079c4b21d71e45a04dbcfc525)).
+4. `ak claim`: `letsbecool9792.authorizedkeys.eth` is now a real ENSv2 subname owned by the account, resolving on-chain through its own PermissionedResolver ([tx](https://sepolia.etherscan.io/tx/0x8a0aaa9ee98d9afa377af9f32b17fb532097d342a63a8907a53696cabec18abe)). Unclaimed names (`torvalds`) still resolve through the gateway.
+
+**Left in core:**
+- the pay page (`web/`, Suparno's Claude, next);
+- G1–G3 (Gantavya);
+- `sereno.eth` once we have Sepolia USDC.
+
+**WAITING ON:** as in the entry below.
 
 ---
 
