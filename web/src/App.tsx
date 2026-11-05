@@ -95,7 +95,8 @@ export function App() {
   const chain = CHAINS[chainKey];
   const wallets = useWallets();
   const [walletName, setWalletName] = useState<string>("");
-  const walletChoice = wallets.find((w) => w.name === walletName) ?? wallets[0];
+  const walletChoice =
+    wallets.find((w) => w.name === walletName) ?? wallets.find((w) => /metamask/i.test(w.name)) ?? wallets[0];
 
   async function find(e?: React.FormEvent, key = chainKey) {
     e?.preventDefault();
@@ -147,9 +148,12 @@ export function App() {
     if (!walletChoice) return setError("No browser wallet found. Install MetaMask, Rabby or Phantom.");
     setError(null);
     setPaid(null);
+    let step = "connect";
     try {
       const wallet = createWalletClient({ chain: chain.chain, transport: custom(walletChoice.provider) });
-      const [from] = await wallet.requestAddresses();
+      setBusy(`Connecting ${walletChoice.name}…`);
+      await wallet.requestAddresses();
+      step = "switch network";
       if ((await wallet.getChainId()) !== chain.chain.id) {
         setBusy(`Asking ${walletChoice.name} to switch to ${chain.chain.name}…`);
         try {
@@ -168,9 +172,15 @@ export function App() {
           throw new Error(`${walletChoice.name} is still on chain ${now}. Switch it to ${chain.chain.name} (chain id ${chain.chain.id}) yourself, then press Pay again.`);
         }
       }
-      setBusy("Confirm the payment in your wallet…");
+      // Wallets that authorize sites per network (newer MetaMask) need access granted again on this network, and the
+      // account to send from is whichever one the wallet returns now.
+      step = "authorize account";
+      const [from] = await wallet.requestAddresses();
+      if (!from) throw new Error(`${walletChoice.name} returned no account`);
+      step = "send";
+      setBusy(`Confirm the payment in ${walletChoice.name}…`);
       const hash: Hex = await wallet.writeContract({
-        account: from!,
+        account: from,
         address: chain.usdc,
         abi: erc20Abi,
         functionName: "transfer",
@@ -181,7 +191,15 @@ export function App() {
       setPaid(`${chain.explorer}/tx/${hash}`);
       await find(undefined, chainKey);
     } catch (err) {
-      setError((err as Error).message.split("\n")[0] ?? "payment failed");
+      const code = (err as { code?: number; cause?: { code?: number } }).code ?? (err as { cause?: { code?: number } }).cause?.code;
+      const msg = (err as Error).message.split("\n")[0] ?? "payment failed";
+      const hint =
+        code === 4100 || /not been authorized/i.test(msg)
+          ? ` Open ${walletChoice.name}: connect this site, allow it on ${chain.chain.name}, and select the connected account.`
+          : code === 4001 || /rejected/i.test(msg)
+            ? " The request was rejected in the wallet."
+            : "";
+      setError(`${walletChoice.name}, step "${step}": ${msg}${hint}`);
     } finally {
       setBusy(null);
     }
