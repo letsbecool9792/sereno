@@ -11,4 +11,10 @@ export const CORE: { Ed25519Verifier: Address; SshSigVerifier: Address; KeyOracl
 };
 
 /// ENS on Sepolia. null until set up.
-export const ENS_DEPLOYMENT: { parentName: string; resolver: Address; userRegistry: Address; nameRegistrar: Address; gatewaySigner: Address } | null = null;
+export const ENS_DEPLOYMENT: { parentName: string; resolver: Address; userRegistry: Address; nameRegistrar: Address; gatewaySigner: Address } | null = {
+  "parentName": "authorizedkeys.eth",
+  "gatewaySigner": "0xb6935dE3E8510d7A119Cbcd42325FFaC80904a41",
+  "resolver": "0x8ea21d6c3dc1983a1fcf2d8cf40dd9134b4e1d69",
+  "userRegistry": "0xDabe633Cd63f1EE2E1282156A8a3a25556E26d6c",
+  "nameRegistrar": "0xd6dcca36ea04f368ec3e667c45d235e1c8cb50e4"
+};
