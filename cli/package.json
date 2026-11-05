@@ -1,0 +1,11 @@
+{
+  "name": "@sereno/cli",
+  "private": true,
+  "type": "module",
+  "bin": { "ak": "src/main.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": { "@sereno/shared": "workspace:*", "viem": "2.57.7" },
+  "devDependencies": { "bun-types": "1.3.4", "typescript": "5.9.3" }
+}
