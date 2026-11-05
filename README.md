@@ -27,7 +27,28 @@ Every SSH key on a GitHub profile is already an Ethereum signer. Pay any develop
 
 ## Run it
 
-_Filled in as each part lands._
+Needs [Bun](https://bun.sh) and, for contracts, [Foundry](https://getfoundry.sh). Contracts are deployed on Base Sepolia, Arbitrum Sepolia and Sepolia (addresses in `CLAUDE.md`).
+
+```sh
+bun install
+```
+
+Then three terminals from the repo root (PowerShell shown; in bash use `GITHUB_TOKEN=$(gh auth token) bun ...`):
+
+```powershell
+# 1. ENS gateway (CCIP-read for <user>.sereno.eth, and profile lookups for the pay page) on :8787
+$env:GITHUB_TOKEN = gh auth token; bun gateway/src/main.ts
+# 2. relayer (submits SSH-signed payments, commits and name claims) on :8788
+$env:GITHUB_TOKEN = gh auth token; bun relayer/src/main.ts
+# 3. pay page on http://localhost:5173
+cd web; bun run dev
+```
+
+The gateway needs `.secrets/gateway.key` and the relayer `.secrets/relayer.key` (or `deployer.key`); ask Suparno.
+
+CLI: `bun run ak account <github-user>`, `bun run ak send 0.1 <user> --as <you> --key ~/.ssh/id_ed25519`, `bun run ak commit-pay ...`, `bun run ak claim --as <you> --key <key>`.
+
+Contracts: `cd contracts && forge test`.
 
 ## CROPS
 

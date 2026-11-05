@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   createPublicClient,
   createWalletClient,
@@ -52,6 +52,25 @@ async function fetchProfile(login: string): Promise<{ user: GithubUser; keys: st
 }
 const ensClient = createPublicClient({ chain: CHAINS.sepolia.chain, transport: http(CHAINS.sepolia.rpc) });
 const clientFor = (key: ChainKey) => createPublicClient({ chain: CHAINS[key].chain, transport: http(CHAINS[key].rpc) });
+/// Wallets announced through EIP-6963 (so MetaMask and Phantom can both be installed without fighting over window.ethereum).
+interface WalletOption {
+  name: string;
+  provider: EIP1193Provider;
+}
+function useWallets(): WalletOption[] {
+  const [wallets, setWallets] = useState<WalletOption[]>([]);
+  useEffect(() => {
+    const onAnnounce = (e: Event) => {
+      const { info, provider } = (e as CustomEvent<{ info: { name: string; uuid: string }; provider: EIP1193Provider }>).detail;
+      setWallets((ws) => (ws.some((w) => w.name === info.name) ? ws : [...ws, { name: info.name, provider }]));
+    };
+    window.addEventListener("eip6963:announceProvider", onAnnounce);
+    window.dispatchEvent(new Event("eip6963:requestProvider"));
+    return () => window.removeEventListener("eip6963:announceProvider", onAnnounce);
+  }, []);
+  return wallets.length > 0 ? wallets : window.ethereum ? [{ name: "Browser wallet", provider: window.ethereum }] : [];
+}
+
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 interface Lookup {
@@ -74,6 +93,9 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [paid, setPaid] = useState<string | null>(null);
   const chain = CHAINS[chainKey];
+  const wallets = useWallets();
+  const [walletName, setWalletName] = useState<string>("");
+  const walletChoice = wallets.find((w) => w.name === walletName) ?? wallets[0];
 
   async function find(e?: React.FormEvent, key = chainKey) {
     e?.preventDefault();
@@ -122,18 +144,29 @@ export function App() {
 
   async function pay() {
     if (!lookup?.ensAddress) return;
-    if (!window.ethereum) return setError("No browser wallet found. Install MetaMask, Rabby or Phantom.");
+    if (!walletChoice) return setError("No browser wallet found. Install MetaMask, Rabby or Phantom.");
     setError(null);
     setPaid(null);
     try {
-      const wallet = createWalletClient({ chain: chain.chain, transport: custom(window.ethereum) });
+      const wallet = createWalletClient({ chain: chain.chain, transport: custom(walletChoice.provider) });
       const [from] = await wallet.requestAddresses();
-      setBusy(`Switching your wallet to ${chain.chain.name}…`);
-      try {
-        await wallet.switchChain({ id: chain.chain.id });
-      } catch {
-        await wallet.addChain({ chain: chain.chain });
-        await wallet.switchChain({ id: chain.chain.id });
+      if ((await wallet.getChainId()) !== chain.chain.id) {
+        setBusy(`Asking ${walletChoice.name} to switch to ${chain.chain.name}…`);
+        try {
+          await wallet.switchChain({ id: chain.chain.id });
+        } catch (e) {
+          // 4902 = the wallet doesn't know this chain yet
+          if ((e as { code?: number }).code === 4902 || /unrecognized|not been added|4902/i.test(String((e as Error).message))) {
+            await wallet.addChain({ chain: chain.chain });
+            await wallet.switchChain({ id: chain.chain.id });
+          } else throw e;
+        }
+        // Some wallets report success without switching; check before sending anything.
+        for (let i = 0; i < 10 && (await wallet.getChainId()) !== chain.chain.id; i++) await new Promise((r) => setTimeout(r, 300));
+        const now = await wallet.getChainId();
+        if (now !== chain.chain.id) {
+          throw new Error(`${walletChoice.name} is still on chain ${now}. Switch it to ${chain.chain.name} (chain id ${chain.chain.id}) yourself, then press Pay again.`);
+        }
       }
       setBusy("Confirm the payment in your wallet…");
       const hash: Hex = await wallet.writeContract({
@@ -213,6 +246,13 @@ export function App() {
           {!lookup.ensAddress && <p className="error">The ENS name did not resolve (is the gateway reachable?).</p>}
 
           <div className="pay">
+            {wallets.length > 1 && (
+              <select value={walletChoice?.name} onChange={(e) => setWalletName(e.target.value)}>
+                {wallets.map((w) => (
+                  <option key={w.name}>{w.name}</option>
+                ))}
+              </select>
+            )}
             <input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
             <span>USDC</span>
             <button onClick={pay} disabled={!!busy || !lookup.ensAddress || !!mismatch || !(Number(amount) > 0)}>
