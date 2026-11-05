@@ -10,6 +10,5 @@ contracts
 cre
 web/src
 cli/src
-relayer/src
 packages/ops/src
 .state
