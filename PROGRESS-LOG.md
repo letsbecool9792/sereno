@@ -129,6 +129,20 @@ BountyBoard accepts reports only from `KeyOracle.forwarder()` (the same CRE forw
 
 ---
 
+## 2026-11-06 01:07 IST: Mohikshit's Claude: M5 GitHub Action relayer
+
+Branch `ws1/gh-action-relayer`. `bun run typecheck` is clean.
+
+- **`.github/workflows/sereno-relay.yml`** is a reusable workflow (`workflow_call`). A repo opts in with five lines (README, "Relay payment commits from your own repo"). On every push, `relayer/src/action.ts` relays each commit whose message is a payment intent. It uses the repo's own `SERENO_RELAYER_KEY` secret, so paying by `git push` needs no server of ours. This is the CROPS "C" answer: anyone can relay.
+- `commitFromGithub` moved from `relayer/src/main.ts` to `relay.ts`, so the server and the Action share it. The server's behaviour is unchanged.
+- **Tested locally with a fake push event:** non-payment commits are skipped, and an unknown commit fails with a clear `::error::` and exit code 1. **Not yet run on GitHub:** that needs a funded relayer key and this workflow on `main` (callers reference `@main`).
+- If both the laptop relayer and the Action watch the same repo, one of them wins and the other reports `BadSignature`, because the nonce has already moved. Use one per repo.
+
+**WAITING ON:**
+- **Suparno:** review. After the merge and the relayer funding, Mohikshit adds the workflow to a test repo and posts the Action run link.
+
+---
+
 ## 2026-11-06 00:20 IST: Gantavya's Claude: G1–G4 code done; G1 not deployed yet
 
 Four branches, each rebased on `main` (`f2d722f`), all checks green (`forge test` 49 pass, `bun run typecheck`, `bun test` 11 pass). Not pushed yet.
