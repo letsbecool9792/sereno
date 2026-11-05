@@ -36,7 +36,13 @@ contract Deploy is Script {
         uint256 key = vm.envUint("DEPLOYER_KEY");
         address owner = vm.addr(key);
         vm.startBroadcast(key);
-        address ed = _deploy("Ed25519Verifier", vm.getCode("Ed25519Verifier.sol:Ed25519Verifier"));
+        // Sepolia L1 prices contract creation so high that the 13 KB Ed25519 contract exceeds the per-transaction gas
+        // cap. There we only need the claim path (P-256 / phone keys), so it can be skipped; the verifier still points
+        // at its deterministic address, so every other address stays the same.
+        bytes memory edCode = vm.getCode("Ed25519Verifier.sol:Ed25519Verifier");
+        address ed = vm.envOr("SKIP_ED25519", false)
+            ? vm.computeCreate2Address(_salt("Ed25519Verifier"), keccak256(edCode), CREATE2_FACTORY)
+            : _deploy("Ed25519Verifier", edCode);
         address verifier = _deploy("SshSigVerifier", abi.encodePacked(type(SshSigVerifier).creationCode, abi.encode(ed)));
         address oracle = _deploy("KeyOracle", abi.encodePacked(type(KeyOracle).creationCode, abi.encode(owner)));
         address factory =

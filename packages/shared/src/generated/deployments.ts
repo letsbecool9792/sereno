@@ -2,7 +2,13 @@
 import type { Address } from "viem";
 
 /// Same addresses on every chain (deterministic deployment). null until deployed.
-export const CORE: { Ed25519Verifier: Address; SshSigVerifier: Address; KeyOracle: Address; AccountFactory: Address; owner: Address } | null = null;
+export const CORE: { Ed25519Verifier: Address; SshSigVerifier: Address; KeyOracle: Address; AccountFactory: Address; owner: Address } | null = {
+  "AccountFactory": "0x9b8a9fDBf2Be414F8d07b5cB8f3b855c9d6279E3",
+  "Ed25519Verifier": "0xE6EB12128330cD447d3Cd13A0f1BF7EE8a7B53CE",
+  "KeyOracle": "0xA148F6D709A844dC3862325E84984c85F5341e56",
+  "SshSigVerifier": "0x58099409617E2A0912816b70D27B355376b7abc0",
+  "owner": "0x11c06c02424cab83238A7747eBc6584b4B680588"
+};
 
 /// ENS on Sepolia. null until set up.
 export const ENS_DEPLOYMENT: { parentName: string; resolver: Address; userRegistry: Address; nameRegistrar: Address; gatewaySigner: Address } | null = null;

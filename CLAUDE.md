@@ -131,7 +131,7 @@ Every line ends with `\n`, including the last; there is no other whitespace. The
 - `Account.nonce()`, `Account.githubId()`. `Account` implements `onERC1155Received` (ENSv2 names are ERC-1155 tokens; without it the claim reverts with `ERC1155InvalidReceiver`, selector `0x57f447ce`).
 - `Factory.addressOf(uint256 githubId) view returns (address)`, `Factory.deploy(uint256 githubId)`; CREATE2 salt = `bytes32(githubId)`.
 - `KeyOracle.firstSeen(uint256 githubId, bytes32 keyHash) view returns (uint256)` (0 = not listed), `keysOf(uint256 githubId)`. `keyHash = keccak256(raw key blob)`, where the raw blob is the base64-decoded second field of the `authorized_keys` line (`ssh-ed25519 AAAA… comment`).
-- `KeyOracle.onReport(bytes metadata, bytes report)`: accepts only the CRE forwarder. `report = abi.encode(uint256 githubId, bytes32[] keyHashes)` is the complete current key set: clear removed keys, keep `firstSeen` for keys still present, set it to `block.timestamp` for new ones. The forwarder is **owner-settable**, not a constructor argument, so the oracle's address is identical on every chain.
+- `KeyOracle.onReport(bytes metadata, bytes report)`: accepts only the CRE forwarder. `report = abi.encode(uint256 githubId, string login, bytes32[] keyHashes)`: the lowercase login and the complete current key set. It clears removed keys, keeps `firstSeen` for keys still present, sets `block.timestamp` for new ones, and maps `idOfLoginHash(keccak256(login)) → githubId`, following renames. `NameRegistrar` uses that mapping, so nobody can claim someone else's username. The forwarder is **owner-settable**, not a constructor argument, so the oracle's address is identical on every chain.
 
 ### 5.3 Name gateway (WS2)
 
@@ -163,6 +163,17 @@ packages/shared/  intent builder, ABIs, addresses, chain config
 
 ## 7. Chains, tokens and external addresses
 
+**Our deployment (same address on every chain; `contracts/deployments/core.json`, mirrored in `@tangerine/shared`):**
+
+| Contract | Address | Chains |
+|---|---|---|
+| AccountFactory | `0x9b8a9fDBf2Be414F8d07b5cB8f3b855c9d6279E3` | Base Sepolia, Arbitrum Sepolia, Sepolia |
+| KeyOracle (owner `0x11c0…0588`) | `0xA148F6D709A844dC3862325E84984c85F5341e56` | Base Sepolia, Arbitrum Sepolia, Sepolia |
+| SshSigVerifier | `0x58099409617E2A0912816b70D27B355376b7abc0` | Base Sepolia, Arbitrum Sepolia, Sepolia |
+| Ed25519Verifier | `0xE6EB12128330cD447d3Cd13A0f1BF7EE8a7B53CE` | Base Sepolia, Arbitrum Sepolia (not Sepolia) |
+
+Redeploy (idempotent): `DEPLOYER_KEY=$(cat .secrets/deployer.key) forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast`, then `bun run sync`. The deployer and relayer key live in git-ignored `.secrets/`.
+
 | | Ethereum Sepolia (11155111) | Base Sepolia (84532) | Arbitrum Sepolia (421614) |
 |---|---|---|---|
 | Role | ENS only (ENSv2 lives here) | **primary demo chain** | second chain, same addresses |
@@ -175,6 +186,8 @@ packages/shared/  intent builder, ABIs, addresses, chain config
 - **Same addresses on every chain:** deploy through the Arachnid deterministic deployer `0x4e59b44847b379578588920ca78fbf26c0b4956c` (present on all three) with fixed salts, for example `keccak256("tangerine/v1/<ContractName>")`, and identical constructor arguments, with no chain-specific values in constructors. Then every account address is the same everywhere, and one ENS answer works for every chain.
 - **P-256 precompile at `0x100`** (EIP-7951 / RIP-7212) exists on all three chains.
 - **Sepolia L1 makes contract creation and new storage expensive** (it runs the next fork). Deploy the product on Base Sepolia; use Sepolia only for ENS.
+  - Creation costs about 5–7× more than on Base (SshSigVerifier 10.5M gas, AccountFactory 9.1M). **The 13 KB Ed25519 contract exceeds the ~16.7M per-transaction gas cap there**, so it isn't deployed on Sepolia (`SKIP_ED25519=true`). On Sepolia the verifier handles P-256, phone (sk-ecdsa) and RSA-sha256 signatures, but not ed25519 or SHA-512. Name claims must be signed with P-256 or phone keys; payments on Base and Arbitrum accept every key type.
+  - **Price Sepolia gas explicitly.** Forge's default about 1 gwei priority fee overpays roughly 40,000× (the base fee is about 26 wei) and burned 0.0186 ETH on two failed transactions. Use `--with-gas-price 2000 --priority-gas-price 100`, and get real limits from the node (`cast estimate`); Forge's local estimates are far too low on Sepolia.
 - **Funds:** Circle USDC from faucet.circle.com (20 per request, per chain); L2 gas ETH from faucets or the canonical bridges from Sepolia.
 
 **ENSv2 on Sepolia** (from docs.ens.domains/learn/deployments; ABIs and source from `ensdomains/contracts-v2` at tag **`v2-mainnet-deployment-1`**. The repo's `main` branch has *different* addresses and ABIs; don't use it):
@@ -259,7 +272,7 @@ packages/shared/  intent builder, ABIs, addresses, chain config
 
 ### 8.6 Toolchain and environment
 
-- **Pin solc exactly.** Account addresses are CREATE2 over bytecode, and the bytecode embeds the compiler version through the metadata hash. A teammate's newer Foundry picking a newer solc changes every address and breaks signed test fixtures. Use `compilation_restrictions` in `foundry.toml` with **explicit file lists**: on Windows `src/*.sol` also matched subfolders, which forced the 0.6 Ed25519 file onto 0.8.
+- **Pin solc exactly.** Account addresses are CREATE2 over bytecode, and the bytecode embeds the compiler version through the metadata hash. A teammate's newer Foundry picking a newer solc changes every address and breaks signed test fixtures. We pin with **exact pragmas** (`pragma solidity 0.8.37;` in our code, `0.6.12` in the Ed25519 wrapper), and `bytecode_hash = "none"` + `cbor_metadata = false` so comment-only edits don't change bytecode. (Path-based `compilation_restrictions` are fragile: on Windows `src/*.sol` also matched subfolders.)
 - **Phone as an SSH security key works on Windows only**, through **Win32-OpenSSH 10.x**.
   - The built-in 9.5 fails with "Key enrollment failed: invalid format" (issue #2279).
   - `ssh-keygen -t ecdsa-sk` → "iPhone, iPad, or Android device" → QR code → fingerprint. Signatures carry flags `0x1d` (user present **and verified**).
