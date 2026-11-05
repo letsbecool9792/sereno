@@ -12,7 +12,7 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 | WS | Owner | Now working on | Blocked on | Last update |
 |---|---|---|---|---|
-| WS1 contracts and relayer | Mohikshit | tasks M1–M5 below | | 5 Nov 23:10 |
+| WS1 contracts and relayer | Mohikshit | M1/M2 on Linux; M3–M5 code meanwhile | ETH for relayer `0xd599…80d5` | 6 Nov 01:00 |
 | WS2 CRE and ENS | Gantavya | G1–G4 code done (4 branches); G1 deploy, G2/G3 live runs | Fly account verification, `cre login` | 6 Nov 00:20 |
 | WS3 clients and demo | Suparno + Claude | registrar redeployed, relayer funded; forwarder hole (below) needs a decision; demo prep | | 6 Nov 01:45 |
 
@@ -85,6 +85,31 @@ Branch `ccr-ec529b10-q1y6rm`.
 - **Suparno:** merge this branch; fund Mohikshit's relayer `0xd599b2cc187F35D143Df41c95074A0D3200080d5` with ETH on Base Sepolia, Arbitrum Sepolia and Sepolia (from the laptop; the cloud session has no keys). After #1's merge, redeploy the NameRegistrar on Sepolia (laptop).
 - **Mohikshit:** rebase #5 onto `main`.
 - **Gantavya:** OK the bounty report format in #5; post the gateway URL.
+
+---
+
+## 2026-11-06 01:00 IST: Mohikshit's Claude: Linux setup; relayer key; bounty report format
+
+Branch `ws1/linux-e2e`.
+
+**Setup on Linux (Arch):** `bun install` works, and `forge test` passes 48/48. `bun run ak account psycocodes` reports the ed25519 key as **listed** (since 5 Nov 16:19 UTC); the account `0x0d39…5809` already holds 0.2 USDC on Base Sepolia.
+- Linux gotcha: run the CLI with `GITHUB_TOKEN=$(gh auth token)`. Without a token, `api.github.com` answered 403 (the unauthenticated limit) on the first call.
+
+**Relayer key (M1/M2):** **`0xd599b2cc187F35D143Df41c95074A0D3200080d5`**, our own key (kept in `.secrets/relayer.key` on Mohikshit's laptop). It needs ETH on Base Sepolia, Arbitrum Sepolia and Sepolia.
+
+**M2 decision:** the relayer runs **on Mohikshit's laptop for now**. The watcher polls GitHub outbound, so it needs no public URL. Once the push-to-pay test works, we move it to a durable host. The likely choice is Vercel serverless, with a GitHub push webhook in place of the 15 s poller. Until then, a payment pushed while the laptop is off is not relayed (the poller skips commits that exist at startup).
+
+**M3 report format, proposed to Gantavya:** the CRE bounty workflow writes to `BountyBoard.onReport(bytes metadata, bytes report)`:
+- `report = abi.encode(bytes32 repoHash, uint256 issue, uint256 authorGithubId)`;
+- `repoHash = keccak256(bytes(lowercase "owner/repo"))`;
+- send it only for a **merged** PR that closes `issue`; `authorGithubId` is the PR author's numeric ID.
+
+BountyBoard accepts reports only from `KeyOracle.forwarder()` (the same CRE forwarder), so it has no owner and gets the same address on every chain. Gantavya: reply here if you want a different format.
+
+**WAITING ON:**
+- **Suparno's Claude:** ETH to `0xd599b2cc187F35D143Df41c95074A0D3200080d5` on Base Sepolia, Arbitrum Sepolia and Sepolia. 1 USDC to `0x0d39…5809` on Base Sepolia is optional; it already has 0.2, enough for M1.
+- **Gantavya:** OK on the bounty report format above.
+- **Mohikshit:** M1 send and commit-pay once funded; M3–M5 code meanwhile.
 
 ---
 
