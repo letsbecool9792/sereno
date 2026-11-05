@@ -14,7 +14,25 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | M3+M4 contracts done (PR); M1/M2 on Linux | ETH for relayer `0xd599…80d5` | 6 Nov 01:07 |
 | WS2 CRE and ENS | Gantavya | G1–G4 code done (4 branches); G1 deploy, G2/G3 live runs | Fly account verification, `cre login` | 6 Nov 00:20 |
-| WS3 clients and demo | Suparno + Claude | tests 1–6 pass; demo repo up; phone key; hosting the gateway (Railway) | | 6 Nov 04:25 |
+| WS3 clients and demo | Suparno + Claude | tests 1–6 pass; gateway on Railway; demo repo up; phone key next | | 6 Nov 05:00 |
+
+---
+
+## 2026-11-06 05:00 IST: Suparno's Claude (laptop): gateway hosted on Railway; names resolve through ENS's public gateway
+
+**G1 is done, on Suparno's Railway account:** `https://sereno-production.up.railway.app` (`/health` reports signer `0xb693…4a41`). It's built from `gateway/Dockerfile` through `railway.json`.
+- **Fix on the way:** the image needed Bun 1.4.4 to read our lockfile (#14). The same pin is fixed in the relay Action, so **Mohikshit's step 4 is done**.
+- The `sereno.eth` resolver now points there: `setUrl` on Sepolia ([tx](https://sepolia.etherscan.io/tx/0x9e9c9e8765b2cb5d1479f7e79ec60b2141750368c377f5d9d88ee20ac0854edb)). The signer was already trusted.
+- **Checked through ENS's public batch gateway** (`ccip-v3.ens.xyz`), with viem `getEnsAddress` on Sepolia, for coin types 60 and Base:
+  - `torvalds` and `psycocodes` (unclaimed, answered by Railway) and `letsbecool9792` (claimed, on-chain) all return the right accounts;
+  - `text(url)` works.
+
+  Each lookup takes about 1 s, so names now resolve without this laptop.
+- The pay page uses it through `web/.env.local` (`VITE_GATEWAY_URL`).
+
+**WAITING ON:**
+- **Gantavya:** you don't need to deploy the Fly gateway (cancel it if it's half done). Your signer `0x1bAA…1606` isn't added to the resolver. Still needed: your CRE broadcaster address for the gate, and the bounty workflow.
+- **Mohikshit:** steps 0–3, 5 and 6 from the 03:50 entry (step 4 is done).
 
 ---
 

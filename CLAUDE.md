@@ -184,7 +184,7 @@ packages/shared/  intent builder, ABIs, addresses, chain config
 | SshSigVerifier | `0xc4830Cb511c6a1B1a011489aEa0834e4EA76c411` | Base Sepolia, Arbitrum Sepolia, Sepolia |
 | ReportGate (owner `0x11c0…0588`; the KeyOracle's forwarder; broadcaster `0x11c0…0588`) | `0x55adaccD67e0A4b7B1DcE91A188041D2D5046Cb9` | Base Sepolia, Arbitrum Sepolia, Sepolia |
 | Ed25519Verifier | `0xb02e08fC377DF33E66640B738eAE1BB13505E9fB` | Base Sepolia, Arbitrum Sepolia (not Sepolia) |
-| OffchainResolver for `sereno.eth` (wildcard; gateway signer `0xb693…4a41`) | `0xd7695337e225d34f4583862923c6b979fcf319c4` | Sepolia (ENS) |
+| OffchainResolver for `sereno.eth` (wildcard; gateway signer `0xb693…4a41`; URL `https://sereno-production.up.railway.app/{sender}/{data}.json`) | `0xd7695337e225d34f4583862923c6b979fcf319c4` | Sepolia (ENS) |
 | UserRegistry (subregistry of `sereno.eth`) | `0x4BE80595522f0E143b2D34392EA031e29e3652ba` | Sepolia (ENS) |
 | NameRegistrar (6 Nov redeploy with text records; the first one `0x8163…47c5` has its roles revoked) | `0x55e81868098759409757a341c0818e0b203b3845` | Sepolia (ENS) |
 
@@ -279,6 +279,7 @@ Redeploy (idempotent): `DEPLOYER_KEY=$(cat .secrets/deployer.key) forge script s
 
 - **Registering `sereno.eth` on Sepolia:** `ETHRegistrar` `makeCommitment` → `commit` → wait `MIN_COMMITMENT_AGE` (60 s) → approve Circle Sepolia USDC (~8 USDC/year) → `register(label, owner, secret, subregistry, resolver, duration, paymentToken, referrer)`. The owner gets `ROLE_SET_SUBREGISTRY` and `ROLE_SET_RESOLVER` (plus their admin roles) on the name.
 - **Wildcard:** our resolver implements ENSIP-10 `resolve(bytes name, bytes data)` and reverts with EIP-3668 `OffchainLookup` pointing to the gateway URL (`https://<host>/{sender}/{data}.json`). Make the URL owner-settable.
+- **Our gateway is hosted on Railway** at `https://sereno-production.up.railway.app` (Suparno's account). It's built from `gateway/Dockerfile` via `railway.json`, with Railway variables `GATEWAY_KEY` (the `.secrets/gateway.key` signer), `GITHUB_TOKEN` (no scopes) and `CACHE_FILE=/data/cache.json` on a volume. It redeploys on pushes to `main` that touch `gateway/` or `packages/shared/`. The pay page uses it through `VITE_GATEWAY_URL` in `web/.env.local`.
 - **Clients use ENS's hosted batch gateway** (`https://ccip-v3.ens.xyz`), so the gateway must be **public HTTPS**. Cloudflare quick tunnels die after 1–2.5 hours; use a named tunnel or a real host.
 - **Hybrid claim model (works):** give `sereno.eth` a subregistry, a `UserRegistry` proxy from `VerifiableFactory.deployProxy(UserRegistryImpl, salt, abi.encodeCall(initialize, ([Grant(account, roleBitmap)])))`, then `ETHRegistry.setSubregistry(tokenId, userRegistry)`. Names **not** registered in it still resolve through the parent's wildcard resolver. A claimed name gets:
   - its own `PermissionedResolver` proxy: `initialize(Grant[] grants, bytes[] calls)`. **Role checks are skipped during initialize**, so the records are set in the same transaction. Records are keyed by namehash with a **default record at name `0x00`**, so one resolver per account only needs the default record: `setAddress(bytes dnsName, uint256 coinType, bytes addressBytes)` for coin types 60, Base and Arbitrum;
