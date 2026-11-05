@@ -13,8 +13,24 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 | WS | Owner | Now working on | Blocked on | Last update |
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | tasks M1–M5 below | | 5 Nov 23:10 |
-| WS2 CRE and ENS | Gantavya | tasks G1–G4 below | | 5 Nov 23:10 |
+| WS2 CRE and ENS | Gantavya | G1–G4 code done (4 branches); G1 deploy, G2/G3 live runs | Fly account verification, `cre login` | 6 Nov 00:20 |
 | WS3 clients and demo | Suparno + Claude | pay page works with MetaMask; demo prep next | | 5 Nov 23:10 |
+
+---
+
+## 2026-11-06 00:20 IST: Gantavya's Claude: G1–G4 code done; G1 not deployed yet
+
+Four branches, each rebased on `main` (`f2d722f`), all checks green (`forge test` 49 pass, `bun run typecheck`, `bun test` 11 pass). Not pushed yet.
+
+- **G4, `ws2/claim-text-records`:** `NameRegistrar._resolverInit` also sets the default record's `url` (`https://github.com/<login>`), `avatar` (`…/<login>.png`) and `com.github` text records in the same `initialize`, the same values the gateway answers for unclaimed names. `setText(bytes,string,string)` checked against `ensdomains/contracts-v2` at `v2-mainnet-deployment-1`. New test `test_claim_sets_github_text_records`. **Needs a Sepolia redeploy of the registrar** (the current `sereno.eth` one is `0x8163…47c5`); account addresses don't change.
+- **G2, `ws2/cre-http-trigger`:** `github-keys` has trigger **0 = cron** (as before) and **1 = HTTP** (`{"githubId": "..."}`); both go through one `syncUser`, so the report is still exactly `(uint256 githubId, string login, bytes32[] keyHashes)`. Deployed, only `httpAuthorizedKeys` (config) may call it. Typechecks; **the live simulation isn't run yet** (needs `cre login`).
+- **G3, `ws2/revoke-demo` (stacked on G2):** `bun run revoke-demo <user> --key <ssh key> [--relay <url>]` in `packages/ops`. It signs a spend with the key, waits until the key is deleted on GitHub, dry-runs the spend (still accepted), runs the HTTP trigger for that user with `--broadcast`, then dry-runs (or relays) the same signed spend: `KeyNotOnProfile`. Checked with a throwaway key against letsbecool9792's account (`--skip-sync`): signing, the intent read from the contract, and the error decode all work.
+- **G1, `ws2/gateway-hosting`:** `gateway/Dockerfile` + `gateway/fly.toml` (always-on machine, `sin`, volume at `/data`), a root `.dockerignore` that keeps `.secrets/` out, and `CACHE_FILE`: login → ID and ID → account lookups persist across restarts, and a known login still answers from cache when GitHub errors. `/lookup` results feed the same cache. Tested locally: `torvalds.sereno.eth` answers and the cache reloads after a restart. **Not deployed:** Fly refused to create the app until the account is verified.
+- **New gateway signer address: `0x1bAAF733d48C202D98B9B746ca5CC014604b1606`.** The key stays with Gantavya (Fly secret once deployed). Don't add it to the resolver until the URL exists; I'll post the URL here.
+
+**WAITING ON:**
+- **Gantavya:** verify the Fly account (fly.io/high-risk-unlock) and `cre login`; then deploy G1 and run G2/G3 live; push the branches and open PRs.
+- **Suparno (after the G1 URL is posted):** on the `sereno.eth` resolver `0xd769…19c4`, `setSigner(0x1bAAF733d48C202D98B9B746ca5CC014604b1606, true)` and `setUrl("https://<host>/{sender}/{data}.json")`. After G4 merges, redeploy the NameRegistrar on Sepolia.
 
 ---
 
