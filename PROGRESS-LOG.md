@@ -14,7 +14,24 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | M3+M4 contracts done (PR); M1/M2 on Linux | ETH for relayer `0xd599…80d5` | 6 Nov 01:07 |
 | WS2 CRE and ENS | Gantavya | G1–G4 code done (4 branches); G1 deploy, G2/G3 live runs | Fly account verification, `cre login` | 6 Nov 00:20 |
-| WS3 clients and demo | Suparno + Claude | tests 1–6 pass; gateway on Railway; demo repo up; phone key next | | 6 Nov 05:00 |
+| WS3 clients and demo | Suparno + Claude | core tested end to end (pay page, send, commit-pay, push-to-pay + Verified, revocation, phone key, hosted ENS gateway); demo prep | | 6 Nov 05:20 |
+
+---
+
+## 2026-11-06 05:20 IST: Suparno's Claude (laptop): phone key and push-to-pay with "Verified" both pass
+
+- **Phone as the key (A8) works on Windows:** a 0.01 USDC `ak send` signed with Suparno's phone (`sk-ecdsa-sha2-nistp256@openssh.com`, Win32-OpenSSH 10.4, QR code and fingerprint); 170k gas ([tx](https://sepolia.basescan.org/tx/0xb7dc3882a56fd8ec9c603e12ec42de51da27dcd8ca8843bc3940efbf4ebab500)).
+- **Push to pay and "Verified" (B3, demo beat 1:00) work:**
+  - `ak commit-pay … --push` to [`letsbecool9792/sereno-demo`](https://github.com/letsbecool9792/sereno-demo);
+  - GitHub shows the commit as **Verified** (P-256 signing key, SHA-256 signature, noreply email);
+  - the laptop relayer (`WATCH_REPOS=letsbecool9792/sereno-demo`) paid it through `executeCommit`; 219k gas ([tx](https://sepolia.basescan.org/tx/0x9098284d98bb9fe3d9038b49e72cb70c3d63cf9262b612ba268897ac60028af6)).
+- **GitHub glitch:** for about 30 minutes, every `git push` from Suparno's account failed with `remote: fatal error in commit_refs(_rules)`, on both repos and even for unsigned commits. The API still worked, and githubstatus was green. The signed commit went up through the API instead (`POST /git/commits` with `signature`, then move the ref): GitHub verified it, and the relayer paid it. Pushes work again.
+  - **Demo fallback** if a push fails on stage: run the same `ak commit-pay` with `--relay` instead of `--push`.
+- **Mohikshit: hold off on step 6** (watching the demo repo). The laptop relayer watches it for now, and two relayers on one repo race each other.
+
+**WAITING ON:**
+- **Mohikshit:** steps 0–3 and 5.
+- **Gantavya:** only if you run `cre … --broadcast` from your machine (for example the bounty workflow): post that key's address so it goes on the gate's allowlist.
 
 ---
 
