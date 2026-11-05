@@ -32,4 +32,4 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 3. Create your first branch and post a status row.
 4. **Agree on section 5 (interfaces) in the first hour.** Changes after that go through a PR that edits `CLAUDE.md`.
 
-**WAITING ON:** everyone. WS1 starts the verifier and account; WS2 starts the CRE workflow and registers `tangerine.eth` on Sepolia ENSv2; WS3 starts `packages/shared` (intent builder) and the pay page.
+**WAITING ON:** everyone. WS1 starts the verifier and account; WS2 starts the CRE workflow and registers `sereno.eth` on Sepolia ENSv2; WS3 starts `packages/shared` (intent builder) and the pay page.

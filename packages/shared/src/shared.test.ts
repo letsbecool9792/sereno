@@ -19,7 +19,7 @@ const intent = {
 describe("intent text", () => {
   test("matches the contract's format byte for byte", () => {
     expect(buildIntent(intent)).toBe(
-      "tangerine v1\nchain: 84532\naccount: 0xa22f7e55c2ef953d16607636c9ba48d60e78e402\ngithub-id: 99113360\nnonce: 3\n" +
+      "sereno v1\nchain: 84532\naccount: 0xa22f7e55c2ef953d16607636c9ba48d60e78e402\ngithub-id: 99113360\nnonce: 3\n" +
         "send: 1500000 of 0x036cbd53842c5426634e7929541ec2318f3dcf7e\nto: 0xfa3b979b706fb90ee20458166a68995e389540dd\nrelayer-fee: 20000\n",
     );
   });
@@ -35,8 +35,8 @@ describe("intent text", () => {
 
   test("claim text", () => {
     expect(
-      buildClaimText({ chainId: 11155111, label: "dev", parentName: "tangerine.eth", githubId: 7n, account: intent.account }),
-    ).toBe("tangerine v1\nchain: 11155111\nclaim-name: dev.tangerine.eth\ngithub-id: 7\naccount: 0xa22f7e55c2ef953d16607636c9ba48d60e78e402\n");
+      buildClaimText({ chainId: 11155111, label: "dev", parentName: "sereno.eth", githubId: 7n, account: intent.account }),
+    ).toBe("sereno v1\nchain: 11155111\nclaim-name: dev.sereno.eth\ngithub-id: 7\naccount: 0xa22f7e55c2ef953d16607636c9ba48d60e78e402\n");
   });
 });
 
@@ -55,12 +55,12 @@ describe("signatures and commits", () => {
       "tree 4b825dc642cb6eb9a060e54bf8d69288fbee4904\nparent 5d7a2983a72520e1ea16b1eaf683fafad3e7f5dd\n" +
       "author dev <d@x> 1 +0000\ncommitter dev <d@x> 1 +0000\n" +
       "gpgsig -----BEGIN SSH SIGNATURE-----\n U1NIU0lH\n -----END SSH SIGNATURE-----\n\n" +
-      "tangerine v1\nhello\n";
+      "sereno v1\nhello\n";
     const c = parseCommitObject(raw);
     expect(c.headers).toBe(
       "tree 4b825dc642cb6eb9a060e54bf8d69288fbee4904\nparent 5d7a2983a72520e1ea16b1eaf683fafad3e7f5dd\nauthor dev <d@x> 1 +0000\ncommitter dev <d@x> 1 +0000\n",
     );
-    expect(c.message).toBe("tangerine v1\nhello\n");
+    expect(c.message).toBe("sereno v1\nhello\n");
     expect(c.signature).toBe("-----BEGIN SSH SIGNATURE-----\nU1NIU0lH\n-----END SSH SIGNATURE-----\n");
     const g = fromGithubVerification(`${c.headers}\n${c.message}`, c.signature);
     expect(g.headers).toBe(c.headers);

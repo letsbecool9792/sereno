@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { createPublicClient, createWalletClient, http, type Hex } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { chainByKey, type ChainKey } from "@tangerine/shared";
+import { chainByKey, type ChainKey } from "@sereno/shared";
 
 export const ROOT = join(import.meta.dir, "../../..");
 export const SECRETS = join(ROOT, ".secrets");

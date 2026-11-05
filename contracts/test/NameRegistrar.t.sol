@@ -89,7 +89,7 @@ contract NameRegistrarTest is Test {
         uint256[] memory coinTypes = new uint256[](3);
         (coinTypes[0], coinTypes[1], coinTypes[2]) = (60, 0x80000000 | 84532, 0x80000000 | 421614);
         registrar = new NameRegistrar(
-            registry, new MockVerifiableFactory(), address(0x1234), accounts, oracle, verifier, "tangerine.eth", 2_000_000_000, coinTypes
+            registry, new MockVerifiableFactory(), address(0x1234), accounts, oracle, verifier, "sereno.eth", 2_000_000_000, coinTypes
         );
         registry.setRegistrar(address(registrar));
         bytes32[] memory keys = new bytes32[](1);
@@ -98,14 +98,14 @@ contract NameRegistrarTest is Test {
     }
 
     function _claimSig(uint256 key, string memory label, uint256 id) internal view returns (bytes memory) {
-        return SshSigBuilder.signP256(key, registrar.claimText(label, id), "tangerine@v1");
+        return SshSigBuilder.signP256(key, registrar.claimText(label, id), "sereno@v1");
     }
 
     function test_claim_text_is_exact() public view {
         assertEq(
             string(registrar.claimText("letsbecool9792", ID)),
             string.concat(
-                "tangerine v1\nchain: 31337\nclaim-name: letsbecool9792.tangerine.eth\ngithub-id: 99113360\naccount: ",
+                "sereno v1\nchain: 31337\nclaim-name: letsbecool9792.sereno.eth\ngithub-id: 99113360\naccount: ",
                 vm.toLowercase(vm.toString(accounts.addressOf(ID))),
                 "\n"
             )
@@ -141,7 +141,7 @@ contract NameRegistrarTest is Test {
     }
 
     function test_signature_must_match_the_claim() public {
-        bytes memory sig = SshSigBuilder.signP256(KEY, "something else", "tangerine@v1");
+        bytes memory sig = SshSigBuilder.signP256(KEY, "something else", "sereno@v1");
         vm.expectRevert(NameRegistrar.BadSignature.selector);
         registrar.claim("letsbecool9792", ID, sig);
     }

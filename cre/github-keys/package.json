@@ -1,5 +1,5 @@
 {
-  "name": "@tangerine/cre-github-keys",
+  "name": "@sereno/cre-github-keys",
   "version": "1.0.0",
   "main": "dist/main.js",
   "private": true,

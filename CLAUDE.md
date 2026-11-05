@@ -2,7 +2,9 @@
 
 Context for every Claude (or other agent) session in this repo. Read this file first, then the newest entries at the top of `PROGRESS-LOG.md`. Keep this file current; it is the single source of truth for the plan, the interfaces between workstreams and the technical facts.
 
-**`Tangerine` / `tangerine` is a working name.** The final product name is still undecided. The slug appears in the ENS parent name, the signing namespace (`tangerine@v1`) and the intent header (`tangerine v1`). It's defined once per package so a rename is mechanical: `contracts/src/Constants.sol` and `packages/shared/src/constants.ts`. Renaming changes the signed text, so contracts must be redeployed after a rename.
+**Sereno.** A *sereno* was the night watchman of 18th-century Spanish towns: he carried the lantern and the **keys**, walked the rounds, and called out the hour and that all was calm ("¡Las once y sereno!"). Our product keeps watch over the keys developers already have.
+
+The slug `sereno` appears in the ENS parent name (`sereno.eth`), the signing namespace (`sereno@v1`) and the intent header (`sereno v1`). It's defined once per package: `contracts/src/Constants.sol` and `packages/shared/src/constants.ts`. Changing it changes the signed text, so contracts must be redeployed.
 
 ---
 
@@ -40,7 +42,7 @@ Context for every Claude (or other agent) session in this repo. Read this file f
 Every SSH key on a GitHub profile is already an Ethereum signer. Anyone can pay a developer by GitHub username, and the developer spends with the `ssh-keygen` and `git commit -S` they already have: no app, no seed phrase, no signup.
 
 1. **Account:** every GitHub user has a smart account at a CREATE2 address derived from their **numeric GitHub ID**. That's rename-proof, because GitHub releases renamed usernames. Money can arrive before the account is deployed. The address is the same on every EVM chain.
-2. **Name:** `<github-user>.tangerine.eth` resolves to that account through an ENSv2 wildcard resolver plus a CCIP-read gateway (username → numeric ID → address). A developer can **claim** the name: it becomes a real ENSv2 subname owned by their account, with their own PermissionedResolver.
+2. **Name:** `<github-user>.sereno.eth` resolves to that account through an ENSv2 wildcard resolver plus a CCIP-read gateway (username → numeric ID → address). A developer can **claim** the name: it becomes a real ENSv2 subname owned by their account, with their own PermissionedResolver.
 3. **Keys:** a Chainlink CRE workflow reads the user's GitHub SSH keys (authentication and signing keys), the nodes agree, and the key hashes are written on-chain. A key removed on GitHub is revoked at the next run.
 4. **Spend:** the developer signs a plain-text intent with stock `ssh-keygen -Y sign` (or a phone acting as a security key). The contract rebuilds the text, verifies the SSH signature on-chain, checks that the key is on the profile, and pays. A relayer submits and takes a small fee; anyone, including the developer, can submit instead.
 5. **Commit-as-payment:** a `git commit -S` whose message is the intent text is itself the payment. Pushing it to GitHub is the broadcast, and GitHub even shows the green "Verified" badge.
@@ -110,7 +112,7 @@ Fallbacks:
 ### 5.1 Intent text (exact bytes; every client and the contract must agree)
 
 ```
-tangerine v1
+sereno v1
 chain: <chainId, decimal>
 account: <account address, 0x + 40 lowercase hex>
 github-id: <numeric GitHub id, decimal>
@@ -121,12 +123,12 @@ relayer-fee: <fee in token base units, decimal>
 ```
 
 Every line ends with `\n`, including the last; there is no other whitespace. The account exposes `intent(token, to, amount, fee, nonce) view returns (bytes)`, so clients can read the exact text from the contract instead of rebuilding it. The shared TS package's builder must match it byte for byte (test both).
-- **`ssh-keygen` signing:** namespace `tangerine@v1`, always `-O hashalg=sha256`. For example: `ssh-keygen -Y sign -n tangerine@v1 -O hashalg=sha256 -f <key> intent.txt`.
+- **`ssh-keygen` signing:** namespace `sereno@v1`, always `-O hashalg=sha256`. For example: `ssh-keygen -Y sign -n sereno@v1 -O hashalg=sha256 -f <key> intent.txt`.
 - **Commit signing:** the commit message must be **exactly** the intent text (namespace `git`, which git sets).
 
 ### 5.2 Contracts (WS1)
 
-- `Account.execute(address token, address to, uint256 amount, uint256 fee, bytes sshsig)`: verify `sshsig` over `intent(...)` in namespace `tangerine@v1`; key on profile; delay rule; `nonce++`; pay `to`, then `fee` to `msg.sender`.
+- `Account.execute(address token, address to, uint256 amount, uint256 fee, bytes sshsig)`: verify `sshsig` over `intent(...)` in namespace `sereno@v1`; key on profile; delay rule; `nonce++`; pay `to`, then `fee` to `msg.sender`.
 - `Account.executeCommit(address token, address to, uint256 amount, uint256 fee, bytes headers, bytes sshsig)`: signed bytes = `headers ‖ "\n" ‖ intent(...)`, namespace `git`. `headers` must start with `tree `, end with `\n`, and contain no `\n\n`, so the intent is the *whole* message and not a paragraph hidden inside a longer one.
 - `Account.nonce()`, `Account.githubId()`. `Account` implements `onERC1155Received` (ENSv2 names are ERC-1155 tokens; without it the claim reverts with `ERC1155InvalidReceiver`, selector `0x57f447ce`).
 - `Factory.addressOf(uint256 githubId) view returns (address)`, `Factory.deploy(uint256 githubId)`; CREATE2 salt = `bytes32(githubId)`.
@@ -163,7 +165,7 @@ packages/shared/  intent builder, ABIs, addresses, chain config
 
 ## 7. Chains, tokens and external addresses
 
-**Our deployment (same address on every chain; `contracts/deployments/core.json`, mirrored in `@tangerine/shared`):**
+**Our deployment (same address on every chain; `contracts/deployments/core.json`, mirrored in `@sereno/shared`):**
 
 | Contract | Address | Chains |
 |---|---|---|
@@ -183,7 +185,7 @@ Redeploy (idempotent): `DEPLOYER_KEY=$(cat .secrets/deployer.key) forge script s
 | CRE chain name | `ethereum-testnet-sepolia` | `ethereum-testnet-sepolia-base-1` | `ethereum-testnet-sepolia-arbitrum-1` |
 | ENSIP-11 coin type | 60 | `0x80000000\|84532` = 2147568180 | `0x80000000\|421614` = 2147905262 |
 
-- **Same addresses on every chain:** deploy through the Arachnid deterministic deployer `0x4e59b44847b379578588920ca78fbf26c0b4956c` (present on all three) with fixed salts, for example `keccak256("tangerine/v1/<ContractName>")`, and identical constructor arguments, with no chain-specific values in constructors. Then every account address is the same everywhere, and one ENS answer works for every chain.
+- **Same addresses on every chain:** deploy through the Arachnid deterministic deployer `0x4e59b44847b379578588920ca78fbf26c0b4956c` (present on all three) with fixed salts, for example `keccak256("sereno/v1/<ContractName>")`, and identical constructor arguments, with no chain-specific values in constructors. Then every account address is the same everywhere, and one ENS answer works for every chain.
 - **P-256 precompile at `0x100`** (EIP-7951 / RIP-7212) exists on all three chains.
 - **Sepolia L1 makes contract creation and new storage expensive** (it runs the next fork). Deploy the product on Base Sepolia; use Sepolia only for ENS.
   - Creation costs about 5–7× more than on Base (SshSigVerifier 10.5M gas, AccountFactory 9.1M). **The 13 KB Ed25519 contract exceeds the ~16.7M per-transaction gas cap there**, so it isn't deployed on Sepolia (`SKIP_ED25519=true`). On Sepolia the verifier handles P-256, phone (sk-ecdsa) and RSA-sha256 signatures, but not ed25519 or SHA-512. Name claims must be signed with P-256 or phone keys; payments on Base and Arbitrum accept every key type.
@@ -257,10 +259,10 @@ Redeploy (idempotent): `DEPLOYER_KEY=$(cat .secrets/deployer.key) forge script s
 
 ### 8.5 ENSv2
 
-- **Registering `tangerine.eth` on Sepolia:** `ETHRegistrar` `makeCommitment` → `commit` → wait `MIN_COMMITMENT_AGE` (60 s) → approve Circle Sepolia USDC (~8 USDC/year) → `register(label, owner, secret, subregistry, resolver, duration, paymentToken, referrer)`. The owner gets `ROLE_SET_SUBREGISTRY` and `ROLE_SET_RESOLVER` (plus their admin roles) on the name.
+- **Registering `sereno.eth` on Sepolia:** `ETHRegistrar` `makeCommitment` → `commit` → wait `MIN_COMMITMENT_AGE` (60 s) → approve Circle Sepolia USDC (~8 USDC/year) → `register(label, owner, secret, subregistry, resolver, duration, paymentToken, referrer)`. The owner gets `ROLE_SET_SUBREGISTRY` and `ROLE_SET_RESOLVER` (plus their admin roles) on the name.
 - **Wildcard:** our resolver implements ENSIP-10 `resolve(bytes name, bytes data)` and reverts with EIP-3668 `OffchainLookup` pointing to the gateway URL (`https://<host>/{sender}/{data}.json`). Make the URL owner-settable.
 - **Clients use ENS's hosted batch gateway** (`https://ccip-v3.ens.xyz`), so the gateway must be **public HTTPS**. Cloudflare quick tunnels die after 1–2.5 hours; use a named tunnel or a real host.
-- **Hybrid claim model (works):** give `tangerine.eth` a subregistry, a `UserRegistry` proxy from `VerifiableFactory.deployProxy(UserRegistryImpl, salt, abi.encodeCall(initialize, ([Grant(account, roleBitmap)])))`, then `ETHRegistry.setSubregistry(tokenId, userRegistry)`. Names **not** registered in it still resolve through the parent's wildcard resolver. A claimed name gets:
+- **Hybrid claim model (works):** give `sereno.eth` a subregistry, a `UserRegistry` proxy from `VerifiableFactory.deployProxy(UserRegistryImpl, salt, abi.encodeCall(initialize, ([Grant(account, roleBitmap)])))`, then `ETHRegistry.setSubregistry(tokenId, userRegistry)`. Names **not** registered in it still resolve through the parent's wildcard resolver. A claimed name gets:
   - its own `PermissionedResolver` proxy: `initialize(Grant[] grants, bytes[] calls)`. **Role checks are skipped during initialize**, so the records are set in the same transaction. Records are keyed by namehash with a **default record at name `0x00`**, so one resolver per account only needs the default record: `setAddress(bytes dnsName, uint256 coinType, bytes addressBytes)` for coin types 60, Base and Arbitrum;
   - `UserRegistry.register(label, owner = account, registry = 0, resolver = its resolver, roleBitmap, expiry)`.
 - **Role bits:**

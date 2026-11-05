@@ -14,7 +14,7 @@ contract OffchainResolverTest is Test {
     }
 
     function _request() internal pure returns (bytes memory name, bytes memory data, bytes memory callData) {
-        name = hex"08746f7276616c64730974616e676572696e650365746800"; // torvalds.tangerine.eth
+        name = hex"08746f7276616c647306736572656e6f0365746800"; // torvalds.sereno.eth
         data = abi.encodeWithSignature("addr(bytes32)", bytes32(uint256(1)));
         callData = abi.encodeWithSelector(OffchainResolver.resolve.selector, name, data);
     }

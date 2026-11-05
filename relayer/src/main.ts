@@ -5,7 +5,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getAddress, type Hex } from "viem";
-import { fromGithubVerification, githubGet, parseCommitObject, parseIntent } from "@tangerine/shared";
+import { fromGithubVerification, githubGet, parseCommitObject, parseIntent } from "@sereno/shared";
 import { makeRelayer, RelayError } from "./relay";
 
 const secret = (n: string) => {

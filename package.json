@@ -1,11 +1,12 @@
 {
-  "name": "tangerine",
+  "name": "sereno",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/*", "gateway", "relayer"],
+  "workspaces": ["packages/*", "gateway", "relayer", "cli"],
   "scripts": {
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun test",
-    "sync": "bun packages/shared/scripts/sync.ts"
+    "sync": "bun packages/shared/scripts/sync.ts",
+    "ak": "bun cli/src/main.ts"
   }
 }

@@ -54,7 +54,7 @@ type Fetched = { login: string; keyHashes: string[] };
 // Runs on each node; the JSON string must come out identical on every node for consensus.
 const fetchUser = (nodeRuntime: NodeRuntime<Config>, githubId: string, token: string): string => {
   const http = new HTTPClient();
-  const headers: Record<string, string> = { "User-Agent": "tangerine-cre", Accept: "application/vnd.github+json" };
+  const headers: Record<string, string> = { "User-Agent": "sereno-cre", Accept: "application/vnd.github+json" };
   if (token) headers.Authorization = `Bearer ${token}`;
   const get = <T>(path: string): T => {
     const resp = http.sendRequest(nodeRuntime, { url: `https://api.github.com${path}`, method: "GET", headers }).result();

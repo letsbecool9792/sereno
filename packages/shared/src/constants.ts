@@ -1,5 +1,5 @@
-// Working product name (see CLAUDE.md). Must match contracts/src/Constants.sol byte for byte.
-export const APP = "tangerine";
+// Product slug (see CLAUDE.md). Must match contracts/src/Constants.sol byte for byte.
+export const APP = "sereno";
 export const INTENT_HEADER = `${APP} v1`;
 export const SIGNING_NAMESPACE = `${APP}@v1`;
 export const GIT_NAMESPACE = "git";

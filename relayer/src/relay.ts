@@ -22,7 +22,7 @@ import {
   unarmor,
   type ChainConfig,
   type SignedCommit,
-} from "@tangerine/shared";
+} from "@sereno/shared";
 
 export class RelayError extends Error {
   constructor(
@@ -91,7 +91,7 @@ export function makeRelayer(key: Hex) {
   return {
     address: signer.address,
 
-    /// A spend signed with `ssh-keygen -Y sign -n tangerine@v1` over the intent text.
+    /// A spend signed with `ssh-keygen -Y sign -n sereno@v1` over the intent text.
     async intent(p: { chainId: number; githubId: bigint; token: Address; to: Address; amount: bigint; fee: bigint; signature: string }): Promise<Relayed> {
       const c = chainById(p.chainId);
       const account = await ensureAccount(c, p.githubId);

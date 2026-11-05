@@ -12,7 +12,7 @@ import {AccountFactory} from "../src/AccountFactory.sol";
 ///   DEPLOYER_KEY=0x... forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast
 contract Deploy is Script {
     function _salt(string memory name) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked("tangerine/v1/", name));
+        return keccak256(abi.encodePacked("sereno/v1/", name));
     }
 
     function _deploy(string memory name, bytes memory initCode) internal returns (address a) {

@@ -57,13 +57,13 @@ contract SshAccountTest is Test {
     }
 
     function _sign(SshAccount account, uint256 key, uint256 amount, uint256 fee) internal view returns (bytes memory) {
-        return SshSigBuilder.signP256(key, account.intent(address(usdc), alice, amount, fee, account.nonce()), "tangerine@v1");
+        return SshSigBuilder.signP256(key, account.intent(address(usdc), alice, amount, fee, account.nonce()), "sereno@v1");
     }
 
     function test_intent_text_is_exact() public {
         SshAccount account = _ready();
         string memory expected = string.concat(
-            "tangerine v1\nchain: 31337\naccount: ",
+            "sereno v1\nchain: 31337\naccount: ",
             vm.toLowercase(vm.toString(address(account))),
             "\ngithub-id: 99113360\nnonce: 0\nsend: 1500000 of ",
             vm.toLowercase(vm.toString(address(usdc))),
@@ -215,7 +215,7 @@ contract SshAccountTest is Test {
     function test_plain_namespace_signature_cannot_pay_as_commit() public {
         SshAccount account = _ready();
         bytes memory commit = bytes.concat(COMMIT_HEADERS, "\n", account.intent(address(usdc), alice, 1e6, 0, 0));
-        bytes memory sig = SshSigBuilder.signP256(KEY, commit, "tangerine@v1");
+        bytes memory sig = SshSigBuilder.signP256(KEY, commit, "sereno@v1");
         vm.expectRevert(SshAccount.BadSignature.selector);
         account.executeCommit(address(usdc), alice, 1e6, 0, COMMIT_HEADERS, sig);
     }

@@ -1,5 +1,5 @@
 {
-  "name": "@tangerine/shared",
+  "name": "@sereno/shared",
   "private": true,
   "type": "module",
   "exports": { ".": "./src/index.ts" },

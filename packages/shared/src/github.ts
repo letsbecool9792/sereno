@@ -9,7 +9,7 @@ const API = "https://api.github.com";
 
 /// GitHub API GET with a token if provided, retries on network errors (api.github.com times out on some networks).
 export async function githubGet<T>(path: string, token?: string, tries = 3): Promise<T> {
-  const headers: Record<string, string> = { "User-Agent": "tangerine", Accept: "application/vnd.github+json" };
+  const headers: Record<string, string> = { "User-Agent": "sereno", Accept: "application/vnd.github+json" };
   if (token) headers.Authorization = `Bearer ${token}`;
   let last: unknown;
   for (let i = 0; i < tries; i++) {

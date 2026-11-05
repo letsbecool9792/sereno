@@ -6,7 +6,7 @@ import { dnsDecode, handle, type Lookups } from "./resolve";
 
 const signer = privateKeyToAccount("0x0000000000000000000000000000000000000000000000000000000000005161");
 const resolver = "0x8ea21d6c3dc1983a1fcf2d8cf40dd9134b4e1d69";
-const parent = "tangerine.eth";
+const parent = "sereno.eth";
 const account = "0xA22f7e55C2eF953D16607636c9ba48D60e78E402";
 const lookups: Lookups = {
   githubId: async (login) => (login === "letsbecool9792" ? 99113360n : null),
@@ -23,11 +23,11 @@ const request = (name: string, inner: `0x${string}`) =>
 
 describe("gateway", () => {
   test("decodes DNS-encoded names", () => {
-    expect(dnsDecode(toHex(packetToBytes("letsbecool9792.tangerine.eth")))).toEqual(["letsbecool9792", "tangerine", "eth"]);
+    expect(dnsDecode(toHex(packetToBytes("letsbecool9792.sereno.eth")))).toEqual(["letsbecool9792", "sereno", "eth"]);
   });
 
   test("answers addr with the account, signed in the resolver's scheme", async () => {
-    const name = "LetsBeCool9792.tangerine.eth";
+    const name = "LetsBeCool9792.sereno.eth";
     const callData = request(name, encodeFunctionData({ abi, functionName: "addr", args: [namehash(name)] }));
     const out = await handle(resolver, callData, { resolver, parent, signer, lookups, now: 1_000_000_000_000 });
     const [result, expires, sig] = decodeAbiParameters([{ type: "bytes" }, { type: "uint64" }, { type: "bytes" }], out);
@@ -38,7 +38,7 @@ describe("gateway", () => {
   });
 
   test("answers every EVM coin type with the same account, nothing for others", async () => {
-    const name = "letsbecool9792.tangerine.eth";
+    const name = "letsbecool9792.sereno.eth";
     for (const [coinType, expected] of [[0x80000000n | 84532n, account.toLowerCase() as `0x${string}`], [0n, "0x" as const]] as const) {
       const callData = request(name, encodeFunctionData({ abi, functionName: "addr", args: [namehash(name), coinType] }));
       const [result] = decodeAbiParameters([{ type: "bytes" }, { type: "uint64" }, { type: "bytes" }], await handle(resolver, callData, { resolver, parent, signer, lookups }));
@@ -47,7 +47,7 @@ describe("gateway", () => {
   });
 
   test("text records point at the GitHub profile", async () => {
-    const name = "letsbecool9792.tangerine.eth";
+    const name = "letsbecool9792.sereno.eth";
     const callData = request(name, encodeFunctionData({ abi, functionName: "text", args: [namehash(name), "url"] }));
     const [result] = decodeAbiParameters([{ type: "bytes" }, { type: "uint64" }, { type: "bytes" }], await handle(resolver, callData, { resolver, parent, signer, lookups }));
     expect(decodeAbiParameters([{ type: "string" }], result)[0]).toBe("https://github.com/letsbecool9792");
@@ -55,9 +55,9 @@ describe("gateway", () => {
 
   test("refuses unknown users, foreign names and other resolvers", async () => {
     const inner = encodeFunctionData({ abi, functionName: "addr", args: [namehash("x")] });
-    await expect(handle(resolver, request("nobody.tangerine.eth", inner), { resolver, parent, signer, lookups })).rejects.toThrow("no GitHub user");
-    await expect(handle(resolver, request("a.b.tangerine.eth", inner), { resolver, parent, signer, lookups })).rejects.toThrow("not a <user>");
+    await expect(handle(resolver, request("nobody.sereno.eth", inner), { resolver, parent, signer, lookups })).rejects.toThrow("no GitHub user");
+    await expect(handle(resolver, request("a.b.sereno.eth", inner), { resolver, parent, signer, lookups })).rejects.toThrow("not a <user>");
     await expect(handle(resolver, request("x.other.eth", inner), { resolver, parent, signer, lookups })).rejects.toThrow("not a <user>");
-    await expect(handle(account, request("x.tangerine.eth", inner), { resolver, parent, signer, lookups })).rejects.toThrow("unknown resolver");
+    await expect(handle(account, request("x.sereno.eth", inner), { resolver, parent, signer, lookups })).rejects.toThrow("unknown resolver");
   });
 });

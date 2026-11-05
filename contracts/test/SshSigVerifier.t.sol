@@ -36,8 +36,8 @@ contract SshSigVerifierTest is Test {
     // Generated in-test: P-256 key, sha256 message hash (what `ssh-keygen -Y sign -O hashalg=sha256` produces).
     function test_p256_built() public view {
         uint256 key = 0xA11CE;
-        bytes memory message = "tangerine v1\nhello\n";
-        _check(SshSigBuilder.signP256(key, message, "tangerine@v1"), message, "tangerine@v1", SshSigBuilder.p256PublicKey(key), "p256 built");
+        bytes memory message = "sereno v1\nhello\n";
+        _check(SshSigBuilder.signP256(key, message, "sereno@v1"), message, "sereno@v1", SshSigBuilder.p256PublicKey(key), "p256 built");
     }
 
     function test_p256_other_key_rejected() public view {
@@ -54,15 +54,15 @@ contract SshSigVerifierTest is Test {
 
     // ssh-keygen -Y sign -O hashalg=sha256 with fresh keys (test/fixtures/local/gen.sh).
     function test_local_ed25519() public view {
-        _check(_hex(string.concat(LOCAL, "ed25519.sig.hex")), bytes(vm.readFile(string.concat(LOCAL, "message.txt"))), "tangerine-test", _hex(string.concat(LOCAL, "ed25519.pub.hex")), "ed25519 sha256");
+        _check(_hex(string.concat(LOCAL, "ed25519.sig.hex")), bytes(vm.readFile(string.concat(LOCAL, "message.txt"))), "sereno-test", _hex(string.concat(LOCAL, "ed25519.pub.hex")), "ed25519 sha256");
     }
 
     function test_local_rsa() public view {
-        _check(_hex(string.concat(LOCAL, "rsa.sig.hex")), bytes(vm.readFile(string.concat(LOCAL, "message.txt"))), "tangerine-test", _hex(string.concat(LOCAL, "rsa.pub.hex")), "rsa-3072 sha256");
+        _check(_hex(string.concat(LOCAL, "rsa.sig.hex")), bytes(vm.readFile(string.concat(LOCAL, "message.txt"))), "sereno-test", _hex(string.concat(LOCAL, "rsa.pub.hex")), "rsa-3072 sha256");
     }
 
     function test_local_ecdsa() public view {
-        _check(_hex(string.concat(LOCAL, "ecdsa.sig.hex")), bytes(vm.readFile(string.concat(LOCAL, "message.txt"))), "tangerine-test", _hex(string.concat(LOCAL, "ecdsa.pub.hex")), "ecdsa sha256");
+        _check(_hex(string.concat(LOCAL, "ecdsa.sig.hex")), bytes(vm.readFile(string.concat(LOCAL, "message.txt"))), "sereno-test", _hex(string.concat(LOCAL, "ecdsa.pub.hex")), "ecdsa sha256");
     }
 
     // OpenSSH's own regression vectors: default sha512 message hash, including FIDO security keys.

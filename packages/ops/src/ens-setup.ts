@@ -6,7 +6,7 @@
 import { join } from "node:path";
 import { encodeDeployData, encodeFunctionData, keccak256, parseAbi, toHex, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { CHAINS, CORE, ENS } from "@tangerine/shared";
+import { CHAINS, CORE, ENS } from "@sereno/shared";
 import { ROOT, artifact, clients, readJson, secretKey, writeJson } from "./env";
 
 const PARENT = process.env.PARENT_NAME ?? "authorizedkeys.eth";
@@ -76,7 +76,7 @@ if (!state.resolver) {
 
 if (!state.userRegistry) {
   const init = encodeFunctionData({ abi: userRegistry, functionName: "initialize", args: [[{ account: account.address, roleBitmap: ROOT_ROLES }]] });
-  const salt = BigInt(keccak256(toHex(`tangerine/v1/user-registry/${PARENT}`)));
+  const salt = BigInt(keccak256(toHex(`sereno/v1/user-registry/${PARENT}`)));
   state.userRegistry = (await send("deploy UserRegistry (VerifiableFactory)", { address: ENS.verifiableFactory, abi: factoryAbi, functionName: "deployProxy", args: [ENS.userRegistryImpl, salt, init] })) as Address;
   save();
   await send("UserRegistry.setParent", { address: state.userRegistry as Address, abi: userRegistry, functionName: "setParent", args: [ENS.ethRegistry, label] });
