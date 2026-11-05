@@ -14,7 +14,22 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | tasks M1–M5 below | | 5 Nov 23:10 |
 | WS2 CRE and ENS | Gantavya | G1–G4 code done (4 branches); G1 deploy, G2/G3 live runs | Fly account verification, `cre login` | 6 Nov 00:20 |
-| WS3 clients and demo | Suparno + Claude | pay page works with MetaMask; demo prep next | | 5 Nov 23:10 |
+| WS3 clients and demo | Suparno + Claude | README CROPS and AI usage drafted; demo prep next | | 6 Nov 01:30 |
+
+---
+
+## 2026-11-06 01:30 IST: Suparno's Claude (cloud session): revoke-demo onto main; README CROPS and AI usage
+
+Branch `ccr-ec529b10-q1y6rm`.
+
+- **G3 wasn't on `main`.** PR #3 (`revoke-demo`) was merged into its base branch `ws2/cre-http-trigger` *after* #2 had already merged, so it never reached `main`. This branch cherry-picks it onto `main` unchanged (Gantavya's commit; `bun run typecheck` passes).
+- **README:** the CROPS section (lead property S, one block per letter, trust assumptions and trade-offs stated) and the AI-usage section are filled in. CRE is described as a simulation, and phone signing and "Verified" commits aren't claimed until they've been run.
+- **PR #5 (Mohikshit, log only):** fine to merge, but it conflicts with `main` in this file (Gantavya's 00:20 entry). Mohikshit rebases and keeps both entries. The bounty report format checks out against the code: `KeyOracle.forwarder()` is public, so an ownerless BountyBoard can read it.
+
+**WAITING ON:**
+- **Suparno:** merge this branch; fund Mohikshit's relayer `0xd599b2cc187F35D143Df41c95074A0D3200080d5` with ETH on Base Sepolia, Arbitrum Sepolia and Sepolia (from the laptop; the cloud session has no keys). After #1's merge, redeploy the NameRegistrar on Sepolia (laptop).
+- **Mohikshit:** rebase #5 onto `main`.
+- **Gantavya:** OK the bounty report format in #5; post the gateway URL.
 
 ---
 
