@@ -10,6 +10,9 @@ export const CORE: { Ed25519Verifier: Address; SshSigVerifier: Address; KeyOracl
   "owner": "0x11c06c02424cab83238A7747eBc6584b4B680588"
 };
 
+/// BountyBoard and Escrow, same addresses on every chain they're deployed on. null until deployed.
+export const EXTRAS: { BountyBoard: Address; Escrow: Address } | null = null;
+
 /// ENS on Sepolia. null until set up.
 export const ENS_DEPLOYMENT: { parentName: string; resolver: Address; userRegistry: Address; nameRegistrar: Address; gatewaySigner: Address } | null = {
   "parentName": "sereno.eth",
