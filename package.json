@@ -1,0 +1,11 @@
+{
+  "name": "tangerine",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "bun test",
+    "sync": "bun packages/shared/scripts/sync.ts"
+  }
+}
