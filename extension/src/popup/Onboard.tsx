@@ -1,7 +1,7 @@
 // First run: make the browser key behind a password, put it on the GitHub profile as a signing key, and have the
 // Chainlink oracle copy it on-chain. Also the lock screen.
 import { useEffect, useState } from "react";
-import { call, chainName, copy, Err, Icon, Lantern, openTab, PasswordInput, Steps, type State } from "./lib";
+import { call, chainName, copyToast, Err, Icon, Lantern, openTab, PasswordInput, Spinner, Steps, toast, type State } from "./lib";
 
 /// "Badges on GitHub pages": reachable before setup and while locked (it needs no key).
 export function BadgesToggle() {
@@ -21,31 +21,21 @@ export function BadgesToggle() {
   );
 }
 
-export function Lock({ state, onDone }: { state: State; onDone: () => void }) {
+export function Lock({ onDone }: { onDone: () => void }) {
   const [pw, setPw] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [waitUntil, setWaitUntil] = useState(state.waitUntil);
-  const [now, setNow] = useState(Date.now());
   const [forget, setForget] = useState(false);
-  useEffect(() => {
-    if (waitUntil <= Date.now()) return;
-    const t = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(t);
-  }, [waitUntil]);
-  const wait = Math.max(0, Math.ceil((waitUntil - now) / 1000));
   async function go(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setErr(null);
     try {
       await call("unlock", { password: pw });
+      toast("Unlocked");
       onDone();
     } catch (x) {
       setErr((x as Error).message);
-      const s = await call<State>("state").catch(() => null);
-      if (s?.waitUntil) setWaitUntil(s.waitUntil);
-      setNow(Date.now());
     } finally {
       setBusy(false);
     }
@@ -56,18 +46,18 @@ export function Lock({ state, onDone }: { state: State; onDone: () => void }) {
         <Lantern size={64} className="hero-mark" />
         <h2>Welcome back</h2>
         <p className="muted">Unlock to pay. Balances and history work while locked.</p>
-        <PasswordInput autoFocus placeholder="Password" value={pw} onChange={setPw} />
-        {wait > 0 ? <div className="notice amber">Too many wrong tries. Try again in {wait} s.</div> : <Err e={err} />}
-        <button className="block" disabled={busy || !pw || wait > 0}>{busy ? "Unlocking…" : wait > 0 ? `Wait ${wait} s` : "Unlock"}</button>
+        <PasswordInput autoFocus placeholder="Password" value={pw} onChange={(v) => { setPw(v); setErr(null); }} />
+        <Err e={err} />
+        <button className="block" disabled={busy || !pw}>{busy ? <><Spinner /> Unlocking…</> : "Unlock"}</button>
       </form>
       {!forget ? (
         <button className="ghost" onClick={() => setForget(true)}>Forgot it? Start over with a new key</button>
       ) : (
         <div className="card stack">
-          <p className="small">This removes the key from this browser. Your money stays in your account (it belongs to your GitHub ID). Make a new key, and delete the old one at github.com/settings/keys.</p>
+          <p className="small">This deletes the key in this browser and makes you a new one. Your money stays in your account (it belongs to your GitHub ID). You'll add the new key to GitHub and sync it; delete the old one at github.com/settings/keys.</p>
           <div className="row">
             <button className="secondary grow" onClick={() => setForget(false)}>Cancel</button>
-            <button className="danger grow" onClick={async () => { await call("forgetKey"); onDone(); }}>Start over</button>
+            <button className="danger grow" onClick={async () => { await call("forgetKey"); toast("Old key removed. Make a new one"); onDone(); }}>Start over</button>
           </div>
         </div>
       )}
@@ -153,7 +143,7 @@ function Password({ next }: { next: () => void }) {
           ))}
         </ul>
         <Err e={err} />
-        <button className="block" disabled={busy || !ready}>{busy ? "Making the key…" : "Create key"}</button>
+        <button className="block" disabled={busy || !ready}>{busy ? <><Spinner /> Making the key…</> : "Create key"}</button>
       </form>
     </main>
   );
@@ -196,17 +186,17 @@ function Connect({ state, next }: { state: State; next: () => void }) {
         <form className="stack" onSubmit={useLogin}>
           <label>Your GitHub username<input autoFocus placeholder="octocat" value={login} onChange={(e) => setLogin(e.target.value.trim())} /></label>
           <Err e={err} />
-          <button className="block" disabled={busy || !login}>{busy ? "Looking up…" : "Continue"}</button>
+          <button className="block" disabled={busy || !login}>{busy ? <><Spinner /> Looking up…</> : "Continue"}</button>
         </form>
       ) : (
         <div className="stack">
           <p className="muted small">Add it as a <strong style={{ color: "var(--ink)" }}>Signing Key</strong> (it can't push code or open SSH sessions).</p>
           <div className="pubkey">{state.publicKey}</div>
           <div className="row">
-            <button className="secondary grow" onClick={() => copy(state.publicKey ?? "")}><Icon name="copy" /> Copy key</button>
+            <button className="secondary grow" onClick={() => copyToast(state.publicKey ?? "", "Key copied")}><Icon name="copy" /> Copy key</button>
             <button className="grow" onClick={() => { openTab("https://github.com/settings/ssh/new"); setManual("waiting"); }}>Open GitHub <Icon name="ext" /></button>
           </div>
-          {manual === "waiting" && <div className="notice amber">Watching your profile for the key…</div>}
+          {manual === "waiting" && <div className="status amber"><Spinner /> Watching your GitHub profile for the key (it can take a minute)…</div>}
           {manual === "added" && <button className="ghost" onClick={() => setManual("waiting")}>I've added it</button>}
         </div>
       )}
@@ -214,59 +204,110 @@ function Connect({ state, next }: { state: State; next: () => void }) {
   );
 }
 
-type SyncInfo = { job: { state: string; detail?: string; workerAge?: number | null } | null; chains: { key: "base-sepolia" | "arbitrum-sepolia" | "sepolia"; firstSeen: string }[] };
+type Chain = "base-sepolia" | "arbitrum-sepolia" | "sepolia";
+type SyncInfo = { job: { state: string; detail?: string; workerAge?: number | null } | null; chains: { key: Chain; firstSeen: string }[] };
+const CHAIN_ORDER: Chain[] = ["base-sepolia", "arbitrum-sepolia", "sepolia"];
 
+/// Putting this browser key on-chain, with every step visible: is the key on GitHub, is the job queued or running
+/// (with a timer), which chains are done, and what to do when something's missing.
 export function Sync({ state, next, compact }: { state: State; next: () => void; compact?: boolean }) {
   const [info, setInfo] = useState<SyncInfo | null>(null);
+  const [onGithub, setOnGithub] = useState<boolean | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [asked, setAsked] = useState(false);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [now, setNow] = useState(Date.now());
+  const [requesting, setRequesting] = useState(false);
+
   useEffect(() => {
     let alive = true;
     const tick = async () => {
-      const s = await call<SyncInfo>("syncStatus").catch(() => null);
-      if (alive && s) setInfo(s);
+      const [s, g] = await Promise.all([call<SyncInfo>("syncStatus").catch(() => null), call<boolean>("keyOnGithub").catch(() => null)]);
+      if (!alive) return;
+      if (s) setInfo(s);
+      if (g !== null) setOnGithub(g);
+      setNow(Date.now());
     };
     void tick();
-    const t = setInterval(tick, 4000);
+    const t = setInterval(tick, 3000);
+    const c = setInterval(() => setNow(Date.now()), 1000);
     return () => {
       alive = false;
       clearInterval(t);
+      clearInterval(c);
     };
   }, []);
-  const all = !!info && info.chains.every((c) => c.firstSeen !== "0");
+
+  const chains = CHAIN_ORDER.map((k) => ({ key: k, done: (info?.chains.find((c) => c.key === k)?.firstSeen ?? "0") !== "0" }));
+  const all = !!info && chains.every((c) => c.done);
+  const job = info?.job?.state;
+  const active = requesting || job === "queued" || job === "running";
+  const finished = !active && startedAt !== null && (job === "done" || job === "failed");
   useEffect(() => {
+    if (all && startedAt !== null) toast("On-chain on every chain");
     if (all && !compact) setTimeout(next, 900);
-  }, [all, compact, next]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [all]);
+
   async function go() {
     setErr(null);
-    setAsked(true);
+    setRequesting(true);
+    setStartedAt(Date.now());
     try {
-      await call("sync");
+      const r = await call<{ state: string; cooldown?: number }>("sync");
+      if (r.cooldown) toast(`Synced a moment ago; the next sync can start in ${r.cooldown} s`, "info");
+      else toast("Sync queued");
     } catch (x) {
       setErr((x as Error).message);
+      setStartedAt(null);
+    } finally {
+      setRequesting(false);
     }
   }
-  const running = info?.job?.state === "queued" || info?.job?.state === "running";
+
+  const secs = startedAt ? Math.round((now - startedAt) / 1000) : 0;
   const Wrap = compact ? "div" : "main";
   return (
     <Wrap className={compact ? "stack" : undefined}>
       {!compact && <span className="eyebrow">Step 3 of 3</span>}
       {!compact && <h2>Put it on-chain</h2>}
       {!compact && <p className="muted small">Chainlink's oracle copies @{state.profile?.login}'s GitHub keys to each chain.</p>}
-      <Steps
-        items={(info?.chains ?? [{ key: "base-sepolia", firstSeen: "0" }, { key: "arbitrum-sepolia", firstSeen: "0" }, { key: "sepolia", firstSeen: "0" }]).map((c) => ({
-          label: c.key === "sepolia" ? "Sepolia (names)" : chainName(c.key),
-          state: c.firstSeen !== "0" ? "done" : running || asked ? "now" : "todo",
-        }))}
-      />
-      {info?.job?.state === "failed" && <div className="notice err">{info.job.detail ?? "The sync failed"}</div>}
-      {/* Only when the relayer says the worker hasn't asked for jobs in 2 minutes (null = never) and the job still waits.
-          "running" means a worker already took it. */}
-      {info?.job?.state === "queued" && (info.job.workerAge === null || (info.job.workerAge ?? 0) > 120) && (
-        <div className="notice amber">Queued. The sync worker hasn't checked in for a while; it runs when it's back.</div>
+
+      {onGithub === false && !all && (
+        <div className="notice amber stack" style={{ gap: 8 }}>
+          <span>This browser key isn't on your GitHub profile yet, so a sync can't copy it. Add it as a <strong>Signing Key</strong>, then sync.</span>
+          <div className="row">
+            <button className="secondary sm grow" onClick={() => copyToast(state.publicKey ?? "", "Key copied")}><Icon name="copy" /> Copy key</button>
+            <button className="sm grow" onClick={() => openTab("https://github.com/settings/ssh/new")}>Open GitHub <Icon name="ext" size={13} /></button>
+          </div>
+          <span className="small faint">Choose "Signing Key" as the key type. GitHub can take up to a minute to show it here.</span>
+        </div>
       )}
+
+      <Steps items={chains.map((c) => ({ label: c.key === "sepolia" ? "Sepolia (names)" : chainName(c.key), state: c.done ? "done" : active ? "now" : "todo" }))} />
+
+      {active && (
+        <div className="status amber">
+          <Spinner />
+          <span className="grow">
+            {requesting ? "Asking the relayer…" : job === "queued" ? "Queued: waiting for the sync worker…" : "Chainlink is copying your keys on-chain (about 20 s per chain)…"}
+          </span>
+          {startedAt && <span className="mono small">{secs} s</span>}
+        </div>
+      )}
+      {job === "queued" && (info?.job?.workerAge === null || (info?.job?.workerAge ?? 0) > 120) && (
+        <div className="notice amber">The sync worker hasn't checked in for a while. The job runs when it's back.</div>
+      )}
+      {finished && job === "failed" && <div className="notice err">The sync failed: {info?.job?.detail ?? "unknown error"}. Try again.</div>}
+      {finished && job === "done" && !all && (
+        <div className="notice">{onGithub === false ? "The sync ran, but this key wasn't on your GitHub profile yet. Add it (above), then sync again." : "The sync ran; some chains don't show the key yet. Try again in a minute."}</div>
+      )}
+      {all && <div className="status" style={{ color: "var(--ok)" }}><Icon name="check" /> This key can pay on every chain.</div>}
       <Err e={err} />
-      {!all && <button className={compact ? "secondary block" : "block"} onClick={go} disabled={running}>{running ? "Syncing…" : "Sync my keys"}</button>}
+      {!all && (
+        <button className={compact ? "secondary block" : "block"} onClick={go} disabled={active}>
+          {active ? <><Spinner /> Syncing…</> : finished ? "Sync again" : "Sync my keys"}
+        </button>
+      )}
     </Wrap>
   );
 }

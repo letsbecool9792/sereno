@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ChainKey } from "@sereno/shared";
 import type { LinkedWallet, Rule } from "../store";
-import { call, chainName, Err, Icon, openTab, PasswordInput, short, type State } from "./lib";
+import { call, chainName, Err, Icon, openTab, PasswordInput, short, Spinner, toast, type State } from "./lib";
 
 type ShownRule = Rule & { summary: string };
 
@@ -24,6 +24,7 @@ export function Auto({ state, refresh }: { state: State; refresh: () => void }) 
     setErr(null);
     try {
       await call("settings", { patch, password: pw });
+      toast(patch.automations === true ? "Automations on" : patch.automations === false ? "Automations off" : "Saved");
       refresh();
     } catch (e) {
       setErr((e as Error).message === "Password needed" ? "Enter your password below first" : (e as Error).message);
@@ -33,6 +34,7 @@ export function Auto({ state, refresh }: { state: State; refresh: () => void }) 
     setErr(null);
     try {
       await call("toggleRule", { id: r.id, password: pw });
+      toast(r.enabled ? "Rule paused" : "Rule on");
       load();
     } catch (e) {
       setErr((e as Error).message === "Password needed" ? "Enter your password below to turn a rule on" : (e as Error).message);
@@ -65,7 +67,7 @@ export function Auto({ state, refresh }: { state: State; refresh: () => void }) 
         {wallets.map((w) => (
           <div key={w.address} className="between">
             <span className="addr">{short(w.address)}</span>
-            <button className="ghost sm" onClick={async () => { await call("removeWallet", { address: w.address }); load(); }}><Icon name="x" size={13} /></button>
+            <button className="ghost sm" onClick={async () => { await call("removeWallet", { address: w.address }); toast("Wallet unlinked"); load(); }}><Icon name="x" size={13} /></button>
           </div>
         ))}
       </div>
@@ -88,7 +90,7 @@ export function Auto({ state, refresh }: { state: State; refresh: () => void }) 
             {r.lastError && <span className="small err">{(r.errors ?? 0) >= 3 ? "Stopped after 3 errors: " : ""}{r.lastError}</span>}
             <div className="row">
               <span className="small faint grow">{r.type === "recurring" ? `${r.runs} run${r.runs === 1 ? "" : "s"}${r.enabled ? `, next ${new Date(r.nextRun).toLocaleString()}` : ""}` : r.lastRun ? `checked ${new Date(r.lastRun).toLocaleTimeString()}` : ""}</span>
-              <button className="ghost sm" onClick={async () => { await call("deleteRule", { id: r.id }); load(); }}>Delete</button>
+              <button className="ghost sm" onClick={async () => { await call("deleteRule", { id: r.id }); toast("Rule deleted"); load(); }}>Delete</button>
             </div>
           </div>
         ))}
@@ -125,6 +127,7 @@ function RuleForm({ kind, wallets, done }: { kind: "sweep" | "recurring"; wallet
         rule = { id, type: "recurring", chain, toGithubId: payee.githubId, toLogin: payee.login, amount, everyMin: Number(every), maxRuns: Number(maxRuns) || undefined, runs: 0, nextRun: Date.now(), enabled: true };
       }
       await call("saveRule", { rule, password: pw });
+      toast("Rule saved");
       done();
     } catch (x) {
       setErr((x as Error).message);
@@ -168,7 +171,7 @@ function RuleForm({ kind, wallets, done }: { kind: "sweep" | "recurring"; wallet
         <Err e={err} />
         <div className="row">
           <button type="button" className="secondary" onClick={done}>Cancel</button>
-          <button className="grow" disabled={busy || !pw || (kind === "recurring" && !login)}>{busy ? "Saving…" : "Save rule"}</button>
+          <button className="grow" disabled={busy || !pw || (kind === "recurring" && !login)}>{busy ? <><Spinner /> Saving…</> : "Save rule"}</button>
         </div>
       </form>
     </main>

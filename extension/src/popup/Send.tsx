@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ChainKey } from "@sereno/shared";
 import type { Prepared } from "../wallet";
-import { call, chainName, Err, Icon, openTab, PasswordInput, short, usdc, type State } from "./lib";
+import { call, chainName, Err, Icon, openTab, PasswordInput, short, Spinner, toast, usdc, type State } from "./lib";
 
 /// Send → Review (the exact signed text) → Sent. `initial` comes from a GitHub button (#send?to=octocat&amount=5).
 export function Send({ state, initial, done }: { state: State; initial: URLSearchParams; done: () => void }) {
@@ -38,6 +38,7 @@ export function Send({ state, initial, done }: { state: State; initial: URLSearc
     setBusy(signWith === "native" ? "Approve on your key…" : "Signing and sending…");
     try {
       setSent(await call<{ url: string }>(signWith === "native" ? "nativeSend" : "send", { prepared: prep, password: pw }));
+      toast("Payment sent");
     } catch (x) {
       setErr((x as Error).message);
     } finally {
@@ -90,7 +91,7 @@ export function Send({ state, initial, done }: { state: State; initial: URLSearc
         <Err e={err} />
         <div className="row">
           <button className="secondary" onClick={() => setPrep(null)} disabled={!!busy}>Back</button>
-          <button className="grow" onClick={confirm} disabled={!!busy || prep.blockers.length > 0 || (prep.needsPassword && signWith === "browser" && !pw)}>{busy ?? "Confirm and send"}</button>
+          <button className="grow" onClick={confirm} disabled={!!busy || prep.blockers.length > 0 || (prep.needsPassword && signWith === "browser" && !pw)}>{busy ? <><Spinner /> {busy}</> : "Confirm and send"}</button>
         </div>
       </main>
     );
@@ -117,7 +118,7 @@ export function Send({ state, initial, done }: { state: State; initial: URLSearc
           <input type="number" min="0" step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} style={{ marginTop: 8 }} />
         </details>
         <Err e={err} />
-        <button className="block" disabled={!!busy || !to.trim() || !(Number(amount) > 0)}>{busy ?? "Review"}</button>
+        <button className="block" disabled={!!busy || !to.trim() || !(Number(amount) > 0)}>{busy ? <><Spinner /> {busy}</> : "Review"}</button>
         <button type="button" className="ghost" onClick={() => openTab(`${state.payUrl}/?user=${encodeURIComponent(to.replace(/^@/, ""))}${amount ? `&amount=${amount}` : ""}#pay`)}>
           Pay from another wallet instead <Icon name="ext" size={13} />
         </button>

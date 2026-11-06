@@ -2,15 +2,15 @@
 // talk to it with chrome.runtime messages; the pay page may only send a wallet link (externally_connectable), which
 // is checked against the wallet's own signature. No web page can ask it to sign anything.
 import { getAddress, isAddress, verifyMessage, type Hex } from "viem";
-import { CHAINS, HOSTED_PAY_URL, HOSTED_RELAYER_URL, keyHash, type ChainKey } from "@sereno/shared";
+import { CHAINS, ENS, ENS_DEPLOYMENT, HOSTED_PAY_URL, HOSTED_RELAYER_URL, keyHash, type ChainKey } from "@sereno/shared";
 import { loginOfId, lookup, relay } from "./api";
 import { describeRule, runAutomations } from "./automations";
-import { account, accountOf, keyStatus, keysOf } from "./chain";
+import { account, accountOf, client, keyStatus, keysOf } from "./chain";
 import { csv, scan } from "./history";
 import { nativeInfo, nativeSign } from "./native";
 import { blobHash, unb64 } from "./sshsig";
 import { getProfile, getRules, getSettings, getWallets, setProfile, setRules, setSettings, setWallets, type Rule, type Settings } from "./store";
-import { autoLock, checkPassword, createVault, isUnlocked, lock, passwordProblem, passwordRules, touch, unlock, unlockWaitUntil, vaultFile, wipe } from "./vault";
+import { autoLock, checkPassword, createVault, isUnlocked, lock, passwordProblem, passwordRules, touch, unlock, vaultFile, wipe } from "./vault";
 import { claimEscrow, claimName, prepare, requestSync, resolvePayee, send, syncStatus, type Prepared } from "./wallet";
 
 // ---- JSON-RPC for the content script (public RPCs, with fallbacks) ----
@@ -108,7 +108,6 @@ async function handle(m: Msg): Promise<unknown> {
         keyHash: vault ? blobHash(unb64(vault.blob)) : null,
         extensionId: chrome.runtime.id,
         payUrl: HOSTED_PAY_URL,
-        waitUntil: await unlockWaitUntil(),
       };
     }
     case "passwordProblem":
@@ -198,6 +197,14 @@ async function handle(m: Msg): Promise<unknown> {
     case "claimName":
       await touch();
       return claimName();
+    case "nameStatus": {
+      // Claimed = the name has its own resolver (not the parent's wildcard one).
+      const p = await getProfile();
+      if (!p || !ENS_DEPLOYMENT) return { claimed: false };
+      const name = `${p.login.toLowerCase()}.${ENS_DEPLOYMENT.parentName}`;
+      const r = await client("sepolia").getEnsResolver({ name, universalResolverAddress: ENS.universalResolver }).catch(() => null);
+      return { name, claimed: !!r && r.toLowerCase() !== ENS_DEPLOYMENT.resolver.toLowerCase() };
+    }
     case "claimEscrow":
       await touch();
       return claimEscrow(m.chain as ChainKey, String(m.id));

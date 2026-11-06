@@ -67,7 +67,7 @@ code, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
 .icon-btn { min-height: 32px !important; width: 32px; padding: 0 !important; background: transparent !important; border: 1px solid var(--line-strong) !important; color: var(--muted) !important; box-shadow: none !important; }
 .icon-btn:hover { color: var(--ink) !important; background: var(--surface-2) !important; translate: none !important; }
 
-main { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px; display: grid; gap: 14px; align-content: start; animation: rise 0.45s var(--ease); }
+main { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 16px; display: grid; gap: 14px; align-content: start; animation: rise 0.45s var(--ease); }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
 
 button {
@@ -183,3 +183,16 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 2px 0; width: 100%; }
 .rules .tick { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 1.5px solid var(--line-strong); display: grid; place-items: center; transition: background 0.2s, border-color 0.2s; }
 .rules li.ok { color: var(--ink); }
 .rules li.ok .tick { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); }
+
+/* Spinner */
+.spin { display: inline-block; flex: none; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; opacity: 0.85; animation: spin 0.8s linear infinite; vertical-align: -2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.status { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.status.amber { color: var(--amber); }
+.status .grow { flex: 1; }
+/* Toasts */
+.toasts { position: fixed; left: 12px; right: 12px; bottom: 66px; z-index: 60; display: grid; gap: 6px; pointer-events: none; }
+.toast { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; font-size: 13px; font-weight: 500; background: var(--surface-3); border: 1px solid var(--line-strong); color: var(--ink); box-shadow: 0 12px 30px -12px rgb(0 0 0 / 0.7); animation: toast-in 0.35s var(--ease); }
+.toast.ok svg { color: var(--ok); }
+.toast.err { color: var(--err); border-color: rgb(255 139 128 / 0.35); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }

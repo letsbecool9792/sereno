@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ENS_DEPLOYMENT, INSTANT_LIMIT, NEW_KEY_DELAY_SECONDS, type ChainKey } from "@sereno/shared";
 import type { Row } from "../history";
-import { call, chainName, copy, Err, Icon, openTab, short, usdc, type State } from "./lib";
+import { call, chainName, copyToast, Err, Icon, openTab, short, Spinner, toast, usdc, type State } from "./lib";
 import { Sync } from "./Onboard";
 
 type Overview = { address: string; balances: { key: ChainKey; units: string }[]; browserKey: { key: ChainKey; firstSeen: string }[]; keyCount: number };
@@ -10,7 +10,8 @@ export function Home({ state, go }: { state: State; go: (route: string) => void 
   const [o, setO] = useState<Overview | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [waiting, setWaiting] = useState<Row[]>([]);
-  const [claimMsg, setClaimMsg] = useState<string | null>(null);
+  const [claiming, setClaiming] = useState<string | null>(null);
+  const [claimErr, setClaimErr] = useState<string | null>(null);
   const p = state.profile!;
   const name = `${p.login.toLowerCase()}.${ENS_DEPLOYMENT?.parentName ?? "sereno.eth"}`;
   useEffect(() => {
@@ -23,14 +24,17 @@ export function Home({ state, go }: { state: State; go: (route: string) => void 
   const coolingUntil = first ? (first + NEW_KEY_DELAY_SECONDS) * 1000 : 0;
 
   async function claimEscrow(r: Row) {
-    setClaimMsg(`Claiming escrow ${r.escrowId}…`);
+    setClaimErr(null);
+    setClaiming(r.id);
     try {
       const out = await call<{ url: string }>("claimEscrow", { chain: r.chain, id: r.escrowId });
-      setClaimMsg(null);
       setWaiting((w) => w.filter((x) => x.id !== r.id));
+      toast(`Claimed ${usdc(r.amount)} USDC`);
       openTab(out.url);
     } catch (e) {
-      setClaimMsg((e as Error).message);
+      setClaimErr((e as Error).message);
+    } finally {
+      setClaiming(null);
     }
   }
 
@@ -39,7 +43,7 @@ export function Home({ state, go }: { state: State; go: (route: string) => void 
       <div className="card brass">
         <div className="between">
           <span className="name">{name}</span>
-          <button className="ghost sm" title="Copy the account address" onClick={() => o && copy(o.address)}>
+          <button className="ghost sm" title="Copy the account address" onClick={() => o && copyToast(o.address, "Address copied")}>
             <span className="addr">{o ? short(o.address) : "…"}</span> <Icon name="copy" size={13} />
           </button>
         </div>
@@ -62,10 +66,10 @@ export function Home({ state, go }: { state: State; go: (route: string) => void 
           {waiting.map((r) => (
             <div key={r.id} className="between">
               <span>{usdc(r.amount)} USDC escrow on {chainName(r.chain)}</span>
-              <button className="sm" onClick={() => claimEscrow(r)}>Claim</button>
+              <button className="sm" onClick={() => claimEscrow(r)} disabled={!!claiming}>{claiming === r.id ? <><Spinner /> Claiming…</> : "Claim"}</button>
             </div>
           ))}
-          {claimMsg && <div className="notice">{claimMsg}</div>}
+          <Err e={claimErr} />
         </div>
       )}
 

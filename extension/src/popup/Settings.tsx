@@ -1,23 +1,25 @@
 import { useEffect, useState } from "react";
 import { ENS_DEPLOYMENT } from "@sereno/shared";
-import { call, copy, Err, Icon, openTab, PasswordInput, type State } from "./lib";
+import { call, copyToast, Err, Icon, openTab, PasswordInput, Spinner, toast, type State } from "./lib";
 
 export function Settings({ state, refresh }: { state: State; refresh: () => void }) {
   const [native, setNative] = useState<{ connected: boolean; key?: string; fingerprint?: string; error?: string } | null>(null);
   const [pw, setPw] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
+  const [claim, setClaim] = useState<{ state: "checking" | "unclaimed" | "claiming" | "claimed"; url?: string }>({ state: "checking" });
   const [err, setErr] = useState<string | null>(null);
   const s = state.settings;
   const p = state.profile!;
   const name = `${p.login.toLowerCase()}.${ENS_DEPLOYMENT?.parentName ?? "sereno.eth"}`;
   useEffect(() => {
     call<typeof native>("nativeInfo").then(setNative, () => {});
+    call<{ claimed: boolean }>("nameStatus").then((r) => setClaim({ state: r.claimed ? "claimed" : "unclaimed" }), () => setClaim({ state: "unclaimed" }));
   }, []);
 
   async function setting(patch: Record<string, unknown>) {
     setErr(null);
     try {
       await call("settings", { patch, password: pw });
+      toast("Saved");
       refresh();
     } catch (e) {
       setErr((e as Error).message === "Password needed" ? "Raising a limit needs your password (below)" : (e as Error).message);
@@ -27,22 +29,23 @@ export function Settings({ state, refresh }: { state: State; refresh: () => void
     const ok = await chrome.permissions.request({ permissions: ["nativeMessaging"] });
     if (ok) setNative(await call("nativeInfo"));
   }
-  async function claim() {
+  async function claimName() {
     setErr(null);
-    setMsg(`Claiming ${name}…`);
+    setClaim({ state: "claiming" });
     try {
       const r = await call<{ url: string }>("claimName");
-      setMsg(null);
-      openTab(r.url);
+      setClaim({ state: "claimed", url: r.url });
+      toast(`${name} is yours`);
     } catch (e) {
-      setMsg(null);
-      setErr((e as Error).message);
+      setClaim({ state: "unclaimed" });
+      setErr(`Claim failed: ${(e as Error).message}`);
     }
   }
   async function remove() {
     setErr(null);
     try {
       await call("wipe", { password: pw });
+      toast("Key removed from this browser");
       openTab("https://github.com/settings/keys");
       refresh();
     } catch (e) {
@@ -68,9 +71,25 @@ export function Settings({ state, refresh }: { state: State; refresh: () => void
 
       <div className="card">
         <span className="eyebrow">Your name</span>
-        <div className="between"><span className="name">{name}</span><button className="sm" onClick={claim}>Claim</button></div>
-        <p className="small muted">Makes it a real ENSv2 name owned by your account. Signed with this browser key.</p>
-        {msg && <div className="notice">{msg}</div>}
+        <div className="between">
+          <span className="name">{name}</span>
+          {claim.state === "claimed" ? (
+            <span className="chip ok"><Icon name="check" size={12} /> Claimed</span>
+          ) : (
+            <button className="sm" onClick={claimName} disabled={claim.state !== "unclaimed"}>
+              {claim.state === "claiming" ? <><Spinner /> Claiming…</> : claim.state === "checking" ? <Spinner /> : "Claim"}
+            </button>
+          )}
+        </div>
+        {claim.state === "claiming" && <div className="status amber"><Spinner /> Signing with this browser key and registering on Sepolia (about 30 s)…</div>}
+        {claim.state === "claimed" ? (
+          <p className="small ok">
+            A real ENSv2 name owned by your account.{" "}
+            {claim.url ? <a href={claim.url} target="_blank" rel="noreferrer">View transaction</a> : <a href={`https://sepolia.app.ens.domains/${name}`} target="_blank" rel="noreferrer">See it on ENS</a>}
+          </p>
+        ) : (
+          <p className="small muted">Makes it a real ENSv2 name owned by your account. Signed with this browser key (it must be synced on Sepolia).</p>
+        )}
       </div>
 
       <div className="card">
@@ -82,7 +101,7 @@ export function Settings({ state, refresh }: { state: State; refresh: () => void
         ) : (
           <>
             <p className="small muted">Laptop key, security key or phone (Windows). Run once, then reopen:</p>
-            <div className="row"><code className="pubkey grow">npx sereno-ak connect</code><button className="ghost sm" onClick={() => copy("npx sereno-ak connect")}><Icon name="copy" /></button></div>
+            <div className="row"><code className="pubkey grow">npx sereno-ak connect</code><button className="ghost sm" onClick={() => copyToast("npx sereno-ak connect")}><Icon name="copy" /></button></div>
             {native?.error && native.error !== "permission" && <span className="small faint">{native.error}</span>}
           </>
         )}
@@ -92,7 +111,7 @@ export function Settings({ state, refresh }: { state: State; refresh: () => void
         <span className="eyebrow">This browser key</span>
         <div className="pubkey">{state.publicKey}</div>
         <div className="row">
-          <button className="secondary sm grow" onClick={() => copy(state.publicKey ?? "")}><Icon name="copy" /> Copy</button>
+          <button className="secondary sm grow" onClick={() => copyToast(state.publicKey ?? "", "Key copied")}><Icon name="copy" /> Copy</button>
           <button className="danger sm grow" onClick={remove}>Remove</button>
         </div>
         <p className="small muted">Lost this computer? Delete "Sereno browser key" at github.com/settings/keys; the next sync stops it.</p>

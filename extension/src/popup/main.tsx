@@ -7,7 +7,7 @@ import { createRoot } from "react-dom/client";
 import { Auto } from "./Auto";
 import { History } from "./History";
 import { Home } from "./Home";
-import { call, Icon, Lantern, type State } from "./lib";
+import { call, Icon, Lantern, toast, Toasts, type State } from "./lib";
 import { Lock, Onboard } from "./Onboard";
 import { Send } from "./Send";
 import { Settings } from "./Settings";
@@ -79,7 +79,7 @@ function App() {
           </span>
         )}
         {state.hasVault && state.unlocked && (
-          <button className="icon-btn" title="Lock" onClick={async () => { await call("lock"); refresh(); }} style={{ marginLeft: state.profile ? 0 : "auto" }}>
+          <button className="icon-btn" title="Lock" onClick={async () => { await call("lock"); toast("Locked"); refresh(); }} style={{ marginLeft: state.profile ? 0 : "auto" }}>
             <Icon name="lock" size={15} />
           </button>
         )}
@@ -87,7 +87,7 @@ function App() {
       {!state.hasVault || (state.unlocked && !state.profile) ? (
         <Onboard state={state} onDone={refresh} />
       ) : !state.unlocked ? (
-        <Lock state={state} onDone={refresh} />
+        <Lock onDone={refresh} />
       ) : route.path === "send" ? (
         <Send state={state} initial={route.query} done={() => go("home")} />
       ) : route.path === "history" ? (
@@ -99,6 +99,7 @@ function App() {
       ) : (
         <Home state={state} go={go} />
       )}
+      <Toasts />
       {synced && (
         <nav className="tabs">
           {[["home", "home", "Home"], ["send", "send", "Send"], ["history", "history", "History"], ["auto", "bolt", "Automate"], ["settings", "gear", "Settings"]].map(([path, icon, label]) => (

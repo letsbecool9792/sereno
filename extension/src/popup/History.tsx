@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
 import type { Row } from "../history";
-import { ago, call, chainName, Icon, openTab, short, usdc } from "./lib";
+import { ago, call, chainName, Icon, openTab, short, Spinner, toast, usdc } from "./lib";
 
 const LABEL: Record<Row["kind"], string> = { sent: "Sent", received: "Received", bounty: "Bounty won", "escrow-waiting": "Escrow waiting" };
 
 export function History() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const load = () => {
     setErr(null);
-    call<Row[]>("history").then(setRows, (e: Error) => setErr(e.message));
+    setLoading(true);
+    call<Row[]>("history")
+      .then(setRows, (e: Error) => setErr(e.message))
+      .finally(() => setLoading(false));
   };
   useEffect(load, []);
   async function exportCsv() {
@@ -18,13 +22,14 @@ export function History() {
     a.href = URL.createObjectURL(new Blob([text], { type: "text/csv" }));
     a.download = "sereno-history.csv";
     a.click();
+    toast("History exported");
   }
   return (
     <main>
       <div className="between">
         <h2>History</h2>
         <div className="row">
-          <button className="ghost sm" onClick={load} title="Refresh"><Icon name="sync" /></button>
+          <button className="ghost sm" onClick={load} title="Refresh" disabled={loading}>{loading ? <Spinner /> : <Icon name="sync" />}</button>
           <button className="ghost sm" onClick={exportCsv} disabled={!rows?.length}>CSV</button>
         </div>
       </div>

@@ -1,5 +1,5 @@
 // Popup helpers: messages to the background worker, formatting, and the small visual pieces (the mark, icons).
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { CHAINS, type ChainKey } from "@sereno/shared";
 import type { Profile, Settings } from "../store";
 
@@ -18,7 +18,6 @@ export interface State {
   keyHash: string | null;
   extensionId: string;
   payUrl: string;
-  waitUntil: number;
 }
 
 export const usdc = (units: string | bigint, digits = 2) => {
@@ -91,6 +90,42 @@ export function Steps({ items }: { items: { label: string; state: "done" | "now"
     </div>
   );
 }
+
+/// A small spinning ring for buttons and status lines.
+export const Spinner = ({ size = 14 }: { size?: number }) => <span className="spin" style={{ width: size, height: size }} aria-hidden="true" />;
+
+// Toasts: short confirmations ("Copied", "Saved", "Claimed") at the bottom of the popup.
+type ToastItem = { id: number; text: string; tone: "ok" | "err" | "info" };
+const listeners = new Set<(t: ToastItem[]) => void>();
+let toasts: ToastItem[] = [];
+let toastId = 0;
+export function toast(text: string, tone: ToastItem["tone"] = "ok") {
+  const t = { id: ++toastId, text, tone };
+  toasts = [...toasts, t];
+  listeners.forEach((l) => l(toasts));
+  setTimeout(() => {
+    toasts = toasts.filter((x) => x.id !== t.id);
+    listeners.forEach((l) => l(toasts));
+  }, tone === "err" ? 5000 : 2600);
+}
+export function Toasts() {
+  const [items, setItems] = useState<ToastItem[]>(toasts);
+  useEffect(() => {
+    listeners.add(setItems);
+    return () => void listeners.delete(setItems);
+  }, []);
+  return (
+    <div className="toasts" role="status" aria-live="polite">
+      {items.map((t) => (
+        <div key={t.id} className={`toast ${t.tone}`}>
+          {t.tone === "ok" && <Icon name="check" size={14} />}
+          {t.text}
+        </div>
+      ))}
+    </div>
+  );
+}
+export const copyToast = (text: string, what = "Copied") => copy(text).then(() => toast(what));
 
 /// A password field with a show/hide toggle.
 export function PasswordInput({ value, onChange, autoFocus, placeholder }: { value: string; onChange: (v: string) => void; autoFocus?: boolean; placeholder?: string }) {

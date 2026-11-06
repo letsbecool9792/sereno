@@ -64,33 +64,28 @@ export async function createVault(password: string): Promise<VaultFile> {
     createdAt: Date.now(),
     password: { kdf: "PBKDF2-SHA256", iterations: ITERATIONS, salt: b64(salt), iv: b64(iv), ct: b64(ct) },
   };
-  await local.set({ vault: file, unlockFails: 0, unlockWaitUntil: 0 });
+  await local.set({ vault: file });
+  await local.remove(["unlockFails", "unlockWaitUntil"]);
   await session.set({ unlocked: { pkcs8: b64(pkcs8), unlockedAt: Date.now(), activeAt: Date.now() } satisfies Session });
   pkcs8.fill(0);
   return file;
 }
 
-/// Decrypts with the password. After 5 wrong tries each further try waits longer (2^n seconds, up to 10 minutes).
+/// Decrypts with the password. No waits between tries: PBKDF2's 600 000 iterations already make each guess slow,
+/// and the password rules are what protect a copied profile.
 export async function unlock(password: string): Promise<void> {
   const file = await vaultFile();
   if (!file) throw new Error("No browser key yet");
-  const { unlockFails = 0, unlockWaitUntil = 0 } = (await local.get(["unlockFails", "unlockWaitUntil"])) as { unlockFails?: number; unlockWaitUntil?: number };
-  if (Date.now() < unlockWaitUntil) throw new Error(`Too many tries. Wait ${Math.ceil((unlockWaitUntil - Date.now()) / 1000)} s`);
+  let pkcs8: Uint8Array;
   try {
     const p = file.password;
     const key = await wrapKey(password, unb64(p.salt), p.iterations);
-    const pkcs8 = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(p.iv) }, key, unb64(p.ct)));
-    await session.set({ unlocked: { pkcs8: b64(pkcs8), unlockedAt: Date.now(), activeAt: Date.now() } satisfies Session });
-    pkcs8.fill(0);
-    await local.set({ unlockFails: 0, unlockWaitUntil: 0 });
+    pkcs8 = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(p.iv) }, key, unb64(p.ct)));
   } catch {
-    const fails = unlockFails + 1;
-    // From the 5th wrong try on: 5 s, 10 s, ... capped at 30 s. Enough to slow guessing in the popup; the PBKDF2 cost
-    // and the password rules are what protect a copied profile.
-    const wait = fails >= 5 ? Math.min(30, 5 * (fails - 4)) * 1000 : 0;
-    await local.set({ unlockFails: fails, unlockWaitUntil: Date.now() + wait });
-    throw new Error(fails >= 5 ? `Wrong password. Next try in ${wait / 1000} s` : "Wrong password");
+    throw new Error("Wrong password");
   }
+  await session.set({ unlocked: { pkcs8: b64(pkcs8), unlockedAt: Date.now(), activeAt: Date.now() } satisfies Session });
+  pkcs8.fill(0);
 }
 
 /// Checks the password without changing the session (re-confirmation for big payments and rule edits).
@@ -104,12 +99,6 @@ export async function checkPassword(password: string): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-/// When the next unlock attempt is allowed (0 = now).
-export async function unlockWaitUntil(): Promise<number> {
-  const { unlockWaitUntil: w = 0 } = (await local.get("unlockWaitUntil")) as { unlockWaitUntil?: number };
-  return w > Date.now() ? w : 0;
 }
 
 export async function lock(): Promise<void> {
