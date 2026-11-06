@@ -184,6 +184,8 @@ packages/shared/  intent builder, ABIs, addresses, chain config
 | KeyOracle (owner `0x11c0…0588`) | `0x6b7303f5F5fc8A9220910eB3097e38603B777D6E` | Base Sepolia, Arbitrum Sepolia, Sepolia |
 | SshSigVerifier | `0xc4830Cb511c6a1B1a011489aEa0834e4EA76c411` | Base Sepolia, Arbitrum Sepolia, Sepolia |
 | ReportGate (owner `0x11c0…0588`; the KeyOracle's forwarder; broadcaster `0x11c0…0588`) | `0x55adaccD67e0A4b7B1DcE91A188041D2D5046Cb9` | Base Sepolia, Arbitrum Sepolia, Sepolia |
+| BountyBoard (no owner; reports via the ReportGate; needs a gate route for the bounty workflow) | `0xCfecCbDB71236E27db36Aef2d1Da5bD428d796f3` | Base Sepolia, Arbitrum Sepolia |
+| Escrow (no owner) | `0xDaaB8E6978A9CA599B8a2EcCFB13AF1CA0E963cb` | Base Sepolia, Arbitrum Sepolia |
 | Ed25519Verifier | `0xb02e08fC377DF33E66640B738eAE1BB13505E9fB` | Base Sepolia, Arbitrum Sepolia (not Sepolia) |
 | OffchainResolver for `sereno.eth` (wildcard; gateway signer `0xb693…4a41`; URL `https://sereno-production.up.railway.app/{sender}/{data}.json`) | `0xd7695337e225d34f4583862923c6b979fcf319c4` | Sepolia (ENS) |
 | UserRegistry (subregistry of `sereno.eth`) | `0x4BE80595522f0E143b2D34392EA031e29e3652ba` | Sepolia (ENS) |

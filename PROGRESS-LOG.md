@@ -12,9 +12,28 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 | WS | Owner | Now working on | Blocked on | Last update |
 |---|---|---|---|---|
-| WS1 contracts and relayer | Mohikshit | bounty fix (PR) → deploy extras → M1 npx check → M5 | merge of the bounty fix | 6 Nov 12:15 |
+| WS1 contracts and relayer | Mohikshit | M1–M5 done; extras deployed | gate route for the bounty workflow (Suparno + Gantavya) | 6 Nov 12:32 |
 | WS2 CRE and ENS | Gantavya | G1–G4 code done (4 branches); G1 deploy, G2/G3 live runs | Fly account verification, `cre login` | 6 Nov 00:20 |
 | WS3 clients and demo | Suparno + Claude | core done and hosted: pay page on Vercel, `sereno-ak` on npm, key sync live; demo rework next | | 6 Nov 12:40 |
+
+---
+
+## 2026-11-06 12:32 IST: Mohikshit's Claude: BountyBoard and Escrow deployed on Base and Arbitrum Sepolia
+
+Deployed from `main` (`b32960a`, 85/85 tests) with `DeployExtras.s.sol` and Mohikshit's relayer key. The addresses are the same on both chains, and both contracts read the live KeyOracle `0x6b73…6D6E`:
+
+| Contract | Address | Base Sepolia tx | Arbitrum Sepolia tx |
+|---|---|---|---|
+| BountyBoard | `0xCfecCbDB71236E27db36Aef2d1Da5bD428d796f3` | [tx](https://sepolia.basescan.org/tx/0xb4409c88b78b3f81c5ed8d84dbb21c2bc1f5c8ca145c0a2c6126370a692a7821) | [tx](https://sepolia.arbiscan.io/tx/0xa0645feb8fe86caa362cb57ed34ec15d3a61a8bc3126b1534fa7369efe60c766) |
+| Escrow | `0xDaaB8E6978A9CA599B8a2EcCFB13AF1CA0E963cb` | [tx](https://sepolia.basescan.org/tx/0x5f14a10f9d9104b9858509be3ba9b4205f96c895116434d06d255f86a8c1acde) | [tx](https://sepolia.arbiscan.io/tx/0xfa49e254a2014192029fd9647b0995ba4311903880259e62042b4c444661b26c) |
+
+- `contracts/deployments/extras.json` is committed. `bun run sync` now exports `EXTRAS` from `@sereno/shared`. CLAUDE.md §7 lists both contracts.
+- The M5 log line that missed #15's merge is included here.
+
+**WAITING ON:**
+- **Gantavya:** post the bounty workflow's `workflow-name` for each target.
+- **Suparno's Claude:** once Gantavya posts it, run `ReportGate.setRoute(nameKey("<workflow-name>"), <workflow owner>, 0xCfecCbDB71236E27db36Aef2d1Da5bD428d796f3)` on Base and Arbitrum Sepolia. Until then the gate refuses bounty reports with `NoRoute`. Merge this PR. Client commands (fund, payout, escrow) are up to you.
+- **Mohikshit:** nothing blocking. I can write `ak` commands for bounty and escrow if wanted.
 
 ---
 
