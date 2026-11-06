@@ -30,11 +30,37 @@ Deployed from `main` (`b32960a`, 85/85 tests) with `DeployExtras.s.sol` and Mohi
 - `contracts/deployments/extras.json` is committed. `bun run sync` now exports `EXTRAS` from `@sereno/shared`. CLAUDE.md §7 lists both contracts.
 - The M5 log line that missed #15's merge is included here.
 
-**WAITING ON:**
-- **Gantavya:** post the bounty workflow's `workflow-name` for each target.
-- **Suparno's Claude:** once Gantavya posts it, run `ReportGate.setRoute(nameKey("<workflow-name>"), <workflow owner>, 0xCfecCbDB71236E27db36Aef2d1Da5bD428d796f3)` on Base and Arbitrum Sepolia. Until then the gate refuses bounty reports with `NoRoute`. Merge this PR. Client commands (fund, payout, escrow) are up to you.
-- **Mohikshit:** nothing blocking. I can write `ak` commands for bounty and escrow if wanted.
+**WS1 (Mohikshit) is done:** M1–M5, the bounty fix, and the extras deployed. Nothing blocks on him. On request he can add `ak` commands for bounties and escrow.
 
+**WAITING ON:**
+- **Gantavya** (D1, the bounty side of CRE). The contract is live, so the workflow is the only missing piece:
+  1. **Write the `github-bounty` CRE workflow** in `cre/`:
+     - HTTP trigger `{"repo": "owner/repo", "issue": "12"}`;
+     - in node mode, check with GitHub that a **merged** PR closed the issue (GraphQL `closedByPullRequestsReferences`, or the issue timeline), and take the PR author's **numeric** ID;
+     - nodes agree with `consensusIdenticalAggregation`.
+  2. **Report bytes:** `abi.encode(bytes32 repoHash, uint256 issue, uint256 authorGithubId)`, with `repoHash = keccak256(lowercase "owner/repo")`. It must equal `BountyBoard.repoHashOf("owner/repo")` on-chain; check with `cast call`.
+  3. **Receiver:** the ReportGate `0x55adaccD67e0A4b7B1DcE91A188041D2D5046Cb9` (not BountyBoard directly), on Base Sepolia and Arbitrum Sepolia, with `gasLimit` 1.5M. Simulate without `--broadcast` until the report bytes are right, and post one sample here.
+  4. **Post each target's `workflow-name`** (for example `github-bounty-base`, `github-bounty-arbitrum`). If you'll run `--broadcast` yourself, also post that key's address for the gate's broadcaster allowlist; otherwise Suparno broadcasts from the laptop.
+  5. **The report only records the winner.** Afterwards anyone calls `BountyBoard.payout(repoHash, issue, token)` to move the money. Confirm with `winnerOf(issueKey(repoHash, issue))`, since a forwarder "success" doesn't prove the receiver ran.
+- **Suparno / Suparno's Claude:**
+  1. **Merge this PR (#18):** `extras.json`, `EXTRAS` in `@sereno/shared`, CLAUDE.md §7.
+  2. **Route the bounty workflow** once Gantavya posts the names. On Base Sepolia and Arbitrum Sepolia, as the gate owner `0x11c0…0588`:
+     ```sh
+     KEY=$(cast call 0x55adaccD67e0A4b7B1DcE91A188041D2D5046Cb9 "nameKey(string)(bytes10)" "<workflow-name>" --rpc-url <chain>)
+     cast send 0x55adaccD67e0A4b7B1DcE91A188041D2D5046Cb9 "setRoute(bytes10,address,address)" $KEY 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 0xCfecCbDB71236E27db36Aef2d1Da5bD428d796f3 --private-key $(cat .secrets/deployer.key) --rpc-url <chain>
+     ```
+     The owner `0xaaaa…aaaa` is the simulation workflow owner (CLAUDE.md §5.2). Add Gantavya's broadcaster if he posts one: `BROADCASTERS=0x… sh script/deploy-gate.sh <chain>`. Until the route exists, bounty reports fail with `NoRoute`.
+  3. **End-to-end bounty run** (the Chainlink-prize evidence for the video):
+     - fund an issue in `sereno-demo` with 0.1 USDC (`approve`, then `BountyBoard.fund("letsbecool9792/sereno-demo", <issue>, <USDC>, 100000, <deadline>)`);
+     - merge a PR that closes the issue;
+     - run the workflow with `--broadcast`;
+     - call `payout`;
+     - the author's Sereno account balance goes up.
+  4. **Demo and README:**
+     - mention the bounty (D1), escrow (A10) and the GitHub Action relayer (B2) in the README's feature list;
+     - in CROPS "C", add that any repo can relay with `sereno-relay.yml`, so no server of ours is needed. Proven: [run](https://github.com/psycocodes/sereno-pay-test/actions/runs/42178010583), Verified commit paid;
+     - decide whether the extras get a demo beat or a slide.
+  5. *(Optional, WS3)* Pay-page or `ak` buttons for fund, payout, escrow deposit and escrow claim. Mohikshit can write the `ak` side if you want it.
 ---
 
 ## 2026-11-06 12:17 IST: Mohikshit's Claude: M1 passes on Linux with an ed25519 key (hosted relayer)
