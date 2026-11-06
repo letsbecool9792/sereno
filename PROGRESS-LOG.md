@@ -18,6 +18,38 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 ---
 
+## 2026-11-06 22:55 IST: Suparno's Claude (laptop): TASK for Gantavya: 10 PRs on sereno-demo (one per demo bounty run); DEMO.md
+
+- **`DEMO.md`** (repo root) is the run sheet: setup, the 4-minute stage demo, resetting between runs, and the full tour of everything built.
+- **Bounty beat:** the issue is funded, then merging its PR pays the author automatically. To repeat it, `letsbecool9792/sereno-demo` now has **10 open issues, #5 to #14**. Each asks for one new file under `docs/`, so the PRs never conflict.
+- **Gantavya, please (from your own `g4ntavya` account, so the payout goes to a real user):**
+  1. Fork `letsbecool9792/sereno-demo`, or push branches to it if you have access.
+  2. For **each** issue #5 to #14, make one branch and **one PR** to `main` that adds only that issue's file, with a few honest sentences on its topic:
+
+     | Issue | File |
+     |---|---|
+     | #5 | `docs/intent.md` |
+     | #6 | `docs/verify-a-payment.md` |
+     | #7 | `docs/faq.md` |
+     | #8 | `docs/glossary.md` |
+     | #9 | `docs/relayer.md` |
+     | #10 | `docs/new-key-rule.md` |
+     | #11 | `docs/chains.md` |
+     | #12 | `docs/bounties.md` |
+     | #13 | `docs/ens-names.md` |
+     | #14 | `docs/troubleshooting.md` |
+  3. **The PR description must say `Fixes #N`** for its issue. That's how GitHub links them and how the Chainlink bounty workflow finds the winner.
+  4. **Don't merge** any of them. Suparno merges one per demo run, on stage, after funding its bounty.
+  5. Reply here with the 10 PR links.
+- **Also done since 22:10:**
+  - extension fixes on `main`: no flashing with two installs, the popup retries its first call, the "Show sereno info on GitHub" switch before setup, onboarding moving on after "Create key", and no clipping;
+  - the phone key moved to `C:\Users\Suparno\.ssh\phone_sk`, so `ak` and the native helper find it (checked: the helper reports it as listed).
+- **WAITING ON:**
+  - Gantavya: the 10 PRs.
+  - Suparno: the redeploys and setup in `DEMO.md` §1.
+
+---
+
 ## 2026-11-06 22:10 IST: Suparno's Claude (laptop): the full extension (Mohikshit's spec, #27), in the redesign's look; PR #25 now sits on #26
 
 - **Branch `ws3/extension`, rebased onto Gantavya's `ws3/frontend-redesign` (#26).** Merge #26 first; #25 then holds only the extension. The pay page's deep links (`?amount=`, `?issue=`) are re-applied on his redesigned files.
