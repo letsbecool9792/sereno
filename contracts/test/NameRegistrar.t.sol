@@ -78,6 +78,17 @@ contract MockUserRegistry is IENSv2Registry {
         entries[k] = Entry(owner, resolver, roles, expiry);
         return uint256(k);
     }
+
+    /// The real registry checks ROLE_UNREGISTER; here only the registrar holds it.
+    function unregister(uint256 anyId) external {
+        require(msg.sender == registrar, "no UNREGISTER role");
+        require(entries[bytes32(anyId)].owner != address(0), "not registered");
+        delete entries[bytes32(anyId)];
+    }
+
+    function getOwner(uint256 anyId) external view returns (address) {
+        return entries[bytes32(anyId)].owner;
+    }
 }
 
 contract NameRegistrarTest is Test {
@@ -165,7 +176,87 @@ contract NameRegistrarTest is Test {
     function test_name_can_be_claimed_once() public {
         bytes memory sig = _claimSig(KEY, "letsbecool9792", ID);
         registrar.claim("letsbecool9792", ID, sig);
-        vm.expectRevert();
+        vm.expectRevert(NameRegistrar.AlreadyClaimed.selector);
+        registrar.claim("letsbecool9792", ID, sig);
+    }
+
+    // Renames. ID 2 and its key stand for a stranger who later takes the username "letsbecool9792" on GitHub.
+    uint256 constant ID2 = 172588240;
+    uint256 constant KEY2 = 0xC0C;
+
+    function _sync(uint256 id, string memory login, uint256 key) internal {
+        bytes32[] memory keys = new bytes32[](1);
+        keys[0] = keccak256(SshSigBuilder.p256PublicKey(key));
+        oracle.onReport("", abi.encode(id, login, keys));
+    }
+
+    function _owner(string memory label) internal view returns (address owner) {
+        (owner,,,) = registry.entries(keccak256(bytes(label)));
+    }
+
+    function test_a_current_name_is_not_stale_and_cannot_be_released() public {
+        registrar.claim("letsbecool9792", ID, _claimSig(KEY, "letsbecool9792", ID));
+        (address holder, bool stale) = registrar.holderOf("letsbecool9792");
+        assertEq(holder, accounts.addressOf(ID));
+        assertFalse(stale);
+        vm.expectRevert(NameRegistrar.NotStale.selector);
+        registrar.release("letsbecool9792");
+    }
+
+    function test_releasing_an_unclaimed_name_reverts() public {
+        vm.expectRevert(NameRegistrar.NotClaimed.selector);
+        registrar.release("torvalds");
+    }
+
+    function test_after_the_holder_renames_anyone_can_release_the_old_name() public {
+        registrar.claim("letsbecool9792", ID, _claimSig(KEY, "letsbecool9792", ID));
+        _sync(ID, "suparno", KEY); // renamed on GitHub; the oracle drops the old login
+        (, bool stale) = registrar.holderOf("letsbecool9792");
+        assertTrue(stale);
+
+        vm.expectEmit(address(registrar));
+        emit NameRegistrar.Released("letsbecool9792", accounts.addressOf(ID));
+        vm.prank(address(0xBEEF)); // permissionless
+        registrar.release("letsbecool9792");
+        assertEq(_owner("letsbecool9792"), address(0), "name still registered");
+    }
+
+    function test_the_new_owner_of_a_username_claims_the_stale_name_directly() public {
+        registrar.claim("letsbecool9792", ID, _claimSig(KEY, "letsbecool9792", ID));
+        _sync(ID, "suparno", KEY);
+        _sync(ID2, "letsbecool9792", KEY2); // a stranger takes the freed username
+
+        address resolver = registrar.claim("letsbecool9792", ID2, _claimSig(KEY2, "letsbecool9792", ID2));
+        assertEq(_owner("letsbecool9792"), accounts.addressOf(ID2), "payments would still go to the old holder");
+        assertEq(MockPermissionedResolver(resolver).defaultAddress(60), abi.encodePacked(accounts.addressOf(ID2)));
+    }
+
+    function test_a_stranger_syncing_first_also_makes_the_name_stale() public {
+        // The old holder never synced their rename; the stranger's report alone moves the login.
+        registrar.claim("letsbecool9792", ID, _claimSig(KEY, "letsbecool9792", ID));
+        _sync(ID2, "letsbecool9792", KEY2);
+        (, bool stale) = registrar.holderOf("letsbecool9792");
+        assertTrue(stale);
+        registrar.claim("letsbecool9792", ID2, _claimSig(KEY2, "letsbecool9792", ID2));
+        assertEq(_owner("letsbecool9792"), accounts.addressOf(ID2));
+    }
+
+    function test_a_renamed_user_can_claim_their_new_login_with_fresh_records() public {
+        address first = registrar.claim("letsbecool9792", ID, _claimSig(KEY, "letsbecool9792", ID));
+        _sync(ID, "suparno", KEY);
+        address second = registrar.claim("suparno", ID, _claimSig(KEY, "suparno", ID));
+        assertTrue(second != first, "resolver proxy reused");
+        assertEq(MockPermissionedResolver(second).defaultText("com.github"), "suparno");
+        assertEq(registrar.claimCount(ID), 2);
+        assertEq(_owner("suparno"), accounts.addressOf(ID));
+    }
+
+    function test_the_old_holder_cannot_take_the_name_back() public {
+        registrar.claim("letsbecool9792", ID, _claimSig(KEY, "letsbecool9792", ID));
+        _sync(ID, "suparno", KEY);
+        _sync(ID2, "letsbecool9792", KEY2);
+        bytes memory sig = _claimSig(KEY, "letsbecool9792", ID);
+        vm.expectRevert(NameRegistrar.NotYourLogin.selector);
         registrar.claim("letsbecool9792", ID, sig);
     }
 }

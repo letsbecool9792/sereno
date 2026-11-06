@@ -26,7 +26,7 @@ const link = (h: Hex) => `${CHAINS.sepolia.explorer}/tx/${h}`;
 const bits = (...ns: bigint[]) => ns.reduce((a, n) => a | (1n << n) | (1n << (n + 128n)), 0n); // role + admin
 // RegistryRolesLib: REGISTRAR 0, SET_PARENT 8, UNREGISTER 12, RENEW 16, SET_SUBREGISTRY 20, SET_RESOLVER 24
 const ROOT_ROLES = bits(0n, 8n, 12n, 16n, 20n, 24n);
-const REGISTRAR_ROLES = bits(0n, 20n, 24n);
+const REGISTRAR_ROLES = bits(0n, 12n, 20n, 24n); // UNREGISTER lets NameRegistrar free stale names after a rename
 
 const ethRegistry = parseAbi([
   "function getTokenId(uint256 anyId) view returns (uint256)",

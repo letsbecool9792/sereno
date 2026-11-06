@@ -255,7 +255,7 @@ packages/shared/  intent builder, ABIs, addresses, chain config
 | Ed25519Verifier | `0xb02e08fC377DF33E66640B738eAE1BB13505E9fB` | Base Sepolia, Arbitrum Sepolia (not Sepolia) |
 | OffchainResolver for `sereno.eth` (wildcard; gateway signer `0xb693…4a41`; URL `https://sereno-production.up.railway.app/{sender}/{data}.json`) | `0xd7695337e225d34f4583862923c6b979fcf319c4` | Sepolia (ENS) |
 | UserRegistry (subregistry of `sereno.eth`) | `0x4BE80595522f0E143b2D34392EA031e29e3652ba` | Sepolia (ENS) |
-| NameRegistrar (6 Nov redeploy with text records; the first one `0x8163…47c5` has its roles revoked) | `0x55e81868098759409757a341c0818e0b203b3845` | Sepolia (ENS) |
+| NameRegistrar (6 Nov redeploy with text records; the first one `0x8163…47c5` has its roles revoked; the stale-name `release` needs another redeploy, see the log's 15:55 entry) | `0x55e81868098759409757a341c0818e0b203b3845` | Sepolia (ENS) |
 
 **ENS parent name: `sereno.eth`** (registered 6 Nov on Sepolia ENSv2, owned by the deployer; `packages/ops/src/ens-register.ts`, then `PARENT_NAME=sereno.eth bun src/ens-setup.ts`). The earlier temporary setup under `authorizedkeys.eth` is in `contracts/deployments/ens.authorizedkeys.json`. Sepolia deploys: `sh script/deploy-sepolia.sh` (node gas estimates, explicit fees, no Ed25519).
 
@@ -362,6 +362,11 @@ Redeploy (idempotent): `DEPLOYER_KEY=$(cat .secrets/deployer.key) forge script s
 - `getTokenId(uint256(labelhash))` gives the current token ID of a label.
 - **Stock wallets don't resolve testnet ENS names like ours** (Phantom and MetaMask resolve on mainnet only, and Phantom can't do CCIP-read subnames). That's why the pay page (C0) resolves names itself with the right coin type; viem's `getEnsAddress` with `coinType` does this.
 - Registering a claimed name with a permissionless registrar contract (anyone submits an SSH signature from a listed key → the registrar registers `<user>` to `factory.addressOf(id)`) needs a trusted username-to-ID source; the CRE oracle can provide it.
+- **Renames: stale names.** A claimed name doesn't follow a GitHub rename by itself.
+  - **The rule:** `NameRegistrar.holderOf(label)` calls a name *stale* when its holder isn't `factory.addressOf(oracle.idOfLoginHash(keccak256(label)))`. That happens when the holder renamed (the oracle drops the old login) or someone else now has the login.
+  - **Releasing:** anyone can `release(label)` a stale name, and `claim` releases one automatically. The name then falls back to the wildcard gateway, which follows GitHub live. No storage is involved, so this also covers names claimed before the change.
+  - **Needs:** the registrar's root `UNREGISTER` role (`1 << 12`), and `unregister(anyId)` / `getOwner(anyId)` accept the labelhash.
+  - **One resolver proxy per claim:** the salt is `keccak256(githubId, claimCount)`, so a renamed user can claim their new login with fresh records.
 
 ### 8.6 Toolchain and environment
 
