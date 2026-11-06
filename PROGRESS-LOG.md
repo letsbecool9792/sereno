@@ -14,7 +14,50 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | M1–M5 done; extras deployed; demo bounty PR open | Suparno merges sereno-demo#2 on stage | 6 Nov 13:18 |
 | WS2 CRE and ENS | Gantavya | renamed usernames: release + 15-day loud failure (PR #24); pay-to-SSH task queued | registrar redeploy + gateway/Vercel redeploy (Suparno); VM access, a throwaway key, test USDC (Gantavya) | 6 Nov 17:05 |
-| WS3 clients and demo | Suparno + Claude | core done and hosted; issue bounties live (tab, CLI, relayer, worker); demo rework next | | 6 Nov 13:25 |
+| WS3 clients and demo | Suparno + Claude | demo bug fixes; frontend redesign handed to Gantavya (19:30 entry) | Gantavya's redesign PR | 6 Nov 19:30 |
+
+---
+
+## 2026-11-06 19:30 IST: Suparno's Claude (laptop): TASK for Gantavya: frontend redesign (landing page + the 3 features)
+
+**Why:** while pitching, the pay page doesn't make clear what Sereno can do or how to show it. It reads like documentation: too much explanatory text, plain components, no motion. Judges should understand the product in 5 seconds and see each feature as one clear screen.
+
+**Branch:** `ws3/frontend-redesign`. Open a draft PR early with screenshots. **Draft PR with screenshots by 23:30 IST; final by 01:30 IST Sat** (the freeze is 04:00). Suparno reviews.
+
+**Scope: presentation only.** Keep every chain call, the gateway/relayer calls and the logic in `web/src/lib.ts`, `App.tsx`, `Spend.tsx` and `Bounties.tsx` working exactly as now. Restyle and restructure the UI around them. Don't change contracts, `@sereno/shared` or the relayer.
+
+**Structure:**
+1. **Landing page (new, `/` or `#`).**
+   - Hero: "We didn't build a wallet. GitHub already was one."
+   - One input: a GitHub username, which goes straight to Pay.
+   - Three feature cards that link to the three pages below.
+   - A short "how it works" strip, 3 steps max with icons (GitHub profile keys → CRE copies them on-chain → sign with `ssh-keygen` / `git commit -S` / phone).
+   - Footer: GitHub repo, `npx sereno-ak`, Base / Arbitrum Sepolia.
+2. **Pay by name** (`#pay`, today's "Pay someone"): username → name → address → pay USDC. Keep the `?user=<login>` deep link working.
+3. **Spend your balance** (`#spend`): ssh-keygen signing and pasting a payment commit.
+4. **Issue bounties** (`#bounties`).
+- Keep the existing hash routes (`#spend`, `#bounties`, `?user=`); the README and earlier log entries link to them. If the Pay form moves off `/`, update README step 2 ("type `<you>` and press Find").
+
+**Design direction:**
+- **Copy:** cut it hard. One short line per screen at most. Delete sentences like "Money can arrive before they've ever heard of Sereno."; the demo voice-over says those. Labels and states, not paragraphs.
+- **Fonts and colors:** better than today. You can replace Unbounded/Onest and the violet palette in `DESIGN.md`. Update `DESIGN.md` to match what you ship.
+- **Components and motion:**
+  - Proper components: buttons, inputs, tabs, toasts, a stepper for multi-step flows (sign → relay → paid), skeleton loaders while the gateway/RPC answers.
+  - Tasteful animations (page transitions, the card appearing, a success state when USDC moves).
+  - Respect `prefers-reduced-motion`.
+- **Libraries:** fine via npm (e.g. Tailwind, shadcn/ui or Radix, Motion), license MIT/Apache.
+  - **No analytics, trackers or third-party CDNs**: CROPS requires it, so self-host fonts (fontsource, as now).
+- **Other requirements:**
+  - Works at 390 px wide (phone) and at 1440 px (projector).
+  - Dark theme is fine; make sure it's legible on a projector.
+
+**Done when:**
+- `bun run typecheck` and `cd web && bun run build` pass.
+- Vercel preview link in the PR.
+- Screenshots of the landing page and all three pages at 1440 and 390.
+- A real Base Sepolia payment made from the redesigned Pay page (link the tx).
+
+**WAITING ON:** Gantavya (this task; it goes before pay-to-SSH if time is short). Suparno: review the PR.
 
 ---
 
