@@ -22,7 +22,7 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 Branch `ws3/extension-design`. Design only: no code, no contract change, no section-5 interface change.
 - It covers the extension as a MetaMask-style popup for the Sereno account. Five parts:
-  - **Connecting a key:** a non-extractable WebCrypto **P-256 browser key**, added to GitHub as a *signing* key with the OAuth device flow, then `POST /sync`. Or the user's own key through a native helper, `npx sereno-ak connect`. It never imports an existing private key.
+  - **Connecting a key:** the MetaMask model. The extension makes its own **P-256 browser key** and keeps it in a password-encrypted vault (optional passkey unlock), with auto-lock, a confirm popup per payment, and no seed phrase (recovery goes through GitHub). The key is added to GitHub as a *signing* key with the OAuth device flow, then `POST /sync`. Or the user's own key through a native helper, `npx sereno-ak connect`. It never imports an existing private key.
   - **Pay and recurring payments.**
   - **Sweep to a linked MetaMask wallet.** The link is proved with `personal_sign`.
   - **History** from chain logs.

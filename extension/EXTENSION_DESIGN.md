@@ -21,7 +21,8 @@ Sync / Claim buttons injected into github.com.
   would need a new account contract (and new addresses, see §6.5). Out of scope.
 - **No ETH.** `SshAccount` has no `receive()` and `_transfer` only calls ERC-20 `transfer`. The extension shows and
   moves ERC-20s only (USDC first). A plain ETH send to an account reverts; the UI must say so.
-- **No custody of the user's existing SSH key** (see §3.4).
+- **Never holds the user's existing SSH key**, and never asks for any private key to be pasted or imported (§3).
+  Like MetaMask, it makes its own key and keeps it in a password-encrypted vault.
 
 ## 2. What already exists and gets reused
 
@@ -40,11 +41,31 @@ Sync / Claim buttons injected into github.com.
 
 Default relayer fee: **0.02 USDC** (same as `ak send`, `cli/src/main.ts:230`).
 
-## 3. Connecting a key (requirement 3)
+## 3. Connecting a key (requirement 3): the MetaMask model, adapted
 
 The account can be spent by *any* key the oracle lists for the GitHub ID. So the extension doesn't need the
-user's existing key: it can **make its own key and put it on the profile**. Two ways to connect, offered on the
-first screen:
+user's existing key: like MetaMask, it **makes its own key, keeps it encrypted behind a password, and asks before
+every signature**. Then it puts that key's public half on the GitHub profile.
+
+**Rule: no private key is ever pasted, imported, typed, exported or shown, in either direction.** The user's own
+SSH key stays where it is: in `ssh-agent`, on a security key or on the phone (§3.2). The browser key never leaves
+the extension.
+
+### 3.0 MetaMask, side by side
+
+| | MetaMask | Sereno extension |
+|---|---|---|
+| Where the key comes from | Generated in the extension (Secret Recovery Phrase) | Generated in the extension (P-256) |
+| At rest | Vault encrypted with the user's password | The same: an encrypted vault (PBKDF2 → AES-GCM, §3.5), plus optional passkey unlock |
+| When unlocked | Key in memory only; auto-lock | The same: memory only (`chrome.storage.session`), auto-lock on idle and on browser close |
+| Before each signature | Confirm popup | Confirm popup showing the **exact signed text** (§4) |
+| Sites asking to sign | Any site can request it through `window.ethereum` | **No site can.** No provider is injected; only the extension's own UI starts a payment |
+| Hardware option | Ledger / Trezor | Your own SSH key, security key or phone through the native helper (§3.2) |
+| **Backup and recovery** | **Write down 12 words; lose them and the funds are gone** | **Nothing to back up.** The money belongs to the GitHub ID, not the key (§3.6) |
+| If the device is stolen | Move the funds before the thief guesses the password | Delete the key on GitHub; the next sync stops it on-chain (§3.6) |
+
+Recovery is the one place we do better than MetaMask by design: the key is replaceable, and the account isn't tied
+to it.
 
 ### 3.1 "Create a browser key" (default, no install)
 
@@ -53,9 +74,11 @@ first screen:
    extension (device flow needs no client secret). Scope: **`write:ssh_signing_key` only**. The background worker
    calls `POST github.com/login/device/code` and polls `.../login/oauth/access_token`. The github.com host
    permission lets the worker make these calls without CORS problems.
-2. **Generate the key.** `crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, extractable: false,
-   ["sign"])`. The private half is **non-extractable**: the extension can sign with it but can't read or export it.
-   The `CryptoKey` is stored in IndexedDB. The public half is exported as `raw` (`0x04 ‖ X ‖ Y`).
+2. **Set a password, then generate the key.** First the user picks the vault password (at least 10 characters,
+   with a strength meter), and optionally adds a passkey (§3.5). Then
+   `crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign"])`. The private half is
+   exported once as `pkcs8`, **encrypted straight into the vault**, and the plaintext buffer is zeroed. It is never
+   stored unencrypted and never shown. The public half is exported as `raw` (`0x04 ‖ X ‖ Y`).
 3. **Build the SSH public key.** `blob = string("ecdsa-sha2-nistp256") ‖ string("nistp256") ‖ string(0x04‖X‖Y)`,
    giving `ecdsa-sha2-nistp256 <base64(blob)> sereno-browser-<date>`. Its `keyHash = keccak256(blob)`, as in §5.2.
 4. **Add it to GitHub automatically:** `POST https://api.github.com/user/ssh_signing_keys {title: "Sereno browser
@@ -111,8 +134,61 @@ the cooling-down timer, and marks keys that are on GitHub but not yet on-chain (
 Requirement 3 asked for a command that hands the extension the private and public key. We don't do that. The user's
 existing SSH key is also their **GitHub push key and server login**. Copying it into a browser profile would turn
 it into a hot key that can push code, not just spend USDC. The browser key in §3.1 gives the same smooth flow (one
-code, one click, done), with a key that is non-extractable, signing-only, and revocable alone. Revocation is the A3
-story: delete "Sereno browser key" on GitHub, and the next oracle run removes it on-chain.
+code, one click, done), with a key that is encrypted at rest, signing-only, and revocable alone. Revocation is the
+A3 story: delete "Sereno browser key" on GitHub, and the next oracle run removes it on-chain.
+
+### 3.5 The vault: lock, unlock, auto-lock
+
+**Stored in `chrome.storage.local`:**
+```json
+{ "v": 1, "publicKey": "ecdsa-sha2-nistp256 AAAA…",
+  "password": { "kdf": "PBKDF2-SHA256", "iterations": 600000, "salt": "…", "iv": "…", "ct": "…" },
+  "passkey":  { "credentialId": "…", "prfSalt": "…", "iv": "…", "ct": "…" } }
+```
+- **Password copy:** `vaultKey = PBKDF2(password, salt, 600 000, SHA-256)` (the OWASP figure), then AES-256-GCM over
+  the `pkcs8` bytes. A stolen profile on disk is useless without the password, as with MetaMask.
+- **Passkey copy (optional):** the WebAuthn **PRF extension** returns a 32-byte secret from Windows Hello, Touch ID or
+  a phone, which goes through HKDF into a second AES-GCM key that wraps the same `pkcs8`. Unlocking is then a
+  fingerprint instead of typing the password. The password copy stays as the fallback. Whether WebAuthn and PRF work
+  on the extension's own origin in Chrome must be checked first (§11); without them, it's password only.
+
+**Unlocking:** decrypt, then `importKey("pkcs8", …, false, ["sign"])` gives a **non-extractable** `CryptoKey` for
+signing. MV3 kills the background worker when it's idle, so the session keeps the decrypted `pkcs8` in
+`chrome.storage.session`, which is RAM only, cleared when the browser closes, and not readable by content scripts
+(access level `TRUSTED_CONTEXTS`, the default). That is the same trade-off MetaMask makes in MV3.
+
+**Locking:** on demand (a lock button), after an idle timeout (15 min by default, up to 24 h when the user turns
+automations on, §5), and on browser close. Locking clears `chrome.storage.session`.
+
+**Locked means nothing signs:** no payments, no automations, no claims. The popup shows a lock screen. Balances and
+history still work, because they're public chain data.
+
+**Wrong passwords:** after 5 wrong tries the extension waits between attempts, increasing the wait each time. That
+slows guessing in the UI. It doesn't stop offline guessing against a copied profile, which is why the iteration
+count and password length matter.
+
+### 3.6 Recovery: no seed phrase
+
+- **New computer, or reinstall:** make a new browser key (§3.1, about a minute), then delete the old one on GitHub.
+  The account address, the balance and the history are unchanged, because they belong to the GitHub ID.
+- **Forgotten password:** the same, since there's nothing to recover. Delete the old key on GitHub and make a new
+  one.
+- **Stolen laptop:** from any device, delete "Sereno browser key" on `github.com/settings/keys`, then press
+  "Sync my keys" on the pay page or run `ak sync <user>`. After that sync, the stolen key can't spend. Before the
+  sync, a locked vault still needs the password.
+- **Cooling down again:** a replacement key is new, so for 72 h it can only send up to 50 USDC per payment. The
+  user's older keys (laptop, security key) aren't affected.
+- **Lost GitHub account:** the funds can only be spent by keys GitHub lists for the ID, so GitHub's own account
+  recovery is the backstop. This is the trust assumption already stated under S in `CLAUDE.md` §9.
+
+### 3.7 Not now: a passkey as the SSH key itself
+
+The strongest version would make the passkey *the* signing key: hardware-backed, a fingerprint per payment, never in
+memory. OpenSSH defines this as `webauthn-sk-ecdsa-sha2-nistp256@openssh.com`. Our `SshSigVerifier` checks only the
+U2F form (`SHA256(application) ‖ flags ‖ counter ‖ SHA256(signed data)`), not WebAuthn's `clientDataJSON`. Adding
+it means a new verifier, and the verifier's address is a constructor argument of `SshAccount`, so **every account
+address would change**. This is a roadmap item together with §5.4. Today the same strength comes from the native
+helper with a security key or the phone (§3.2).
 
 ## 4. Paying (requirement 2, manual)
 
@@ -124,8 +200,9 @@ story: delete "Sereno browser key" on GitHub, and the next oracle run removes it
 3. **Pre-checks:** the balance must cover amount + fee; the key must be listed; if `amount > 50 USDC` and the key is
    newer than 72 h, show "available after <time>" instead of letting the contract revert.
 4. **Confirm screen:** shows the **exact intent text** read from `SshAccount.intent(...)` with the current `nonce()`
-   (§5.1), not a summary. Buttons: Confirm / Cancel. Payments over a user-set amount also need a passkey prompt
-   (WebAuthn user verification) as a second factor for the browser key.
+   (§5.1), not a summary. It also shows the payee's GitHub avatar and login, resolved from the **ID**. Buttons:
+   Confirm / Cancel. The vault must be unlocked. Payments over a user-set amount (default 20 USDC) ask for the
+   password or passkey again, even while unlocked.
 5. Sign (§3.1 or §3.2), `POST /intent`, and show the explorer link from the relayer's response.
 
 **Pay from MetaMask instead:** the Send screen has a "Pay from another wallet" link. It opens
@@ -134,9 +211,18 @@ The extension can't talk to MetaMask itself, because MetaMask only injects into 
 
 ## 5. Automations (requirements 1 and 2)
 
-Automations sign **without the user present**, so only the browser key (§3.1) can run them: it needs no touch or
-passphrase. They run in the MV3 background worker on `chrome.alarms` (the minimum period is 30 s; we use minutes).
-**The browser must be running.** Missed runs execute once on the next start, not once per missed interval.
+Automations sign **without the user present**, so only the browser key (§3.1) can run them: the helper's keys
+need a touch or a passphrase. They run in the MV3 background worker on `chrome.alarms` (the minimum period is 30 s;
+we use minutes).
+
+**Automations run only while the vault is unlocked.** We don't keep a separate always-unlocked key: on-chain, every
+listed key can spend the whole balance, so an "automation key" would just be the main key without a password.
+Turning automations on lets the user stretch the auto-lock up to 24 h. When the vault locks, rules pause and the
+toolbar badge says so. **The browser must be running.** Missed runs execute once on the next unlock, not once per
+missed interval.
+
+Sweeps (§5.1) make the trade-off small: they keep the hot balance near zero by moving money to the user's MetaMask
+wallet, which has its own password and hardware-wallet support.
 
 Each run does the same thing as a manual payment: read the balance and `nonce()`, build the intent, sign,
 `POST /intent`, and write the result into history. Each run is a fresh signature, because the nonce and amount are
@@ -191,7 +277,8 @@ On-chain, the browser key can sign *any* intent. The rules are only as strong as
 - Automations may only pay **allowlisted destinations**: linked wallets (§5.1) and GitHub IDs the user picked by
   hand.
 - Each rule has a per-run cap and the extension has a **daily total cap** (default 50 USDC), stored with the rules.
-- Creating or editing a rule, or raising a cap, needs a click in the popup **and** a passkey prompt.
+- Creating or editing a rule, linking a wallet, or raising a cap needs a click in the popup **and** the password or
+  passkey again, even while unlocked. That way a session someone else finds unlocked can't add a new destination.
 - Each run is written to history with its rule ID. A failing rule stops after 3 errors and shows a badge.
 - The **kill switch** is GitHub: delete the browser key there, and the next oracle sync stops every spend by it.
 
@@ -267,7 +354,8 @@ Not in the extension: the phone-as-key flow (A8) needs Win32-OpenSSH, so it goes
 ```
 extension/
   manifest.json          MV3
-  src/background.ts      device flow, key store, signer, automation engine (chrome.alarms), history indexer
+  src/background.ts      device flow, signer, automation engine (chrome.alarms), history indexer
+  src/vault.ts           create, unlock, lock, auto-lock (PBKDF2 / PRF → AES-GCM; session in chrome.storage.session)
   src/popup/             React (reuse web/ components and styles): Home, Send, Confirm, Automations, History, Keys
   src/content/github.ts  buttons and badges (section 7)
   src/sshsig-webcrypto.ts  P-256 SSHSIG encoder (move to packages/shared once tested)
@@ -284,7 +372,10 @@ Permissions (keep them minimal; the store review reads them):
 
 | Threat | What stops it |
 |---|---|
-| Malware reads the browser key | It's non-extractable WebCrypto: malware running *in* the profile can sign while it runs, but it can't copy the key out. Daily cap, allowlisted destinations, the 50 USDC limit for new keys, and revocation by deleting the key on GitHub |
+| The profile is copied off the disk (stolen laptop, backup, sync) | The vault is encrypted (PBKDF2 600k → AES-GCM). Without the password it's useless; with a weak password it can be guessed offline, hence the length rule. Revoke on GitHub (§3.6) |
+| The vault is used while unlocked (malware in the browser, someone at the keyboard) | The same exposure as an unlocked MetaMask. Limited by: the confirm popup for manual payments; allowlisted destinations and the daily cap for automations; the password again for big payments and rule edits; auto-lock; the 50 USDC limit for keys under 72 h; and revocation on GitHub |
+| A malicious extension update | The same risk MetaMask has. The source is open (MIT), builds are reproducible from the repo with pinned dependencies, and the store listing links the commit. Users who don't want that trust use the native helper with a hardware key (§3.2) |
+| The user's own SSH key leaks through the extension | It can't: the extension never sees it. The helper returns signatures only, and its manifest admits our extension ID alone |
 | A malicious page triggers a payment | Content scripts only open the popup; signing needs a click in the extension's own UI. `externally_connectable` accepts only wallet links from the pay page, and those are verified by signature |
 | A rename redirects a saved payee | Payees and rules store the GitHub **ID** |
 | The relayer cheats | It can't: the signed text fixes recipient, amount and fee. It can only refuse; then the user self-submits (a "Submit myself" option with any wallet's gas, later) |
@@ -299,8 +390,9 @@ The submission deadline is 09:00 Sat and the freeze is 04:00. This is post-hacka
 0. **Tonight, if there's time (about 1–2 h), slide otherwise:** the content script only. "Pay @user" on profiles
    and "Tip author" on commits and PRs open `sereno-eth.vercel.app/?user=<login>`. It needs no keys and no
    signing. It is extra C1/C2 as written in `CLAUDE.md`.
-1. **Browser key** (§3.1). Start with a forge test: sign an intent with WebCrypto P-256 in TS, verify it through
-   `SshSigVerifier`, and check that it's accepted. Then device flow, add the key, sync.
+1. **Browser key and vault** (§3.1, §3.5). Start with a forge test: sign an intent with WebCrypto P-256 in TS,
+   verify it through `SshSigVerifier`, and check that it's accepted. Then the vault (password first, passkey
+   second), lock and auto-lock, device flow, add the key, sync.
 2. **Popup Send and Confirm** (§4), then history (§6).
 3. **Wallet linking and automations** (§5), with the `#link-wallet` page on the pay site.
 4. **Native helper** (`ak connect`, §3.2) and the remaining GitHub buttons (§7).
@@ -309,6 +401,8 @@ The submission deadline is 09:00 Sat and the freeze is 04:00. This is post-hacka
 
 - Who registers the GitHub OAuth App (device flow on, scope `write:ssh_signing_key`), and does it belong to an org?
 - Does the hosted relayer need a minimum fee, or rate limits, once automations run every few minutes?
+- Do WebAuthn and its PRF extension work from the extension's own origin (Chrome on Windows Hello, macOS Touch ID,
+  Android phone)? If not, passkey unlock (§3.5) waits and the password is the only unlock.
 - Does `SshSigVerifier` require low-s for P-256? Step 1's test answers it; the encoder normalizes anyway.
 - Can the sync worker run somewhere other than Suparno's laptop? Without it, new browser keys never reach the chain,
   and onboarding (§3.1 step 5) stalls.
