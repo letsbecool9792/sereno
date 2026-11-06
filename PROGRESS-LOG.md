@@ -28,7 +28,8 @@ Arch Linux, `psycocodes`, key `~/.ssh/id_ed25519`, no `GITHUB_TOKEN`, using the 
 - The account is now deployed: nonce 2, 0.45 USDC.
 - `ak commit-pay 0.05 letsbecool9792 --push` into **`letsbecool9792/sereno-demo`**: paid by the hosted relayer **6 s after the push**, at **1,083,391 gas** ([commit](https://github.com/letsbecool9792/sereno-demo/commit/4648fe00ff93be1b5b3f66e4a10d178e5cf0f07a), [tx](https://sepolia.basescan.org/tx/0x142ddfa3c941f3dd1ce965583d2dfd58816eee42009fe4226cbe1261d688a9f5)). GitHub shows it as not Verified because Mohikshit's key is an authentication key, not a signing key.
 - An earlier push test on a throwaway branch of `letsbecool9792/sereno` also paid ([tx](https://sepolia.basescan.org/tx/0xee1dc01b3ce1c615f1d93b8582063a75599fcaa363f15d4956954d97365803cf)); the branch has been deleted.
-- **M5 is not done:** it needs a repo no other relayer watches. `sereno-demo` is watched by the hosted relayer, so the Action doesn't go there.
+- **M5 passes: the GitHub Action relays with no server of ours.** `psycocodes/sereno-pay-test` uses `sereno-relay.yml@main`, with Mohikshit's relayer key as the repo secret. A plain `git push` of an `ak commit-pay` commit was paid by the Action ([run](https://github.com/psycocodes/sereno-pay-test/actions/runs/42178010583), [tx](https://sepolia.basescan.org/tx/0x1f8d9b5a5490c2d2961fd759b325dd0a6accca9fa2abf1a84c70e2b9b4fd4734), 1,110,852 gas, **GitHub Verified: true**, now that the key is also a signing key on GitHub). A non-payment push ran green and paid nothing.
+- Mohikshit also ran `npx -y sereno-ak account psycocodes` on Linux himself.
 
 ---
 
