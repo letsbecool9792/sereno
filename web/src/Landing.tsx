@@ -4,14 +4,7 @@ import { HoloCard } from "./HoloCard";
 import { fetchProfile } from "./lib";
 import { gsap, revealOnScroll, spotlight, SplitText, useMotion } from "./motion";
 import { CopyButton, Icon } from "./ui";
-import GradientASCII from "./vendor/GradientASCII";
-
-// The density ramp is made of what an SSH public key is made of: light punctuation first, then the letters every
-// ssh-ed25519 key starts with (AAAAC3NzaC1lZDI1NTE5), heaviest last.
-const KEY_RAMP = " .:-=+/sshedkyC31ZNAI5E@";
-// For the "horizon" shape the first colour is the horizon line and the rest run up into the sky: a lantern-lit horizon
-// under a dark night.
-const ASCII_COLORS = ["#f2b35b", "#6b4419", "#24180c", "#0d0a07"];
+import { Dither } from "./Dither";
 
 // Public GitHub profiles shown as examples while nobody has typed a username. No name check, so they claim nothing.
 const SAMPLES: GithubUser[] = [
@@ -35,7 +28,7 @@ export function Landing({ onPay, go, introDelay = 0 }: { onPay: (login: string) 
   const [preview, setPreview] = useState<GithubUser | null>(null);
   const [lookup, setLookup] = useState<"idle" | "busy" | "none">("idle");
   const [sample, setSample] = useState(0);
-  // The ASCII field plays its own fade-in, so it mounts as the boot curtain lifts rather than behind it.
+  // The dither field fades in on its own, so it mounts as the boot curtain lifts rather than behind it.
   const [bgOn, setBgOn] = useState(introDelay === 0);
   const who = login.trim().replace(/^@/, "").replace(/\.sereno\.eth$/i, "");
   const card = preview ?? SAMPLES[sample]!;
@@ -117,23 +110,7 @@ export function Landing({ onPay, go, introDelay = 0 }: { onPay: (login: string) 
     <div ref={root} className="landing">
       <section className="hero" aria-labelledby="hero-title">
         <div className="hero-bg" aria-hidden="true">
-          {bgOn && <GradientASCII
-            colors={ASCII_COLORS}
-            characters={KEY_RAMP}
-            shape="horizon"
-            cellSize={15}
-            density={0.72}
-            glyphOpacity={0.85}
-            gradientOpacity={0.55}
-            glow={0.35}
-            flicker={0.3}
-            flow={0.45}
-            speed={0.6}
-            grain={0.06}
-            scrambleRadius={0.12}
-            clickEffect="wave"
-            fontFamily='"JetBrains Mono Variable", ui-monospace, monospace'
-          />}
+          {bgOn && <Dither />}
           <div className="hero-scrim" />
         </div>
 
@@ -209,7 +186,7 @@ export function Landing({ onPay, go, introDelay = 0 }: { onPay: (login: string) 
               <span className="resolve-line" />
               <span className="pill mono">torvalds.sereno.eth</span>
               <span className="resolve-line" />
-              <span className="pill mono amber scramble-on-view" data-text="0xBdB2…34c0">0x0000…0000</span>
+              <span className="pill mono lime scramble-on-view" data-text="0xBdB2…34c0">0x0000…0000</span>
             </div>
             <span className="feature-go">Pay someone {Icon.arrow(16)}</span>
           </a>
@@ -233,7 +210,7 @@ export function Landing({ onPay, go, introDelay = 0 }: { onPay: (login: string) 
               <span className="resolve-line" />
               <span className="pill ok">merged</span>
               <span className="resolve-line" />
-              <span className="pill amber">paid</span>
+              <span className="pill ok">paid</span>
             </div>
             <span className="feature-go">Fund an issue {Icon.arrow(16)}</span>
           </a>

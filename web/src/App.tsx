@@ -193,13 +193,6 @@ function Pay() {
     gsap.from(".payflow-panel > *", { y: 20, autoAlpha: 0, duration: 0.8, stagger: 0.07, delay: 0.15 });
   }, [lookup?.user.login, lookup?.factoryAddress]);
 
-  useMotion(root, () => {
-    if (!paid) return;
-    gsap.from(".done", { y: 18, autoAlpha: 0, duration: 0.8 });
-    gsap.from(".done-ring", { scale: 0.5, autoAlpha: 0, duration: 1.1, delay: 0.05 });
-    gsap.fromTo(".done-ck path", { strokeDashoffset: 24 }, { strokeDashoffset: 0, duration: 0.7, delay: 0.25, ease: "power2.out" });
-  }, [paid]);
-
   const pick = (who: string) => {
     setLogin(who);
     void find(undefined, chainKey, who);

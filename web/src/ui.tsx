@@ -1,6 +1,6 @@
 // Small shared pieces: icons, the step tracker, skeleton placeholders and the copy button.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { prefersReducedMotion } from "./motion";
+import { gsap, prefersReducedMotion, useMotion } from "./motion";
 
 const svg = (path: ReactNode, size = 18) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -49,7 +49,7 @@ export function CopyButton({ text, label = "Copy" }: { text: string; label?: str
   return (
     <button
       type="button"
-      className="small secondary copy"
+      className="small ghost copy"
       onClick={() => void navigator.clipboard.writeText(text).then(() => { setDone(true); setTimeout(() => setDone(false), 1400); })}
     >
       {done ? Icon.check(14) : Icon.copy(14)}
@@ -78,9 +78,16 @@ export function Feedback({ busy, error, wallet, children }: { busy?: string | nu
 }
 
 /// The "it worked" panel: a check, what happened, and the receipt.
+/// The panel settles in, the ring blooms and the check draws itself (M5); still under reduced motion.
 export function Done({ title, sub, url, again, againLabel = "Send again" }: { title: string; sub?: ReactNode; url?: string; again?: () => void; againLabel?: string }) {
+  const root = useRef<HTMLDivElement>(null);
+  useMotion(root, () => {
+    gsap.from(root.current, { y: 18, autoAlpha: 0, duration: 0.8 });
+    gsap.from(".done-ring", { scale: 0.5, autoAlpha: 0, duration: 1.1, delay: 0.05 });
+    gsap.fromTo(".done-ck path", { strokeDashoffset: 24 }, { strokeDashoffset: 0, duration: 0.7, delay: 0.25, ease: "power2.out" });
+  });
   return (
-    <div className="done" role="status">
+    <div ref={root} className="done" role="status">
       <span className="done-ring" aria-hidden="true" />
       <span className="done-ck" aria-hidden="true">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
@@ -88,7 +95,7 @@ export function Done({ title, sub, url, again, againLabel = "Send again" }: { ti
       <strong>{title}</strong>
       {sub && <span className="muted">{sub}</span>}
       <div className="done-actions">
-        {url && <a className="button-link" href={url} target="_blank" rel="noreferrer">View receipt {Icon.external(15)}</a>}
+        {url && <a className="button-link ghost" href={url} target="_blank" rel="noreferrer">View receipt {Icon.external(15)}</a>}
         {again && <button type="button" className="secondary" onClick={again}>{againLabel}</button>}
       </div>
     </div>
