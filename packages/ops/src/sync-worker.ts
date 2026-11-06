@@ -27,6 +27,7 @@ const TARGETS: { target: string; chain: ChainKey }[] = (opt("targets") ?? "base,
   chain: ({ base: "base-sepolia", arbitrum: "arbitrum-sepolia", sepolia: "sepolia" } as Record<string, ChainKey>)[t] ?? die(`unknown target ${t}`),
 }));
 const POLL_MS = Number(process.env.SYNC_POLL_MS ?? 5_000);
+const ATTEMPTS = Number(process.env.SYNC_ATTEMPTS ?? 3);
 const CRE = process.env.CRE_BIN ?? "cre";
 const ENV_FILE = process.env.CRE_ENV_FILE ?? join(ROOT, ".secrets/cre.env");
 const TOKEN_FILE = join(ROOT, ".secrets/sync-worker.token");
@@ -83,12 +84,17 @@ async function syncOne(githubId: string, login: string): Promise<{ ok: boolean; 
   const results: string[] = [];
   let ok = true;
   for (const { target, chain } of TARGETS) {
-    const t0 = Date.now();
-    const r = await runCre(target, githubId);
-    const good = r.code === 0 && (lines.length === 0 || (await listed(chain, githubId, lines)));
-    const secs = Math.round((Date.now() - t0) / 1000);
-    log(`  ${login} on ${chain}: ${good ? "synced" : `FAILED (cre exit ${r.code})`} in ${secs}s`);
-    if (!good) console.log(r.tail.split("\n").slice(-12).join("\n"));
+    // cre validates its login against api.cre.chain.link on every run, and that call sometimes times out (TLS
+    // handshake), so retry a failed chain a couple of times.
+    let good = false;
+    for (let attempt = 1; attempt <= ATTEMPTS && !good; attempt++) {
+      const t0 = Date.now();
+      const r = await runCre(target, githubId);
+      good = r.code === 0 && (lines.length === 0 || (await listed(chain, githubId, lines)));
+      const secs = Math.round((Date.now() - t0) / 1000);
+      log(`  ${login} on ${chain}: ${good ? "synced" : `FAILED (cre exit ${r.code}), attempt ${attempt}/${ATTEMPTS}`} in ${secs}s`);
+      if (!good) console.log(r.tail.split("\n").filter((l) => l.trim()).slice(-8).map((l) => `    | ${l}`).join("\n"));
+    }
     results.push(`${chain} ${good ? "ok" : "failed"}`);
     ok &&= good;
   }
