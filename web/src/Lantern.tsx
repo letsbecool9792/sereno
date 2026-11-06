@@ -1,15 +1,14 @@
-/// Sereno's mascot: the night watchman's lantern. Colours come from --l-frame / --l-glass / --l-flame.
+/// sereno's mark. A sereno walked the night with two things: a lantern and the keys to every street door. Here the
+/// lantern's flame is a keyhole. Strokes use --l-frame and the keyhole --l-flame, so the mark works on any surface.
 export function Lantern({ size = 28, title }: { size?: number; title?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className="lantern" role={title ? "img" : undefined} aria-hidden={title ? undefined : true}>
       {title && <title>{title}</title>}
-      <path d="M11 7a5 5 0 0 1 10 0" fill="none" stroke="var(--l-frame)" strokeWidth="2.2" strokeLinecap="round" />
-      <rect x="8" y="8" width="16" height="3.4" rx="1.7" fill="var(--l-frame)" />
-      <rect x="9" y="11" width="14" height="15" rx="5" fill="var(--l-glass)" />
-      <ellipse cx="16" cy="19.5" rx="3.2" ry="4.2" fill="var(--l-flame)" />
-      <circle cx="13.6" cy="17" r="1.1" fill="var(--l-eye)" />
-      <circle cx="18.4" cy="17" r="1.1" fill="var(--l-eye)" />
-      <rect x="10" y="26" width="12" height="2.6" rx="1.3" fill="var(--l-frame)" />
+      <path className="lantern-line" d="M13.4 6.2a2.6 2.6 0 0 1 5.2 0" />
+      <path className="lantern-line" d="M10.5 9.2h11l-1.6-3h-7.8z" />
+      <path className="lantern-line" d="M10 9.2h12v13.3a3.5 3.5 0 0 1-3.5 3.5h-5a3.5 3.5 0 0 1-3.5-3.5z" />
+      <path className="lantern-line" d="M12.5 28.5h7" />
+      <path className="flame" d="M16 12.8a2.4 2.4 0 0 1 1.2 4.48L17.8 21.5h-3.6l.6-4.22A2.4 2.4 0 0 1 16 12.8z" />
     </svg>
   );
 }
