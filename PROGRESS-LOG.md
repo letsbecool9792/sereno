@@ -18,6 +18,29 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 ---
 
+## 2026-11-06 19:55 IST: Suparno's Claude (laptop): username lookups hardened; bounties pay automatically when the issue closes
+
+- **Lookup bug** ("couldn't find a GitHub user" that went away after restarts).
+  - **Cause:** when the hosted gateway hiccuped, the pay page fell back to GitHub with no token. The laptop's network had used all 60 of its hourly requests (`/rate_limit`: 0 left), so the lookup failed with a raw error.
+  - **Fixes** (`70523c8`):
+    - Fallback public RPCs for every chain (`transportFor` in `@sereno/shared`), used by the gateway, pay page, CLI and relayer.
+    - The gateway's `/lookup` serves the last good profile when GitHub fails, keeps profiles in `CACHE_FILE`, and a failed Base read no longer causes a 502.
+    - The pay page names which service failed.
+  - **Tested:** a local gateway answered a found user, a 404, and a stale profile with a broken token.
+- **Automatic bounty payout** (`relayer/src/bounties.ts`; CLAUDE.md §8.5 updated).
+  - The relayer finds every funded USDC pot from BountyBoard's `Funded` logs. It reads the repo from the funding transaction, including one wrapped by a smart wallet.
+  - Every 30 s it checks each open pot's issue on GitHub. Once the issue closes, it queues the bounty workflow, and the existing `/sync/done` path pays out.
+  - The CRE workflow still decides; the relayer only starts it.
+  - **Tested:**
+    - 7 unit tests.
+    - A live tick found all 4 Base bounties (including the smart-wallet one, sereno-demo#1). All four are already settled and paid, so the "issue just closed" path hasn't run live yet.
+- **WAITING ON:** Suparno:
+  - **Redeploy both Railway services** (gateway and relayer).
+  - Keep the sync worker running.
+  - Test the bounty path on stage: fund a new issue, merge a "Fixes #N" PR, and watch the relayer log.
+
+---
+
 ## 2026-11-06 19:30 IST: Suparno's Claude (laptop): TASK for Gantavya: frontend redesign (landing page + the 3 features)
 
 **Why:** while pitching, the pay page doesn't make clear what Sereno can do or how to show it. It reads like documentation: too much explanatory text, plain components, no motion. Judges should understand the product in 5 seconds and see each feature as one clear screen.

@@ -2,11 +2,14 @@
 //
 //   [RELAYER_KEY=0x...] [WATCH_REPOS=owner/repo,...] [GITHUB_TOKEN=...] [PORT=8788] bun src/main.ts
 //   RELAYER_KEY defaults to .secrets/relayer.key, then .secrets/deployer.key.
+//   With SYNC_WORKER_TOKEN set, it also watches every funded USDC bounty and settles it when its issue closes
+//   (BOUNTY_POLL_MS, default 30000; BOUNTY_WATCH=0 turns it off).
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getAddress, type Hex } from "viem";
 import { githubGet, parseCommitObject, parseIntent } from "@sereno/shared";
 import { commitFromGithub, makeRelayer, RelayError } from "./relay";
+import { makeBountyWatcher } from "./bounties";
 import { bountyJobId, makeSyncQueue, type Job } from "./sync";
 
 const secret = (n: string) => {
@@ -19,6 +22,15 @@ const relayer = makeRelayer(key.startsWith("0x") ? key : (`0x${key}` as Hex));
 const token = process.env.GITHUB_TOKEN;
 
 const sync = makeSyncQueue(process.env.SYNC_WORKER_TOKEN || undefined, token);
+
+// A merged "Fixes #N" PR closes the issue; the watcher sees that and queues the bounty workflow, and /sync/done pays.
+const bountyWatch = makeBountyWatcher({
+  githubToken: token,
+  state: (chainId, repo, issue) => relayer.bounty(chainId, repo, issue),
+  settle: (chainId, repo, issue) => void sync.requestBounty(chainId, repo, issue),
+  payout: async (chainId, repo, issue) => (await relayer.bountyPayout(chainId, repo, issue))?.url ?? null,
+  log: (msg) => log(msg),
+});
 
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type, Authorization" };
 const json = (body: unknown, status = 200) =>
@@ -46,7 +58,7 @@ async function payBounty(j: Job) {
 async function route(req: Request): Promise<Response> {
   const url = new URL(req.url);
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
-  if (url.pathname === "/health") return json({ ok: true, relayer: relayer.address, watching: watched, keySync: sync.enabled, syncWorkerAge: sync.workerAge() });
+  if (url.pathname === "/health") return json({ ok: true, relayer: relayer.address, watching: watched, keySync: sync.enabled, syncWorkerAge: sync.workerAge(), bounties: bountyWatch.watching() });
   try {
     if (req.method === "GET" && url.pathname.startsWith("/sync/status/")) return json(sync.status(url.pathname.slice("/sync/status/".length)));
     if (req.method === "GET" && url.pathname === "/sync/next") return json(sync.next(req));
@@ -150,4 +162,8 @@ log(`relayer ${relayer.address} on :${server.port}${watched.length ? `, watching
 if (watched.length) {
   await poll();
   setInterval(poll, Number(process.env.POLL_MS ?? 15_000));
+}
+if (sync.enabled && process.env.BOUNTY_WATCH !== "0") {
+  log("watching funded bounties; an issue closed by a merged PR settles and pays out automatically");
+  bountyWatch.start(Number(process.env.BOUNTY_POLL_MS ?? 30_000));
 }
