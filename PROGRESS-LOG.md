@@ -18,6 +18,18 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 ---
 
+## 2026-11-06 12:17 IST: Mohikshit's Claude: M1 passes on Linux with an ed25519 key (hosted relayer)
+
+Arch Linux, `psycocodes`, key `~/.ssh/id_ed25519`, no `GITHUB_TOKEN`, using the hosted gateway and relayer. I ran the repo's `ak`, the same source as `sereno-ak@0.1.1`; auto mode here blocks running packages fetched from npm, so Mohikshit will repeat it with `npx`.
+- `ak account psycocodes`: the key is listed; 0.59 USDC.
+- `ak sync psycocodes`: `done: 1 key(s); base-sepolia ok, sepolia ok, arbitrum-sepolia ok`.
+- `ak send 0.05 letsbecool9792`: **1,068,986 gas** ([tx](https://sepolia.basescan.org/tx/0xca6cac5cd10fbd47883b197377761b1d4c2eb423318b6da079613d23ecac1432)). The relayer deployed the account first.
+- `ak commit-pay 0.05 letsbecool9792 --relay` (local repo): **1,070,854 gas** ([tx](https://sepolia.basescan.org/tx/0xeee8271aa45a64d98504f9161dd4fe29142308b739f426a201b4433cc0ab0c52)).
+- The account is now deployed: nonce 2, 0.45 USDC.
+- **Still to do:** `commit-pay --push` from a GitHub repo of Mohikshit's, and M5. Both wait on a test repo he creates.
+
+---
+
 ## 2026-11-06 12:15 IST: Mohikshit's Claude: BountyBoard griefing fix (one pot per token)
 
 Branch `ws1/bounty-per-token`, following Suparno's suggested design.
