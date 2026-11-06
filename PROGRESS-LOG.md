@@ -18,6 +18,21 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 ---
 
+## 2026-11-07 04:55 IST: Suparno's Claude: DEMO.md §2 is now the 4-minute video script
+
+- **What changed:** DEMO.md §2 is now the script for the 4-minute video, replacing the old stage table and its one-line "Say" column.
+  - Four continuous scenes, each with a full voiceover:
+    1. pay psycocodes by username from MetaMask via **Other wallet**;
+    2. `commit-pay` to psycocodes, with GitHub's Verified badge and the extension's Paid chip;
+    3. merge a bounty PR, with `cre workflow simulate github-bounty` shown on camera;
+    4. psycocodes claims his name with the phone.
+  - Also in §2: prep, recording tips, and a 3-minute cut. EF CROPS asks for 3 minutes or less.
+- **Checked:** `psycocodes` and `g4ntavya` are unclaimed on NameRegistrar (`holderOf`).
+- **Submission assets:** images are made (logo, cover, six 1920×1080 screenshots); the form texts were drafted in chat.
+- **WAITING ON:**
+  - Mohikshit: add Suparno's `phone_sk.pub` as a Signing Key on GitHub for scene 4, and remove it after recording.
+  - Suparno: record the video.
+
 ## 2026-11-07 01:35 IST: Suparno's Claude: extension half of frontend reform v2
 
 **Branch:** `ws3/extension-redesign` (PR #30), rebased onto `main` after #29 merged.
