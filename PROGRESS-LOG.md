@@ -13,7 +13,7 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 | WS | Owner | Now working on | Blocked on | Last update |
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | M1–M5 done; extras deployed; demo bounty PR open | Suparno merges sereno-demo#2 on stage | 6 Nov 13:18 |
-| WS2 CRE and ENS | Gantavya | D1 `github-bounty` workflow done and simulated (PR) | BountyBoard deploy (Mohikshit), gate routes (Suparno) | 6 Nov 12:25 |
+| WS2 CRE and ENS | Gantavya | D1 `github-bounty` merged (#17) and live; next: pay-to-SSH (extra 7) on the Oracle VM, task below | VM access, a throwaway key, test USDC (Gantavya) | 6 Nov 13:30 |
 | WS3 clients and demo | Suparno + Claude | core done and hosted; issue bounties live (tab, CLI, relayer, worker); demo rework next | | 6 Nov 13:25 |
 
 ---
@@ -29,6 +29,97 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 **WAITING ON:**
 - **Suparno:** review the PR; click through a real 1 USDC payment and a Spend prepare before merging; redeploy the hosted pay page after merge.
+
+---
+
+## 2026-11-06 13:30 IST: Gantavya's Claude: TASK for Gantavya's Claude: pay-to-SSH (extra 7)
+
+Branch `ws2/pay-to-ssh`; this PR holds the spec and the task only. Gantavya approved this as WS2's next task now that D1 is merged (#17) and live.
+- **Spec:** CLAUDE.md §5.5. **Verified facts:** §8.7.
+- **Nothing is built yet.** When Gantavya asks his Claude to read the md and build it, do the steps below in order and keep this entry's checklist current.
+
+**Pitch:** "The key you pay with is the key that logs you in." The demo: `ssh` is refused, and the banner says how to pay. `npx sereno-ak send 0.10 g4ntavya …`, then `ssh` gets in. When the time runs out, the session ends and the next login is refused. A key removed on GitHub is refused too.
+
+**Build steps:**
+1. **Branch.** Build on `ws2/pay-to-ssh`, rebased on the latest `main` (or a new `ws2/pay-to-ssh-build` if this PR has merged). Push only to that branch, never to `main`.
+2. **Package.** Create `shell/` with:
+   - `package.json` (`@sereno/shell`, depending on `@sereno/shared` and viem, with a `typecheck` script) and `tsconfig.json`;
+   - `"shell"` added to the root `workspaces`.
+
+   Update `bun.lock` with **Bun 1.4.4**: `npx -y bun@1.4.4 install` at the repo root. The local Bun 1.3.4 rewrites the lockfile format.
+3. **`shell/src/access.ts`** (pure, no RPC), with `shell/src/access.test.ts`. Tests:
+   - two payments with a gap;
+   - overlapping payments extend the time;
+   - a payment from another key is ignored;
+   - a fake emitter is refused;
+   - a key removed from the oracle is refused;
+   - certificates are refused;
+   - the `expiry-time` string is in UTC (`YYYYMMDDHHMMSSZ`);
+   - a payment whose amount doesn't match its transfer is refused.
+4. **`shell/src/authkeys.ts`:** steps 1–8 of §5.5 with viem (`RPC_LOGS` for logs; the chain's normal RPC for calls and receipts). It fails closed.
+5. **`shell/bin/sereno-authkeys`** (`#!/bin/sh`, then `exec bun /opt/sereno/shell/src/authkeys.ts "$@"`) and **`shell/bin/sereno-session`** (`timeout` with the seconds left, for a shell or for `SSH_ORIGINAL_COMMAND`).
+6. **Image:** `shell/Dockerfile` (from `oven/bun:1.4.4-slim`, plus `apt-get install openssh-server`), `shell/sshd_config` and `shell/entrypoint.sh`. The entrypoint:
+   - creates users `rent` (bash, password `*`) and `sereno` (no shell);
+   - keeps the host keys in the volume `/data/ssh`, so the host key stays the same across redeploys;
+   - writes `/etc/sereno/banner` from the environment;
+   - runs `mkdir -p /run/sshd`, then `exec /usr/sbin/sshd -D -e -f /etc/ssh/sshd_config`.
+
+   The wrappers live in `/usr/local/bin`, root-owned with mode 755.
+7. **Local test on this Mac:**
+   1. `colima start` (the Docker daemon isn't running by default).
+   2. `docker build -f shell/Dockerfile -t sereno-shell .`
+   3. `docker run --rm -p 2222:2222 -e HOST_GITHUB_ID=212151060 -e PRICE=0.05 -e PERIOD_MIN=1 sereno-shell`
+   4. `ssh -p 2222 rent@localhost` should show the banner and be refused.
+8. **Live test.** This needs the items Gantavya provides (list below).
+   1. `npx -y sereno-ak send 0.05 g4ntavya --as g4ntavya --key ~/.ssh/sereno_rent_test` (paying yourself is a valid payment for the test; in the demo a teammate rents).
+   2. `ssh -i ~/.ssh/sereno_rent_test -p 2222 rent@localhost` gets a shell within seconds of the payment.
+   3. It's cut off after 1 minute, and the next login is refused.
+   4. Pay again, then remove the throwaway key on GitHub and run `npx -y sereno-ak sync g4ntavya`. The login is refused although time is left.
+9. **Deploy on the Oracle VM:**
+   1. Install Docker (`docker.io`).
+   2. Copy the repo and build the image on the VM (ARM64).
+   3. `docker run -d --restart unless-stopped --name sereno-shell -p 2222:2222 -v sereno-ssh:/data --cpus 1 --memory 512m --pids-limit 256` with `HOST_GITHUB_ID=212151060 PRICE=0.10 PERIOD_MIN=10 PUBLIC_HOST=<ip> PUBLIC_PORT=2222`.
+   4. Open port 2222 in both places (§8.7).
+   5. Run the live test again from another machine.
+   6. Post `ssh -p 2222 rent@<ip>` and the banner text here.
+10. **Wrap up:**
+    - README section "Rent out your machine";
+    - the demo-script line for Suparno (about 30 s, or the video);
+    - `bun test` and `bun run typecheck` passing;
+    - CLAUDE.md §5.5 updated with anything learned;
+    - a PR with this log entry.
+
+**Done when:**
+- Unit tests and typecheck pass.
+- On the Oracle VM:
+  - refused before paying, with the banner;
+  - in within about 10 s of the payment;
+  - the session ends at the paid time, and new logins are refused;
+  - a key removed on GitHub plus a sync means refused.
+- The address and banner are posted here.
+- The PR is open.
+
+**Test identities:**
+- **Gantavya:** `g4ntavya`, GitHub ID `212151060`, Sereno account `0x6DffDEc21f912Ad8E72cf4B1D0Dbc4FC68031329`. It held 0.001 USDC on Base Sepolia at 13:23, and there were no SSH keys on the GitHub profile.
+- **The demo:** host = `g4ntavya`, renter = a teammate.
+
+**Needs from Gantavya** (his own accounts, so his Claude can't do these):
+1. **Oracle VM:**
+   - the public IP;
+   - the SSH user and key path, so Claude can deploy;
+   - `uname -m`;
+   - the VCN Security List ingress rule for TCP 2222, added in the Oracle console.
+2. **A throwaway P-256 key, never a real one:** Claude runs `ssh-keygen -t ecdsa -b 256 -f ~/.ssh/sereno_rent_test -C sereno-rent-test`. Gantavya adds `sereno_rent_test.pub` at github.com/settings/ssh/new as a **Signing Key**, then runs `npx -y sereno-ak sync g4ntavya`.
+3. **Test USDC:** faucet.circle.com → Base Sepolia → `0x6DffDEc21f912Ad8E72cf4B1D0Dbc4FC68031329`.
+
+**Deadline:** extras not merged and deployed by 22:00 IST become a slide (12:40 entry).
+
+**WAITING ON:**
+- **Gantavya:** say "build it", plus items 1–3 above.
+- **Nobody else:** no contract, CRE, relayer or web changes.
+
+---
+
 
 ---
 
