@@ -79,7 +79,7 @@ Every SSH key on a GitHub profile is already an Ethereum signer. Anyone can pay 
 4. **B2 GitHub Action as a permissionless relayer** (WS1).
 5. **E1 agent spending with phone approval.**
 6. **F1–F3 hardening:** key seniority (older keys can veto newer ones), caps on commit-signed spends, show the exact signed text everywhere.
-7. Last, only if everything else is done: **rent a shell** (pay with an SSH key, then `ssh` into a machine until the paid time ends, via sshd `AuthorizedKeysCommand`).
+7. **Pay-to-SSH ("rent a shell"), Gantavya (WS2), spec in §5.5:** a renter pays the host's GitHub ID with the SSH key they will log in with, then `ssh`s in until the paid time ends. sshd checks the payment on-chain through `AuthorizedKeysCommand`. No contract or CRE changes. The task and build steps are in `PROGRESS-LOG.md` (6 Nov 13:30 entry); the demo host is Gantavya's Oracle Cloud VM.
 
 **Not building:** a mainnet ENS name, ERC-4337 (the relayer is simpler), anything market or token related, Arc, CCIP, Whitechain.
 
@@ -155,6 +155,72 @@ Every line ends with `\n`, including the last; there is no other whitespace. The
 ### 5.4 Shared TS package (`packages/shared`)
 
 Intent builder, chain config (chain IDs, RPCs, USDC, ENSIP-11 coin types), deployed addresses per chain, and ABIs generated from `contracts/out`. CLI, relayer, pay page, gateway and extension import from here; nobody hardcodes an address elsewhere.
+
+### 5.5 Pay-to-SSH (WS2, extra 7)
+
+**The key you pay with is the key that logs you in.**
+- **How it works:** a host advertises a machine. A renter pays the host's GitHub ID from their Sereno account (`ak send`, a signed intent or a payment commit), signing with an SSH key on their GitHub profile. sshd lets that same key in until the paid time runs out.
+- **What the host needs:** no user accounts, signup, billing or key exchange. Everything is read from the chain, with no contract changes.
+
+- **Package `shell/`** (Bun + TS, a root workspace):
+  - `src/access.ts`: pure logic (logs and receipts → payments for one key → expiry → the authorized_keys line), unit-tested.
+  - `src/authkeys.ts`: the `AuthorizedKeysCommand`.
+  - `bin/sereno-authkeys`: a root-owned wrapper that runs `bun /opt/sereno/shell/src/authkeys.ts "$@"`.
+  - `bin/sereno-session`: the forced command that ends the session at expiry.
+  - `Dockerfile`, `sshd_config`, `entrypoint.sh`: an image running sshd on port 2222 for the single login user `rent`.
+- **Config (environment):**
+
+  | Variable | Meaning |
+  |---|---|
+  | `HOST_GITHUB_ID` | the payee |
+  | `PRICE` | USDC per period, decimal, e.g. `0.10` |
+  | `PERIOD_MIN` | e.g. `10` |
+  | `CHAIN` | `base-sepolia` |
+  | `RPC_LOGS` | `https://base-sepolia-rpc.publicnode.com` (§8.7) |
+  | `LOOKBACK_BLOCKS` | at most 50000; default 43200, which is 24 h at Base's 2 s blocks |
+  | `PUBLIC_HOST`, `PUBLIC_PORT` | for the banner |
+- **sshd_config** (only paid keys get in; the VM's own admin sshd on port 22 is separate and untouched):
+  ```
+  Port 2222
+  PasswordAuthentication no
+  KbdInteractiveAuthentication no
+  PermitRootLogin no
+  AllowUsers rent
+  AuthorizedKeysFile none
+  AuthorizedKeysCommand /usr/local/bin/sereno-authkeys %t %k
+  AuthorizedKeysCommandUser sereno
+  Banner /etc/sereno/banner
+  AllowTcpForwarding no
+  AllowAgentForwarding no
+  X11Forwarding no
+  ```
+- **Access check** (`sereno-authkeys <type> <base64 key>`, run for each key the client offers). It **fails closed**: on any error it prints nothing and logs to stderr.
+  1. Refuse certificates (`%t` containing `-cert-`). Compute `keyHash = keccak256(base64-decoded %k)`, the same value as `keyHash()` in `@sereno/shared` and in the oracle.
+  2. `host = AccountFactory.addressOf(HOST_GITHUB_ID)`.
+  3. USDC `Transfer(from, to = host)` logs over the last `LOOKBACK_BLOCKS`: `address` = USDC, `topic2` = host. Each log carries `blockTimestamp`.
+  4. For each transfer, `eth_getTransactionReceipt`. Find the `Executed` event from §5.2 (topic0 `0x3f211d355260f2bfcd5373fd027c96fd9fd54d6855058f4e5007ef6f1ac57013`) whose:
+     - emitter is `transfer.from`;
+     - `to` is `host`;
+     - `token` is USDC;
+     - `amount` equals the transfer value;
+     - `keyHash` equals the offered key's hash.
+  5. **The account must be genuine:** `emitter == AccountFactory.addressOf(SshAccount(emitter).githubId())`. Anything else is a fake event from some other contract.
+  6. **The key must still be on GitHub:** `KeyOracle.firstSeen(githubId, keyHash) != 0`. A key removed on GitHub stops working at the next sync, even with paid time left.
+  7. **Compute the expiry:** go through payments oldest first, `expiry = max(expiry, paidAt) + amount × PERIOD / PRICE` (in seconds). If `expiry > now`, print exactly one line; otherwise print nothing:
+     `restrict,pty,expiry-time="YYYYMMDDHHMMSSZ",command="/usr/local/bin/sereno-session <expiry unix>" <type> <base64 key>`
+  8. Cache the answer for 30 s in `/var/cache/sereno`, which the `sereno` user owns. sshd runs the command once for the key query and again for the signature.
+- **Session:**
+  - `sereno-session <expiry>` runs `timeout --kill-after=5 <seconds left> bash -l`, or `bash -c "$SSH_ORIGINAL_COMMAND"` when the client sent a command, so the session ends at the paid time.
+  - In v1, paying more while logged in extends the next login, not the running session.
+  - scp and sftp aren't supported in v1.
+- **Banner** (shown before authentication, so a refused renter sees how to pay): the price, the payee, and two commands:
+  - `npx -y sereno-ak send <PRICE> <host-login> --as <your-github-user> --key ~/.ssh/<key>`
+  - `ssh -i ~/.ssh/<key> -p <port> rent@<host>`
+- **Depends on** the account's `Executed` event and its USDC `Transfer` (§5.2). A PR that changes those must update this section.
+- **Isolation:**
+  - In the demo, every renter shares the user `rent` inside one container, with Docker limits (`--cpus 1 --memory 512m --pids-limit 256`).
+  - A real host would run one container per renter (v2), never the host's own user.
+  - Hosting strangers on a home PC is the host's risk. The renter's GitHub identity makes abuse non-anonymous.
 
 ## 6. Repo layout and stack
 
@@ -308,6 +374,41 @@ Redeploy (idempotent): `DEPLOYER_KEY=$(cat .secrets/deployer.key) forge script s
   - Linux and macOS OpenSSH use libfido2, which has no phone transport: use a normal key or a USB security key there.
 - Windows VS Code terminals keep the PATH from when VS Code started. Add tools (`cre`, `cloudflared`) through `terminal.integrated.env.windows`.
 - Public RPCs are load-balanced: after deploying, poll for code before concluding it failed; receipts can time out, so check the hash before resending.
+
+### 8.7 sshd and payment lookups (pay-to-SSH, §5.5)
+
+Sources: the OpenSSH 9.9 man pages `sshd_config(5)` and `sshd(8)`, plus measurements on 6 Nov.
+
+- **`AuthorizedKeysCommand`:**
+  - The program "must be owned by root, not writable by group or others and specified by an absolute path". OpenSSH's `subprocess()` also runs `safe_path()` (`misc.c`), which requires every directory above it to be owned by root and not group- or world-writable, so keep the wrapper in `/usr/local/bin`.
+  - sshd refuses to start unless `AuthorizedKeysCommandUser` is set as well.
+  - Tokens: `%t` (key type), `%k` (base64 key), `%f` (fingerprint), `%u` (user), `%C` (connection).
+  - Output: "zero or more lines of authorized_keys output".
+  - It runs only if `AuthorizedKeysFile` didn't match, so set that to `none`.
+- **authorized_keys options:**
+  - `expiry-time="YYYYMMDDHHMM[SS][Z]"`: "a time after which the key will not be accepted". With `Z` it's UTC; without, local time.
+  - `restrict` turns off forwarding, PTY allocation and `~/.ssh/rc`; `pty` allows a terminal again.
+  - `command="…"` forces a command, and the client's command is in `SSH_ORIGINAL_COMMAND`.
+  - `environment=` needs `PermitUserEnvironment`, so pass the expiry as an argument to the command instead.
+  - `expiry-time` only blocks new logins. The forced command's `timeout` ends running sessions.
+  - Don't set `ForceCommand` in sshd_config: it overrides the per-key `command=`.
+- **`Banner`** is "sent to the remote user before authentication is allowed".
+- **Locked accounts:** "Regardless of the authentication type", sshd refuses an account that is locked, which on most Linuxes means a password field starting with `!` (the default for `useradd`). The man page's fix for "public-key, no password" is to set the field to something else. Give `rent` the password `*` (`usermod -p '*' rent`), and create `/run/sshd` (the privilege-separation directory) before `sshd -D -e`.
+- **RPC log limits on Base Sepolia (measured 6 Nov):**
+
+  | RPC | `eth_getLogs` limit |
+  |---|---|
+  | `https://sepolia.base.org` | **200 blocks** (about 7 minutes) |
+  | `https://base-sepolia-rpc.publicnode.com` | refuses queries without an `address`; with one, **50,000 blocks** (about 28 hours), and the logs include `blockTimestamp` |
+
+  So the access check filters USDC `Transfer` logs (address = USDC, topic2 = host) and reads the matching `Executed` from each receipt (receipts have no range limit). Querying `Executed` directly would need no address, which publicnode refuses.
+- **Reference payment** (Base Sepolia tx `0x7731ae72…ec2a`): `Executed` emitted by the payer's account `0xa82f…d4f8`, with topic1 = nonce 0, topic2 = USDC, topic3 = payee `0x0d39…5809`. The data is amount 100000, fee 20000, relayer `0x11c0…0588`, keyHash `0xbd31…d8df`, `viaCommit` false.
+- **Oracle Cloud VM (the demo host):**
+  - Oracle's default Ubuntu images ship iptables rules that reject every port except 22. A port must be opened twice:
+    - a VCN Security List ingress rule (TCP 2222 from 0.0.0.0/0);
+    - `sudo iptables -I INPUT -p tcp --dport 2222 -j ACCEPT`, then `sudo netfilter-persistent save` so it survives reboots.
+  - The free-tier Ampere A1 is ARM64. The `oven/bun` images are multi-arch, so build the image on the VM.
+  - Leave the VM's own sshd on port 22 alone.
 
 ## 9. Prize checklists
 
