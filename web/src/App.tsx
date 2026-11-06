@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
 import {
-  createPublicClient,
   createWalletClient,
   custom,
   erc20Abi,
   formatUnits,
   getAddress,
-  http,
   parseUnits,
   type Address,
   type EIP1193Provider,
@@ -18,14 +16,13 @@ import {
   CORE,
   ENS,
   ENS_DEPLOYMENT,
-  githubKeys,
-  githubUser,
   keyHash,
   keyOracleAbi,
   type ChainKey,
   type GithubUser,
-  HOSTED_GATEWAY_URL,
 } from "@sereno/shared";
+import { clientFor, fetchProfile, PAY_CHAINS, short } from "./lib";
+import { Spend } from "./Spend";
 
 declare global {
   interface Window {
@@ -33,26 +30,7 @@ declare global {
   }
 }
 
-const PAY_CHAINS: ChainKey[] = ["base-sepolia", "arbitrum-sepolia"];
-const GATEWAY = import.meta.env.VITE_GATEWAY_URL ?? HOSTED_GATEWAY_URL;
-
-/// Profile and SSH keys through our gateway (token + cache); straight from GitHub if the gateway is unreachable.
-async function fetchProfile(login: string): Promise<{ user: GithubUser; keys: string[] }> {
-  try {
-    const res = await fetch(`${GATEWAY}/lookup/${encodeURIComponent(login)}`);
-    if (res.status === 404) throw Object.assign(new Error("not found"), { notFound: true });
-    if (res.ok) {
-      const p = (await res.json()) as { login: string; id: string; name: string | null; avatarUrl: string; keys: string[] };
-      return { user: { login: p.login, id: BigInt(p.id), name: p.name, avatarUrl: p.avatarUrl }, keys: p.keys };
-    }
-  } catch (e) {
-    if ((e as { notFound?: boolean }).notFound) throw e;
-  }
-  const user = await githubUser(login);
-  return { user, keys: await githubKeys(user.id).catch(() => []) };
-}
-const ensClient = createPublicClient({ chain: CHAINS.sepolia.chain, transport: http(CHAINS.sepolia.rpc) });
-const clientFor = (key: ChainKey) => createPublicClient({ chain: CHAINS[key].chain, transport: http(CHAINS[key].rpc) });
+const ensClient = clientFor("sepolia");
 /// Wallets announced through EIP-6963 (so MetaMask and Phantom can both be installed without fighting over window.ethereum).
 interface WalletOption {
   name: string;
@@ -72,8 +50,6 @@ function useWallets(): WalletOption[] {
   return wallets.length > 0 ? wallets : window.ethereum ? [{ name: "Browser wallet", provider: window.ethereum }] : [];
 }
 
-const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
-
 interface Lookup {
   user: GithubUser;
   name: string;
@@ -85,7 +61,7 @@ interface Lookup {
   keys: { type: string; comment: string; listed: boolean }[];
 }
 
-export function App() {
+function Pay() {
   const [login, setLogin] = useState("");
   const [chainKey, setChainKey] = useState<ChainKey>("base-sepolia");
   const [lookup, setLookup] = useState<Lookup | null>(null);
@@ -209,12 +185,7 @@ export function App() {
   const mismatch = lookup && lookup.ensAddress && lookup.ensAddress !== lookup.factoryAddress;
 
   return (
-    <main>
-      <header>
-        <h1>Sereno</h1>
-        <p className="tagline">Pay any developer by their GitHub username. They spend with the SSH key they already have.</p>
-      </header>
-
+    <>
       <form onSubmit={find} className="search">
         <span className="at">github.com/</span>
         <input value={login} onChange={(e) => setLogin(e.target.value)} placeholder="username" autoFocus spellCheck={false} />
@@ -281,7 +252,31 @@ export function App() {
           {paid && <p className="ok-msg">Paid. <a href={paid} target="_blank" rel="noreferrer">View transaction</a></p>}
         </section>
       )}
+    </>
+  );
+}
 
+type Page = "pay" | "spend";
+const pageFromHash = (): Page => (window.location.hash === "#spend" ? "spend" : "pay");
+
+export function App() {
+  const [page, setPage] = useState<Page>(pageFromHash);
+  useEffect(() => {
+    const on = () => setPage(pageFromHash());
+    window.addEventListener("hashchange", on);
+    return () => window.removeEventListener("hashchange", on);
+  }, []);
+  return (
+    <main>
+      <header>
+        <h1>Sereno</h1>
+        <p className="tagline">Pay any developer by their GitHub username. They spend with the SSH key they already have.</p>
+        <nav className="tabs">
+          <a href="#pay" className={page === "pay" ? "on" : ""}>Pay someone</a>
+          <a href="#spend" className={page === "spend" ? "on" : ""}>Spend your balance</a>
+        </nav>
+      </header>
+      {page === "spend" ? <Spend /> : <Pay />}
       <footer>
         No sign-up, no seed phrase, no trackers. Open source (MIT). Testnet: {PAY_CHAINS.map((k) => CHAINS[k].chain.name).join(" and ")}, Circle USDC.
       </footer>

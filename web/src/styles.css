@@ -52,3 +52,23 @@ code { font-size: 0.85rem; }
 .pay input { width: 110px; }
 footer { margin-top: 40px; color: var(--muted); font-size: 0.85rem; }
 @media (max-width: 560px) { dl { grid-template-columns: 1fr; } }
+header .tabs { margin: 0 0 24px; }
+.tabs { display: flex; gap: 6px; margin: 18px 0 8px; flex-wrap: wrap; }
+.tabs a, .tabs button { background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: 0.9rem; font-weight: 600; text-decoration: none; }
+.tabs a.on, .tabs button.on { color: var(--fg); border-color: var(--accent); }
+.lead { color: var(--muted); margin: 0 0 4px; }
+.form { display: flex; flex-direction: column; gap: 12px; }
+.form label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 0.85rem; flex: 1; min-width: 140px; }
+.form input:not([type="file"]), textarea { background: var(--bg); color: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 9px; font-size: 0.95rem; width: 100%; }
+.form .row, .card .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.form .row input { flex: 1; min-width: 0; }
+.form h3, .card h3 { margin: 18px 0 8px; font-size: 1rem; }
+.form h3 { margin-top: 0; }
+.form p { margin: 0; }
+.cmd { position: relative; display: flex; gap: 8px; align-items: flex-start; }
+.cmd pre { flex: 1; min-width: 0; margin: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; overflow-x: auto; font-size: 0.82rem; }
+pre.intent { white-space: pre-wrap; overflow-wrap: anywhere; }
+button.small { padding: 6px 10px; font-size: 0.8rem; white-space: nowrap; }
+textarea { font-family: ui-monospace, monospace; font-size: 0.8rem; margin-bottom: 8px; }
+.file { display: block; color: var(--muted); font-size: 0.85rem; margin-bottom: 10px; }
+@media (max-width: 560px) { .cmd { flex-direction: column; } }

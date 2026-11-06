@@ -1,17 +1,11 @@
 #!/usr/bin/env bun
-// ak: pay and spend with the SSH key already on your GitHub profile.
-//
-//   ak account <github-user>
-//   ak send <amount> <to> --as <github-user> --key <ssh key> [--chain base-sepolia] [--fee 0.02]
-//   ak commit-pay <amount> <to> --as <github-user> --key <ssh key> [--repo .] [--push] [--relay]
-//   ak claim --as <github-user> --key <ssh key>
-//
-// <to> is a 0x address or a GitHub username. Amounts are in USDC. The relayer is our hosted one unless
-// AK_RELAYER names another (e.g. http://localhost:8788). AK_SSH_KEYGEN picks the ssh-keygen binary (for a phone key on Windows: Win32-OpenSSH 10.x).
+// ak: pay and spend with the SSH key already on your GitHub profile. Runs under Bun (bun cli/src/main.ts) or, bundled
+// by cli/scripts/pack.ts, under Node as the npm package `sereno-ak` (npx sereno-ak ...).
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createPublicClient, erc20Abi, formatUnits, getAddress, http, isAddress, parseUnits, type Address, type Hex } from "viem";
 import {
   accountFactoryAbi,
@@ -32,6 +26,20 @@ import {
   type ChainConfig,
   HOSTED_RELAYER_URL,
 } from "@sereno/shared";
+
+const USAGE = `ak: pay and spend with the SSH key already on your GitHub profile.
+
+  ak account <github-user> [--chain base-sepolia|arbitrum-sepolia]
+  ak send <amount> <to> --as <github-user> --key <ssh key> [--chain ...] [--fee 0.02]
+  ak commit-pay <amount> <to> --as <github-user> --key <ssh key> [--repo .] [--push] [--relay]
+  ak claim --as <github-user> --key <ssh key>
+
+<to> is a 0x address or a GitHub username. Amounts are in USDC. --key is your SSH private key file
+(for example ~/.ssh/id_ed25519; a .pub file works when the key is in ssh-agent).
+commit-pay makes a signed commit whose message is the payment; --push pushes it and has the relayer
+pay it from GitHub, --relay submits the local commit directly.
+Env: GITHUB_TOKEN (higher GitHub rate limit), AK_RELAYER (another relayer URL),
+AK_SSH_KEYGEN (another ssh-keygen, e.g. Win32-OpenSSH 10.x for a phone key on Windows).`;
 
 const RELAYER = process.env.AK_RELAYER ?? HOSTED_RELAYER_URL;
 const SSH_KEYGEN = process.env.AK_SSH_KEYGEN ?? "ssh-keygen";
@@ -107,6 +115,12 @@ async function nextIntent(c: ChainConfig, githubId: bigint, to: Address, amount:
   return { account, text };
 }
 
+async function nonceOf(c: ChainConfig, account: Address): Promise<bigint> {
+  const code = await client(c).getCode({ address: account });
+  return code && code !== "0x" ? client(c).readContract({ address: account, abi: sshAccountAbi, functionName: "nonce" }) : 0n;
+}
+const parseIntentNonce = (text: string) => BigInt(text.match(/^nonce: (\d+)$/m)?.[1] ?? "0");
+
 function showText(what: string, text: string) {
   console.log(`\n${what} (exactly what you sign):\n${text.replace(/^/gm, "  │ ")}`);
 }
@@ -154,7 +168,8 @@ async function cmdSend(pos: string[], opts: Record<string, string | true>, c: Ch
   try {
     const msg = join(dir, "message.txt");
     writeFileSync(msg, text);
-    const wrapper = join(import.meta.dir, "../bin/sha256-sign.sh").replace(/\\/g, "/");
+    // Same relative path from cli/src/main.ts and from the bundled ak.js in the npm package.
+    const wrapper = join(dirname(fileURLToPath(import.meta.url)), "../bin/sha256-sign.sh").replace(/\\/g, "/");
     const git = (...args: string[]) => spawnSync("git", ["-C", repo, ...args], { encoding: "utf8", stdio: ["inherit", "pipe", "inherit"] });
     const r = git("-c", "gpg.format=ssh", "-c", `user.signingkey=${resolve(key)}`, "-c", `gpg.ssh.program=${wrapper}`, "commit", "-S", "--allow-empty", "--cleanup=verbatim", "-F", msg);
     if (r.status !== 0) die("git commit failed");
@@ -164,10 +179,26 @@ async function cmdSend(pos: string[], opts: Record<string, string | true>, c: Ch
     console.log(`\nsigned commit ${git("rev-parse", "--short", "HEAD").stdout.trim()} in ${repo}`);
     if (opts.push) {
       if (git("push").status !== 0) die("git push failed");
-      console.log("pushed: a relayer watching this repo pays it (WATCH_REPOS)");
+      const sha = git("rev-parse", "HEAD").stdout.trim();
+      const slug = git("remote", "get-url", "origin").stdout.trim().match(/github\.com[:/]([\w.-]+\/[\w.-]+?)(?:\.git)?$/)?.[1];
+      if (!slug) {
+        console.log(`pushed ${sha.slice(0, 7)}; origin isn't a GitHub repo, so submit it with --relay`);
+        return;
+      }
+      console.log(`pushed: https://github.com/${slug}/commit/${sha}`);
+      // The relayer fetches the commit from GitHub (that's the broadcast). A relayer watching this repo may beat it to it.
+      const res = await fetch(`${RELAYER}/commit`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ repo: slug, sha }) });
+      const out = (await res.json()) as Record<string, string>;
+      if (res.ok) return console.log(`paid: ${out.url}${out.githubVerified ? " (GitHub shows the commit as Verified)" : ""}`);
+      // Refused: maybe because a watching relayer's transaction for the same nonce is already in flight.
+      for (let i = 0; i < 6; i++) {
+        if ((await nonceOf(c, account)) > parseIntentNonce(text)) return console.log("paid: a relayer watching this repo already submitted it");
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+      die(`relayer refused: ${out.message}`);
     }
     if (opts.relay) console.log(`paid: ${(await post("/commit", { raw })).url}`);
-    if (!opts.push && !opts.relay) console.log("push it (--push) for a watching relayer, or --relay to submit it directly");
+    if (!opts.relay) console.log("push it (--push) or submit it directly (--relay); or paste the pushed commit's link on the pay page's Spend tab");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -205,5 +236,5 @@ switch (pos[0]) {
     await cmdClaim(opts);
     break;
   default:
-    console.log(readFileSync(import.meta.path, "utf8").split("\n").slice(1, 10).map((l) => l.replace(/^\/\/ ?/, "")).join("\n"));
+    console.log(USAGE);
 }

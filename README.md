@@ -46,7 +46,9 @@ cd web; bun run dev
 
 The gateway needs `.secrets/gateway.key` and the relayer `.secrets/relayer.key` (or `deployer.key`); ask Suparno.
 
-CLI: `bun run ak account <github-user>`, `bun run ak send 0.1 <user> --as <you> --key ~/.ssh/id_ed25519`, `bun run ak commit-pay ...`, `bun run ak claim --as <you> --key <key>`.
+CLI, for anyone (Node 20+, published as [`sereno-ak`](https://www.npmjs.com/package/sereno-ak)): `npx sereno-ak account <github-user>`, `npx sereno-ak send 0.1 <user> --as <you> --key ~/.ssh/id_ed25519`, `npx sereno-ak commit-pay 0.1 <user> --as <you> --key ~/.ssh/id_ed25519 --push` (in any GitHub repo), `npx sereno-ak claim --as <you> --key <key>`. From the repo: `bun run ak ...`. Build the npm package with `bun cli/scripts/pack.ts`.
+
+No CLI at all: the pay page's **Spend** tab builds the payment text, gives you the stock `ssh-keygen -Y sign` (or `git commit -S`) command, and submits the signature, or the link of a pushed payment commit, through the relayer.
 
 Contracts: `cd contracts && forge test`.
 

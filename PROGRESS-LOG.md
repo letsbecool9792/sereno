@@ -14,7 +14,28 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | M3+M4 contracts done (PR); M1/M2 on Linux | ETH for relayer `0xd599…80d5` | 6 Nov 01:07 |
 | WS2 CRE and ENS | Gantavya | G1–G4 code done (4 branches); G1 deploy, G2/G3 live runs | Fly account verification, `cre login` | 6 Nov 00:20 |
-| WS3 clients and demo | Suparno + Claude | gateway and relayer hosted (Railway); everything in the demo tested; demo prep | | 6 Nov 05:35 |
+| WS3 clients and demo | Suparno + Claude | Spend page; `sereno-ak` npm package ready; demo prep | npm publish, Vercel deploy (Suparno) | 6 Nov 10:35 |
+
+---
+
+## 2026-11-06 10:35 IST: Suparno's Claude (laptop): Spend page; `ak` packaged for npm (`sereno-ak`); commit-pay works in any repo
+
+- **Pay page "Spend your balance" tab** (`web/src/Spend.tsx`, `#spend`). Nothing to install:
+  - enter your username, the recipient (username or 0x), amount and fee;
+  - it builds the exact intent text (the contract's own `intent()` once the account is deployed), offers it as `intent.txt` to download, and shows the stock commands;
+  - **sign:** `ssh-keygen -Y sign -n sereno@v1 -O hashalg=sha256 -f <key> intent.txt`, then paste or pick `intent.txt.sig`, and the relayer pays;
+  - **commit:** `git commit -S --allow-empty --cleanup=verbatim -F intent.txt` and push to any public repo;
+  - **paste a payment commit link** (`github.com/o/r/commit/<sha>`, `/pull/N/commits/<sha>` or `o/r@<sha>`), and the relayer's `POST /commit {repo, sha}` fetches it from GitHub and pays it.
+- **Tested on Base Sepolia with the hosted relayer:**
+  - a signature payment the way the page does it: the contract's text equals the shared builder ([tx](https://sepolia.basescan.org/tx/0x7392c5ba7e8ea29a28e87cb0d86df908e6f49efce02fb8518c017b8cc999bf62));
+  - a **stock** `git commit -S` (SHA-512, no wrapper), pushed to a throwaway branch (since deleted) and paid by pasting its link: GitHub Verified, 1.26M gas ([tx](https://sepolia.basescan.org/tx/0xd042bdd34a2638b274b06412fa670c6a1ad2dbaa9e9610476430af4313888fbc)).
+- **`ak` runs under Node:** `import.meta.dir`/`path` replaced and the usage text is a constant. `bun cli/scripts/pack.ts` builds `cli/dist/npm` (one bundled `dist/ak.js`, the sha256 wrapper, README, LICENSE; 126 kB).
+  - Tested from the packed tarball in a clean folder with Node 22: `account`, `send` ([tx](https://sepolia.basescan.org/tx/0xe94afe25e13c8d730a1f348a6429c05dd25bbfb4256fa5b8120438601a891908)) and `commit-pay --push`.
+  - **Not published yet:** npm needs Suparno's login (`npm login`, then `cd cli/dist/npm && npm publish`). The name `sereno-ak` was free at 10:30.
+- **`ak commit-pay --push` now submits the pushed commit to the relayer itself** (repo taken from `origin`), so it pays in any GitHub repo, not just watched ones. If a watching relayer wins the race, it reports that instead of failing (tested in `sereno-demo`: the watcher paid first).
+- letsbecool9792's account is down to about 0.20 USDC on Base Sepolia; top it up from faucet.circle.com before the demo.
+
+**WAITING ON:** Suparno: `npm login` and publish; deploy `web/` to Vercel (set `VITE_GATEWAY_URL` only if it isn't the hosted gateway; it defaults to the hosted one). No Railway redeploy needed (gateway, relayer and shared untouched).
 
 ---
 
