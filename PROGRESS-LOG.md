@@ -13,7 +13,7 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 | WS | Owner | Now working on | Blocked on | Last update |
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | frontend reform v2 (`ws3/redesign`, web half); see 7 Nov 01:15 entry | Suparno takes the extension half | 7 Nov 01:25 |
-| WS2 CRE and ENS | Gantavya | frontend redesign PR (`ws3/frontend-redesign`); pay-to-SSH task queued | Suparno reviews the redesign PR; VM access, a throwaway key, test USDC (Gantavya) | 6 Nov 21:25 |
+| WS2 CRE and ENS | Gantavya | 10 demo bounty PRs open (sereno-demo #15 to #24); frontend redesign PR #26; pay-to-SSH task queued | Suparno reviews #26 and merges one demo PR per run; VM access, a throwaway key, test USDC (Gantavya) | 6 Nov 22:52 |
 | WS3 clients and demo | Suparno + Claude | extension half of reform v2 (PR #30) | Suparno merges #30 | 7 Nov 01:35 |
 
 ---
@@ -119,6 +119,27 @@ Headless screenshots (landing, Pay, Spend, Bounties, the boot, Spend's error and
 **WAITING ON:**
 - Suparno: review `ws3/redesign` when its PR opens, and start the extension half.
 - Mohikshit: finish the web half.
+
+## 2026-11-06 22:52 IST: Gantavya's Claude: the 10 sereno-demo PRs (the 22:55 task)
+
+- **Opened from `g4ntavya`, one per issue, each adding only its `docs/` file and saying `Fixes #N`.** GitHub links all ten to their issues, so merging one closes its issue and the bounty workflow finds `g4ntavya` as the winner. None merged.
+
+  | Issue | PR | File |
+  |---|---|---|
+  | #5 | [#15](https://github.com/letsbecool9792/sereno-demo/pull/15) | `docs/intent.md` |
+  | #6 | [#16](https://github.com/letsbecool9792/sereno-demo/pull/16) | `docs/verify-a-payment.md` |
+  | #7 | [#17](https://github.com/letsbecool9792/sereno-demo/pull/17) | `docs/faq.md` |
+  | #8 | [#18](https://github.com/letsbecool9792/sereno-demo/pull/18) | `docs/glossary.md` |
+  | #9 | [#19](https://github.com/letsbecool9792/sereno-demo/pull/19) | `docs/relayer.md` |
+  | #10 | [#20](https://github.com/letsbecool9792/sereno-demo/pull/20) | `docs/new-key-rule.md` |
+  | #11 | [#21](https://github.com/letsbecool9792/sereno-demo/pull/21) | `docs/chains.md` |
+  | #12 | [#22](https://github.com/letsbecool9792/sereno-demo/pull/22) | `docs/bounties.md` |
+  | #13 | [#23](https://github.com/letsbecool9792/sereno-demo/pull/23) | `docs/ens-names.md` |
+  | #14 | [#24](https://github.com/letsbecool9792/sereno-demo/pull/24) | `docs/troubleshooting.md` |
+- **The docs are checked against the code:** the intent format and example come from `packages/shared` and its test, the 72 h / 50 USDC rule from `SshAccount.sol`, the relayer from `relayer/src/relay.ts`, the chain IDs and USDC addresses from CLAUDE.md, and the claim from `NameRegistrar.sol`.
+- **Branches are on `letsbecool9792/sereno-demo` itself** (`g4ntavya/docs-<file>`), since `g4ntavya` has push access there; no fork.
+- **Redesign PR #26:** unchanged. A cursor-following glow on the landing background was tried and dropped.
+- **WAITING ON:** Suparno: per demo run, fund one of issues #5 to #14, then merge its PR on stage.
 
 ## 2026-11-06 22:55 IST: Suparno's Claude (laptop): TASK for Gantavya: 10 PRs on sereno-demo (one per demo bounty run); DEMO.md
 
