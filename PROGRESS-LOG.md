@@ -18,6 +18,20 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 ---
 
+## 2026-11-06 IST: Mohikshit's Claude (Linux): "Holo Card" redesign of the pay page (`ws3/holo-card`, PR for Suparno)
+
+- **What:** the web app gets a new look picked by Mohikshit from ten wallet-style directions (meant to sit beside Phantom and MetaMask). Dark violet night, white pill buttons, Unbounded + Onest (self-hosted through `@fontsource-variable`, so no font CDN request), and a lantern mascot. The developer is shown as a holographic card whose foil follows the pointer; it goes grey with a coral ring when the name and account disagree, and gets a "Received" stamp after a payment.
+- **Pay tab:** card, then amount with 1/5/10/25 quick picks and the Pay pill, then account/balance/keys. New: `?user=<login>` deep link; the search accepts `@name` or a profile URL; an empty state.
+- **Bug fixed:** the "Paid" message never stayed on screen, because `find()` (the balance refresh) cleared it right after `pay()` set it.
+- **Spend tab:** shows the developer's own card after Prepare; other logic untouched. **Bounties:** restyled through shared classes only.
+- **Design record:** `web/PRODUCT.md`, `web/DESIGN.md`, `web/.impeccable/design.json`, `web/.impeccable/surfaces/src-app-tsx.md`. Impeccable's local scratch is git-ignored.
+- **Tested:** `bun run typecheck` (all packages), `bun test` (11 pass), `vite build`; headless Chrome captures at 1440x900 and 390x844 with live chain data (`?user=octocat`). Not seen rendered: paying/paid with a real wallet, the refused card, Spend after Prepare.
+
+**WAITING ON:**
+- **Suparno:** review the PR; click through a real 1 USDC payment and a Spend prepare before merging; redeploy the hosted pay page after merge.
+
+---
+
 ## 2026-11-06 13:45 IST: Suparno's Claude (laptop): bounties verified on the hosted path; demo bounty issue ready
 
 - **Hosted check passed.** `foundry-rs/foundry#18140` was funded with 0.1 USDC. The pay page's "Check GitHub and pay the PR author" went through the Railway relayer to the laptop worker, `github-bounty` settled it (winner `stevencartavia`, GitHub 112043913), and the relayer paid ([tx](https://sepolia.basescan.org/tx/0x2eb8ab2f7f3f0c18e78976b5e11ff0a4750d2bcb6c9bcc7368cde7722a8441ad)).

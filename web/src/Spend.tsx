@@ -5,6 +5,7 @@ import {
   buildIntent,
   CHAINS,
   CORE,
+  ENS_DEPLOYMENT,
   keyHash,
   keyOracleAbi,
   SIGNING_NAMESPACE,
@@ -13,6 +14,7 @@ import {
   type GithubUser,
 } from "@sereno/shared";
 import { clientFor, fetchProfile, PAY_CHAINS, parseCommitLink, relay, RELAYER, short } from "./lib";
+import { HoloCard } from "./HoloCard";
 
 interface Prepared {
   chainKey: ChainKey;
@@ -215,6 +217,10 @@ export function Spend() {
         <label>Your SSH private key file (only used to fill in the commands below)<input value={keyPath} onChange={(e) => setKeyPath(e.target.value)} spellCheck={false} /></label>
         <button disabled={!!busy || !me.trim() || !to.trim() || !(Number(amount) > 0)}>Prepare payment</button>
       </form>
+
+      {prep && (
+        <HoloCard user={prep.user} name={`${prep.user.login.toLowerCase()}.${ENS_DEPLOYMENT?.parentName ?? "sereno.eth"}`} />
+      )}
 
       {prep && (
         <section className="card">

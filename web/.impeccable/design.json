@@ -1,0 +1,546 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-06T07:49:44.265888+00:00",
+  "title": "Design System: Sereno",
+  "extensions": {
+    "colorMeta": {
+      "night": {
+        "role": "neutral",
+        "displayName": "Night",
+        "tonalRamp": [
+          "#1a1a23",
+          "#2e2e42",
+          "#434365",
+          "#58588d",
+          "#7c7cac",
+          "#a3a3c2",
+          "#c9c9d9",
+          "#ebebf0"
+        ]
+      },
+      "graphite": {
+        "role": "neutral",
+        "displayName": "Graphite",
+        "tonalRamp": [
+          "#1b1b22",
+          "#31313f",
+          "#494960",
+          "#616184",
+          "#8484a4",
+          "#a8a8bd",
+          "#ccccd6",
+          "#ebebef"
+        ]
+      },
+      "graphite-raised": {
+        "role": "neutral",
+        "displayName": "Raised Graphite",
+        "tonalRamp": [
+          "#1b1b22",
+          "#31313f",
+          "#484860",
+          "#616185",
+          "#8484a4",
+          "#a8a8bd",
+          "#ccccd6",
+          "#ebebef"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "tonalRamp": [
+          "#1c1c21",
+          "#32323e",
+          "#4a4a5e",
+          "#636382",
+          "#8686a2",
+          "#aaaabb",
+          "#ccccd6",
+          "#ececef"
+        ]
+      },
+      "focus-line": {
+        "role": "neutral",
+        "displayName": "Focus Line",
+        "tonalRamp": [
+          "#1c1c21",
+          "#32323e",
+          "#4a4a5e",
+          "#636382",
+          "#8686a2",
+          "#aaaabb",
+          "#cdcdd6",
+          "#ececef"
+        ]
+      },
+      "moonlight": {
+        "role": "neutral",
+        "displayName": "Moonlight",
+        "tonalRamp": [
+          "#181825",
+          "#2a2a46",
+          "#3c3c6c",
+          "#4e4e97",
+          "#7373b5",
+          "#9e9ec7",
+          "#c6c6dc",
+          "#eaeaf1"
+        ]
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "Moonlight White",
+        "tonalRamp": [
+          "#181825",
+          "#2a2a46",
+          "#3c3c6c",
+          "#4e4e97",
+          "#7373b5",
+          "#9e9ec7",
+          "#c6c6dc",
+          "#eaeaf1"
+        ]
+      },
+      "on-primary": {
+        "role": "neutral",
+        "displayName": "Night Ink",
+        "tonalRamp": [
+          "#1a1a23",
+          "#2e2e42",
+          "#434365",
+          "#58588d",
+          "#7c7cac",
+          "#a3a3c2",
+          "#c9c9d9",
+          "#ebebf0"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Mist",
+        "tonalRamp": [
+          "#1c1c21",
+          "#33333e",
+          "#4b4b5d",
+          "#656581",
+          "#8787a1",
+          "#aaaabb",
+          "#cdcdd5",
+          "#ececef"
+        ]
+      },
+      "link": {
+        "role": "secondary",
+        "displayName": "Periwinkle Link",
+        "tonalRamp": [
+          "#0a1433",
+          "#0e2262",
+          "#0d2f9b",
+          "#053ae0",
+          "#3160f7",
+          "#7492f1",
+          "#b0c0f2",
+          "#e2e7f8"
+        ]
+      },
+      "ok": {
+        "role": "secondary",
+        "displayName": "Verified Mint",
+        "tonalRamp": [
+          "#0e2f23",
+          "#165a42",
+          "#1a8e65",
+          "#1acc8d",
+          "#43e5ac",
+          "#80e5c1",
+          "#b7ecd9",
+          "#e4f6f0"
+        ]
+      },
+      "ok-bg": {
+        "role": "secondary",
+        "displayName": "Verified Mint Wash",
+        "tonalRamp": [
+          "#0e2f23",
+          "#165a42",
+          "#1a8e65",
+          "#1acc8d",
+          "#43e5ac",
+          "#80e5c1",
+          "#b7ecd9",
+          "#e4f6f0"
+        ],
+        "canonical": "rgb(110 240 194 / 0.12)"
+      },
+      "err": {
+        "role": "secondary",
+        "displayName": "Refusal Coral",
+        "tonalRamp": [
+          "#330a0a",
+          "#620e0e",
+          "#9b0d0d",
+          "#e00505",
+          "#f73131",
+          "#f17474",
+          "#f2b0b0",
+          "#f8e2e2"
+        ]
+      },
+      "err-bg": {
+        "role": "secondary",
+        "displayName": "Refusal Coral Wash",
+        "tonalRamp": [
+          "#330a0a",
+          "#620e0e",
+          "#9b0d0d",
+          "#e00505",
+          "#f73131",
+          "#f17474",
+          "#f2b0b0",
+          "#f8e2e2"
+        ],
+        "canonical": "rgb(255 143 143 / 0.1)"
+      },
+      "foil-pink": {
+        "role": "tertiary",
+        "displayName": "Foil Pink",
+        "tonalRamp": [
+          "#330a23",
+          "#620e42",
+          "#9b0d64",
+          "#e0058c",
+          "#f731ab",
+          "#f174c1",
+          "#f2b0d9",
+          "#f8e2f0"
+        ],
+        "gradient": {
+          "name": "foil",
+          "value": "repeating-linear-gradient(calc(60deg + var(--mx, 0.3) * 40deg), rgb(255 255 255 / 0) 0 14px, rgb(255 255 255 / 0.16) 18px, rgb(255 255 255 / 0) 24px), conic-gradient(from calc(var(--mx, 0.3) * 220deg) at 50% 120%, #ff9ad8, #c6a8ff, #9ab8ff, #8ff5d6, #fff3a8, #ffb59a, #ff9ad8, #c6a8ff, #8ff5d6, #fff3a8, #ff9ad8)",
+          "purpose": "The holo card's background. --mx (0..1, default 0.3) is the pointer's x across the card; it rotates the sheen lines and the conic start angle."
+        }
+      },
+      "foil-lilac": {
+        "role": "tertiary",
+        "displayName": "Foil Lilac",
+        "tonalRamp": [
+          "#180a33",
+          "#2b0e62",
+          "#3e0d9b",
+          "#5105e0",
+          "#7531f7",
+          "#9f74f1",
+          "#c7b0f2",
+          "#eae2f8"
+        ]
+      },
+      "foil-periwinkle": {
+        "role": "tertiary",
+        "displayName": "Foil Periwinkle",
+        "tonalRamp": [
+          "#0a1633",
+          "#0e2762",
+          "#0d379b",
+          "#0546e0",
+          "#316cf7",
+          "#7499f1",
+          "#b0c4f2",
+          "#e2e9f8"
+        ]
+      },
+      "foil-mint": {
+        "role": "tertiary",
+        "displayName": "Foil Mint",
+        "tonalRamp": [
+          "#0e2f25",
+          "#155b46",
+          "#19906c",
+          "#17ce97",
+          "#41e7b4",
+          "#7ee7c7",
+          "#b6ecdc",
+          "#e4f6f1"
+        ]
+      },
+      "foil-butter": {
+        "role": "tertiary",
+        "displayName": "Foil Butter",
+        "tonalRamp": [
+          "#332d0a",
+          "#62560e",
+          "#9b880d",
+          "#e0c205",
+          "#f7dc31",
+          "#f1e074",
+          "#f2e9b0",
+          "#f8f5e2"
+        ]
+      },
+      "foil-peach": {
+        "role": "tertiary",
+        "displayName": "Foil Peach",
+        "tonalRamp": [
+          "#33150a",
+          "#62250e",
+          "#9b330d",
+          "#e04005",
+          "#f76631",
+          "#f19574",
+          "#f2c2b0",
+          "#f8e8e2"
+        ]
+      },
+      "lantern-flame": {
+        "role": "tertiary",
+        "displayName": "Lantern Flame",
+        "tonalRamp": [
+          "#33280a",
+          "#624c0e",
+          "#9b770d",
+          "#e0a805",
+          "#f7c431",
+          "#f1d174",
+          "#f2e1b0",
+          "#f8f2e2"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The Sereno wordmark in the header."
+      },
+      "amount": {
+        "displayName": "Amount",
+        "purpose": "The editable USDC amount in the paybox."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "The @login on the holo card; the done panel's Sent line at 1.15rem."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section headings and numbered steps inside cards."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "All running text; leads and taglines in Mist at 52ch."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Tabs and button text; form labels at 0.85rem in Mist."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Addresses, IDs, ENS names, balances, commands and the signed intent."
+      }
+    },
+    "gradients": [
+      {
+        "name": "foil",
+        "value": "repeating-linear-gradient(calc(60deg + var(--mx, 0.3) * 40deg), rgb(255 255 255 / 0) 0 14px, rgb(255 255 255 / 0.16) 18px, rgb(255 255 255 / 0) 24px), conic-gradient(from calc(var(--mx, 0.3) * 220deg) at 50% 120%, #ff9ad8, #c6a8ff, #9ab8ff, #8ff5d6, #fff3a8, #ffb59a, #ff9ad8, #c6a8ff, #8ff5d6, #fff3a8, #ff9ad8)",
+        "purpose": "Holo card background; --mx (0..1) is the pointer x."
+      },
+      {
+        "name": "holo-sheen",
+        "value": "linear-gradient(115deg, transparent calc(var(--mx) * 100% - 22%), rgb(255 255 255 / 0.55) calc(var(--mx) * 100%), transparent calc(var(--mx) * 100% + 22%))",
+        "purpose": "Screen-blended sheen band over the foil at 0.7 opacity, tracking the pointer."
+      },
+      {
+        "name": "night-glow",
+        "value": "radial-gradient(80% 50% at 50% -10%, rgb(154 184 255 / 0.12), transparent 70%), #0b0b12",
+        "purpose": "Page ground, fixed attachment."
+      }
+    ],
+    "shadows": [
+      {
+        "name": "holo-lift",
+        "value": "0 30px 60px -30px rgb(154 184 255 / 0.55), inset 0 0 0 1px rgb(255 255 255 / 0.5)",
+        "purpose": "The holo card only."
+      },
+      {
+        "name": "holo-refused",
+        "value": "0 0 0 3px #ff8f8f, 0 30px 60px -30px rgb(255 143 143 / 0.4)",
+        "purpose": "Refused holo card, with filter grayscale(0.85) brightness(0.92)."
+      },
+      {
+        "name": "focus-ring",
+        "value": "0 0 0 3px rgb(154 184 255 / 0.18)",
+        "purpose": "Focused fields (0.14 on the search pill), with the #4a4a62 border."
+      }
+    ],
+    "motion": [
+      {
+        "name": "holo-tilt",
+        "value": "perspective(900px) rotateX(calc((0.5 - var(--my)) * 7deg)) rotateY(calc((var(--mx) - 0.5) * 9deg)); transition transform 0.25s ease-out",
+        "purpose": "Pointer-driven card tilt; removed under prefers-reduced-motion."
+      },
+      {
+        "name": "stamp-land",
+        "value": "0.45s cubic-bezier(0.16, 1, 0.3, 1); rotate(-9deg) scale(1.6) to scale(1), opacity 0 to 1",
+        "purpose": "Received stamp; no animation under reduced motion."
+      },
+      {
+        "name": "press",
+        "value": "transform 0.15s ease-out, filter 0.15s ease-out; scale(0.98) on press, brightness(0.92) on hover",
+        "purpose": "All buttons."
+      },
+      {
+        "name": "spin",
+        "value": "0.8s linear infinite (2.4s under reduced motion)",
+        "purpose": "Inline busy spinner."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "560px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Pill",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "White pill with night ink for the primary action; full width (15px 20px) as the Pay button.",
+      "html": "<button class=\"ds-btn\">Pay @octocat</button>",
+      "css": ":host{--bg:#0b0b12;--surface:#15151d;--surface-2:#1c1c27;--line:#2a2a38;--fg:#f5f5fa;--muted:#a3a3b8;--primary:#f5f5fa;--on-primary:#0b0b12;--ok:#6ef0c2;--ok-bg:rgb(110 240 194 / 0.12);--err:#ff8f8f;--err-bg:rgb(255 143 143 / 0.1);--link:#b8c9ff;--display:\"Unbounded Variable\",\"Unbounded\",ui-sans-serif,system-ui,sans-serif;--ui:\"Onest Variable\",\"Onest\",ui-sans-serif,system-ui,sans-serif;--mono:ui-monospace,\"SF Mono\",\"Cascadia Mono\",Menlo,Consolas,monospace;--r:16px;--r-sm:10px;} .ds-btn{background:var(--primary,#f5f5fa);color:var(--on-primary,#0b0b12);border:0;border-radius:999px;padding:11px 20px;font:700 0.95rem var(--ui);cursor:pointer;transition:transform .15s ease-out,filter .15s ease-out;} .ds-btn:hover{filter:brightness(0.92);} .ds-btn:active{transform:scale(0.98);} .ds-btn:focus-visible{outline:2px solid var(--link,#b8c9ff);outline-offset:2px;} .ds-btn:disabled{opacity:.45;cursor:default;}"
+    },
+    {
+      "name": "Secondary Pill",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Outlined pill for alternate actions such as Pay again.",
+      "html": "<button class=\"ds-btn ds-btn-secondary\">Pay again</button>",
+      "css": ":host{--bg:#0b0b12;--surface:#15151d;--surface-2:#1c1c27;--line:#2a2a38;--fg:#f5f5fa;--muted:#a3a3b8;--primary:#f5f5fa;--on-primary:#0b0b12;--ok:#6ef0c2;--ok-bg:rgb(110 240 194 / 0.12);--err:#ff8f8f;--err-bg:rgb(255 143 143 / 0.1);--link:#b8c9ff;--display:\"Unbounded Variable\",\"Unbounded\",ui-sans-serif,system-ui,sans-serif;--ui:\"Onest Variable\",\"Onest\",ui-sans-serif,system-ui,sans-serif;--mono:ui-monospace,\"SF Mono\",\"Cascadia Mono\",Menlo,Consolas,monospace;--r:16px;--r-sm:10px;} .ds-btn{background:var(--primary,#f5f5fa);color:var(--on-primary,#0b0b12);border:0;border-radius:999px;padding:11px 20px;font:700 0.95rem var(--ui);cursor:pointer;transition:transform .15s ease-out,filter .15s ease-out;} .ds-btn:hover{filter:brightness(0.92);} .ds-btn:active{transform:scale(0.98);} .ds-btn:focus-visible{outline:2px solid var(--link,#b8c9ff);outline-offset:2px;} .ds-btn:disabled{opacity:.45;cursor:default;} .ds-btn-secondary{background:transparent;color:var(--fg);border:1px solid var(--line);}"
+    },
+    {
+      "name": "Tab Bar",
+      "kind": "nav",
+      "refersTo": "tab-bar",
+      "description": "Graphite pill track; the active tab is the white pill.",
+      "html": "<nav class=\"ds-tabs\"><a class=\"on\" href=\"#\">Pay someone</a><a href=\"#\">Spend your balance</a><a href=\"#\">Issue bounties</a></nav>",
+      "css": ":host{--bg:#0b0b12;--surface:#15151d;--surface-2:#1c1c27;--line:#2a2a38;--fg:#f5f5fa;--muted:#a3a3b8;--primary:#f5f5fa;--on-primary:#0b0b12;--ok:#6ef0c2;--ok-bg:rgb(110 240 194 / 0.12);--err:#ff8f8f;--err-bg:rgb(255 143 143 / 0.1);--link:#b8c9ff;--display:\"Unbounded Variable\",\"Unbounded\",ui-sans-serif,system-ui,sans-serif;--ui:\"Onest Variable\",\"Onest\",ui-sans-serif,system-ui,sans-serif;--mono:ui-monospace,\"SF Mono\",\"Cascadia Mono\",Menlo,Consolas,monospace;--r:16px;--r-sm:10px;} .ds-tabs{display:flex;gap:4px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;width:fit-content;} .ds-tabs a{color:var(--muted);border-radius:999px;padding:8px 16px;font:600 .92rem var(--ui);text-decoration:none;} .ds-tabs a:hover{color:var(--fg);} .ds-tabs a:focus-visible{outline:2px solid var(--link);outline-offset:2px;} .ds-tabs a.on{background:var(--primary);color:var(--on-primary);}"
+    },
+    {
+      "name": "Quick Amount Chips",
+      "kind": "chip",
+      "refersTo": "chip-quick",
+      "description": "Preset amounts; the selected chip turns white.",
+      "html": "<div class=\"ds-quick\"><button class=\"on\">1</button><button>5</button><button>10</button><button>25</button></div>",
+      "css": ":host{--bg:#0b0b12;--surface:#15151d;--surface-2:#1c1c27;--line:#2a2a38;--fg:#f5f5fa;--muted:#a3a3b8;--primary:#f5f5fa;--on-primary:#0b0b12;--ok:#6ef0c2;--ok-bg:rgb(110 240 194 / 0.12);--err:#ff8f8f;--err-bg:rgb(255 143 143 / 0.1);--link:#b8c9ff;--display:\"Unbounded Variable\",\"Unbounded\",ui-sans-serif,system-ui,sans-serif;--ui:\"Onest Variable\",\"Onest\",ui-sans-serif,system-ui,sans-serif;--mono:ui-monospace,\"SF Mono\",\"Cascadia Mono\",Menlo,Consolas,monospace;--r:16px;--r-sm:10px;} .ds-quick{display:flex;gap:6px;} .ds-quick button{background:var(--surface-2);color:var(--fg);border:0;border-radius:999px;padding:6px 14px;font:700 .85rem var(--ui);cursor:pointer;} .ds-quick button:hover{filter:brightness(1.2);} .ds-quick button:focus-visible{outline:2px solid var(--link);outline-offset:2px;} .ds-quick button.on{background:var(--primary);color:var(--on-primary);}"
+    },
+    {
+      "name": "Search Pill",
+      "kind": "input",
+      "refersTo": "search",
+      "description": "github.com/ prefix, borderless username input, chain select and Find pill in one graphite pill.",
+      "html": "<form class=\"ds-search\"><span class=\"at\">github.com/</span><input placeholder=\"username\" aria-label=\"GitHub username\"><button class=\"ds-btn\" type=\"button\">Find</button></form>",
+      "css": ":host{--bg:#0b0b12;--surface:#15151d;--surface-2:#1c1c27;--line:#2a2a38;--fg:#f5f5fa;--muted:#a3a3b8;--primary:#f5f5fa;--on-primary:#0b0b12;--ok:#6ef0c2;--ok-bg:rgb(110 240 194 / 0.12);--err:#ff8f8f;--err-bg:rgb(255 143 143 / 0.1);--link:#b8c9ff;--display:\"Unbounded Variable\",\"Unbounded\",ui-sans-serif,system-ui,sans-serif;--ui:\"Onest Variable\",\"Onest\",ui-sans-serif,system-ui,sans-serif;--mono:ui-monospace,\"SF Mono\",\"Cascadia Mono\",Menlo,Consolas,monospace;--r:16px;--r-sm:10px;} .ds-btn{background:var(--primary,#f5f5fa);color:var(--on-primary,#0b0b12);border:0;border-radius:999px;padding:11px 20px;font:700 0.95rem var(--ui);cursor:pointer;transition:transform .15s ease-out,filter .15s ease-out;} .ds-btn:hover{filter:brightness(0.92);} .ds-btn:active{transform:scale(0.98);} .ds-btn:focus-visible{outline:2px solid var(--link,#b8c9ff);outline-offset:2px;} .ds-btn:disabled{opacity:.45;cursor:default;} .ds-search{display:flex;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 18px;} .ds-search:focus-within{border-color:#4a4a62;box-shadow:0 0 0 3px rgb(154 184 255 / 0.14);} .ds-search .at{color:var(--muted);font-family:var(--ui);} .ds-search input{flex:1;min-width:120px;border:0;background:transparent;color:var(--fg);font:500 1.05rem var(--ui);outline:none;padding:6px 0;caret-color:#ff9ad8;}"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Raised graphite field with a periwinkle focus ring.",
+      "html": "<input class=\"ds-input\" placeholder=\"alice or 0x...\">",
+      "css": ":host{--bg:#0b0b12;--surface:#15151d;--surface-2:#1c1c27;--line:#2a2a38;--fg:#f5f5fa;--muted:#a3a3b8;--primary:#f5f5fa;--on-primary:#0b0b12;--ok:#6ef0c2;--ok-bg:rgb(110 240 194 / 0.12);--err:#ff8f8f;--err-bg:rgb(255 143 143 / 0.1);--link:#b8c9ff;--display:\"Unbounded Variable\",\"Unbounded\",ui-sans-serif,system-ui,sans-serif;--ui:\"Onest Variable\",\"Onest\",ui-sans-serif,system-ui,sans-serif;--mono:ui-monospace,\"SF Mono\",\"Cascadia Mono\",Menlo,Consolas,monospace;--r:16px;--r-sm:10px;} .ds-input{background:var(--surface-2);color:var(--fg);border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 11px;font:.95rem var(--ui);caret-color:#ff9ad8;} .ds-input:focus,.ds-input:focus-visible{border-color:#4a4a62;outline:none;box-shadow:0 0 0 3px rgb(154 184 255 / 0.18);}"
+    },
+    {
+      "name": "Holo Card",
+      "kind": "custom",
+      "refersTo": "holo-card",
+      "description": "The developer as a holographic card; foil and tilt follow the pointer (--mx/--my), mint name check.",
+      "html": "<div class=\"ds-holo\"><div class=\"ds-holo-top\"><span class=\"ds-holo-brand\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 32 32\" aria-hidden=\"true\"><path d=\"M11 7a5 5 0 0 1 10 0\" fill=\"none\" stroke=\"#0b0b12\" stroke-width=\"2.2\" stroke-linecap=\"round\"/><rect x=\"8\" y=\"8\" width=\"16\" height=\"3.4\" rx=\"1.7\" fill=\"#0b0b12\"/><rect x=\"9\" y=\"11\" width=\"14\" height=\"15\" rx=\"5\" fill=\"#ffffff\"/><ellipse cx=\"16\" cy=\"19.5\" rx=\"3.2\" ry=\"4.2\" fill=\"#fff3a8\"/><circle cx=\"13.6\" cy=\"17\" r=\"1.1\" fill=\"#0b0b12\"/><circle cx=\"18.4\" cy=\"17\" r=\"1.1\" fill=\"#0b0b12\"/><rect x=\"10\" y=\"26\" width=\"12\" height=\"2.6\" rx=\"1.3\" fill=\"#0b0b12\"/></svg>Sereno</span><span class=\"ds-holo-id\">No. 583231</span></div><div class=\"ds-holo-av\"></div><div class=\"ds-holo-name\">@octocat</div><div class=\"ds-holo-ens\">octocat.sereno.eth <span class=\"ds-holo-tag\">wildcard</span></div><div class=\"ds-holo-check\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"/></svg>Name matches account</div></div>",
+      "css": ":host{--bg:#0b0b12;--surface:#15151d;--surface-2:#1c1c27;--line:#2a2a38;--fg:#f5f5fa;--muted:#a3a3b8;--primary:#f5f5fa;--on-primary:#0b0b12;--ok:#6ef0c2;--ok-bg:rgb(110 240 194 / 0.12);--err:#ff8f8f;--err-bg:rgb(255 143 143 / 0.1);--link:#b8c9ff;--display:\"Unbounded Variable\",\"Unbounded\",ui-sans-serif,system-ui,sans-serif;--ui:\"Onest Variable\",\"Onest\",ui-sans-serif,system-ui,sans-serif;--mono:ui-monospace,\"SF Mono\",\"Cascadia Mono\",Menlo,Consolas,monospace;--r:16px;--r-sm:10px;} .ds-holo{--mx:0.3;--my:0.2;position:relative;overflow:hidden;isolation:isolate;display:grid;justify-items:center;text-align:center;gap:4px;padding:18px 20px 22px;border-radius:22px;color:#0b0b12;width:100%;max-width:400px;font-family:var(--ui);background:repeating-linear-gradient(calc(60deg + var(--mx, 0.3) * 40deg), rgb(255 255 255 / 0) 0 14px, rgb(255 255 255 / 0.16) 18px, rgb(255 255 255 / 0) 24px), conic-gradient(from calc(var(--mx, 0.3) * 220deg) at 50% 120%, #ff9ad8, #c6a8ff, #9ab8ff, #8ff5d6, #fff3a8, #ffb59a, #ff9ad8, #c6a8ff, #8ff5d6, #fff3a8, #ff9ad8);box-shadow:0 30px 60px -30px rgb(154 184 255 / 0.55),inset 0 0 0 1px rgb(255 255 255 / 0.5);transform:perspective(900px) rotateX(calc((0.5 - var(--my)) * 7deg)) rotateY(calc((var(--mx) - 0.5) * 9deg));transition:transform .25s ease-out;} .ds-holo::after{content:\"\";position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(115deg,transparent calc(var(--mx) * 100% - 22%),rgb(255 255 255 / 0.55) calc(var(--mx) * 100%),transparent calc(var(--mx) * 100% + 22%));mix-blend-mode:screen;opacity:.7;} .ds-holo:hover{--mx:0.7;--my:0.4;} .ds-holo.refused{filter:grayscale(0.85) brightness(0.92);box-shadow:0 0 0 3px var(--err),0 30px 60px -30px rgb(255 143 143 / 0.4);} .ds-holo-top{width:100%;display:flex;justify-content:space-between;align-items:center;font-size:.8rem;font-weight:700;margin-bottom:8px;} .ds-holo-brand{display:flex;gap:6px;align-items:center;font-family:var(--display);} .ds-holo-id{font-family:var(--mono);font-weight:500;background:rgb(11 11 18 / 0.08);padding:2px 8px;border-radius:999px;} .ds-holo-av{width:88px;height:88px;border-radius:50%;border:3px solid #0b0b12;background:#0b0b12;} .ds-holo-name{font:700 1.7rem/1.15 var(--display);letter-spacing:-0.02em;margin-top:8px;} .ds-holo-ens{font-family:var(--mono);font-size:.88rem;color:#23232f;display:flex;gap:6px;align-items:center;} .ds-holo-tag{font-family:var(--ui);font-size:.72rem;font-weight:700;padding:1px 8px;border-radius:999px;background:rgb(11 11 18 / 0.1);} .ds-holo-check{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:6px 12px;border-radius:999px;font-size:.82rem;font-weight:700;background:rgb(11 11 18 / 0.88);color:var(--ok);} .ds-holo-check.bad{color:var(--err);} .ds-holo-stamp{position:absolute;top:46%;right:14px;transform:rotate(-9deg);padding:6px 12px;border:3px solid #0e7a55;border-radius:10px;color:#0e7a55;background:rgb(255 255 255 / 0.55);font:800 .95rem var(--display);animation:ds-stamp .45s cubic-bezier(0.16,1,0.3,1) both;} @keyframes ds-stamp{from{opacity:0;transform:rotate(-9deg) scale(1.6);}to{opacity:1;transform:rotate(-9deg) scale(1);}} @media (prefers-reduced-motion: reduce){.ds-holo{transform:none;transition:none;}.ds-holo-stamp{animation:none;}}"
+    },
+    {
+      "name": "Holo Card, refused and received",
+      "kind": "custom",
+      "refersTo": "holo-card",
+      "description": "Refused: greyscale with a coral ring and coral cross badge. Received: the rotated stamp lands after a payment.",
+      "html": "<div class=\"ds-holo refused\"><div class=\"ds-holo-top\"><span class=\"ds-holo-brand\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 32 32\" aria-hidden=\"true\"><path d=\"M11 7a5 5 0 0 1 10 0\" fill=\"none\" stroke=\"#0b0b12\" stroke-width=\"2.2\" stroke-linecap=\"round\"/><rect x=\"8\" y=\"8\" width=\"16\" height=\"3.4\" rx=\"1.7\" fill=\"#0b0b12\"/><rect x=\"9\" y=\"11\" width=\"14\" height=\"15\" rx=\"5\" fill=\"#ffffff\"/><ellipse cx=\"16\" cy=\"19.5\" rx=\"3.2\" ry=\"4.2\" fill=\"#fff3a8\"/><circle cx=\"13.6\" cy=\"17\" r=\"1.1\" fill=\"#0b0b12\"/><circle cx=\"18.4\" cy=\"17\" r=\"1.1\" fill=\"#0b0b12\"/><rect x=\"10\" y=\"26\" width=\"12\" height=\"2.6\" rx=\"1.3\" fill=\"#0b0b12\"/></svg>Sereno</span><span class=\"ds-holo-id\">No. 583231</span></div><div class=\"ds-holo-av\"></div><div class=\"ds-holo-name\">@octocat</div><div class=\"ds-holo-ens\">octocat.sereno.eth <span class=\"ds-holo-tag\">wildcard</span></div><div class=\"ds-holo-check bad\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M18 6 6 18M6 6l12 12\"/></svg>Name and account disagree</div></div><div style=\"height:16px\"></div><div class=\"ds-holo\"><div class=\"ds-holo-top\"><span class=\"ds-holo-brand\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 32 32\" aria-hidden=\"true\"><path d=\"M11 7a5 5 0 0 1 10 0\" fill=\"none\" stroke=\"#0b0b12\" stroke-width=\"2.2\" stroke-linecap=\"round\"/><rect x=\"8\" y=\"8\" width=\"16\" height=\"3.4\" rx=\"1.7\" fill=\"#0b0b12\"/><rect x=\"9\" y=\"11\" width=\"14\" height=\"15\" rx=\"5\" fill=\"#ffffff\"/><ellipse cx=\"16\" cy=\"19.5\" rx=\"3.2\" ry=\"4.2\" fill=\"#fff3a8\"/><circle cx=\"13.6\" cy=\"17\" r=\"1.1\" fill=\"#0b0b12\"/><circle cx=\"18.4\" cy=\"17\" r=\"1.1\" fill=\"#0b0b12\"/><rect x=\"10\" y=\"26\" width=\"12\" height=\"2.6\" rx=\"1.3\" fill=\"#0b0b12\"/></svg>Sereno</span><span class=\"ds-holo-id\">No. 583231</span></div><div class=\"ds-holo-av\"></div><div class=\"ds-holo-name\">@octocat</div><div class=\"ds-holo-ens\">octocat.sereno.eth <span class=\"ds-holo-tag\">wildcard</span></div><div class=\"ds-holo-check\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"/></svg>Name matches account</div><div class=\"ds-holo-stamp\" role=\"status\">Received 5 USDC</div></div>",
+      "css": ":host{--bg:#0b0b12;--surface:#15151d;--surface-2:#1c1c27;--line:#2a2a38;--fg:#f5f5fa;--muted:#a3a3b8;--primary:#f5f5fa;--on-primary:#0b0b12;--ok:#6ef0c2;--ok-bg:rgb(110 240 194 / 0.12);--err:#ff8f8f;--err-bg:rgb(255 143 143 / 0.1);--link:#b8c9ff;--display:\"Unbounded Variable\",\"Unbounded\",ui-sans-serif,system-ui,sans-serif;--ui:\"Onest Variable\",\"Onest\",ui-sans-serif,system-ui,sans-serif;--mono:ui-monospace,\"SF Mono\",\"Cascadia Mono\",Menlo,Consolas,monospace;--r:16px;--r-sm:10px;} .ds-holo{--mx:0.3;--my:0.2;position:relative;overflow:hidden;isolation:isolate;display:grid;justify-items:center;text-align:center;gap:4px;padding:18px 20px 22px;border-radius:22px;color:#0b0b12;width:100%;max-width:400px;font-family:var(--ui);background:repeating-linear-gradient(calc(60deg + var(--mx, 0.3) * 40deg), rgb(255 255 255 / 0) 0 14px, rgb(255 255 255 / 0.16) 18px, rgb(255 255 255 / 0) 24px), conic-gradient(from calc(var(--mx, 0.3) * 220deg) at 50% 120%, #ff9ad8, #c6a8ff, #9ab8ff, #8ff5d6, #fff3a8, #ffb59a, #ff9ad8, #c6a8ff, #8ff5d6, #fff3a8, #ff9ad8);box-shadow:0 30px 60px -30px rgb(154 184 255 / 0.55),inset 0 0 0 1px rgb(255 255 255 / 0.5);transform:perspective(900px) rotateX(calc((0.5 - var(--my)) * 7deg)) rotateY(calc((var(--mx) - 0.5) * 9deg));transition:transform .25s ease-out;} .ds-holo::after{content:\"\";position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(115deg,transparent calc(var(--mx) * 100% - 22%),rgb(255 255 255 / 0.55) calc(var(--mx) * 100%),transparent calc(var(--mx) * 100% + 22%));mix-blend-mode:screen;opacity:.7;} .ds-holo:hover{--mx:0.7;--my:0.4;} .ds-holo.refused{filter:grayscale(0.85) brightness(0.92);box-shadow:0 0 0 3px var(--err),0 30px 60px -30px rgb(255 143 143 / 0.4);} .ds-holo-top{width:100%;display:flex;justify-content:space-between;align-items:center;font-size:.8rem;font-weight:700;margin-bottom:8px;} .ds-holo-brand{display:flex;gap:6px;align-items:center;font-family:var(--display);} .ds-holo-id{font-family:var(--mono);font-weight:500;background:rgb(11 11 18 / 0.08);padding:2px 8px;border-radius:999px;} .ds-holo-av{width:88px;height:88px;border-radius:50%;border:3px solid #0b0b12;background:#0b0b12;} .ds-holo-name{font:700 1.7rem/1.15 var(--display);letter-spacing:-0.02em;margin-top:8px;} .ds-holo-ens{font-family:var(--mono);font-size:.88rem;color:#23232f;display:flex;gap:6px;align-items:center;} .ds-holo-tag{font-family:var(--ui);font-size:.72rem;font-weight:700;padding:1px 8px;border-radius:999px;background:rgb(11 11 18 / 0.1);} .ds-holo-check{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:6px 12px;border-radius:999px;font-size:.82rem;font-weight:700;background:rgb(11 11 18 / 0.88);color:var(--ok);} .ds-holo-check.bad{color:var(--err);} .ds-holo-stamp{position:absolute;top:46%;right:14px;transform:rotate(-9deg);padding:6px 12px;border:3px solid #0e7a55;border-radius:10px;color:#0e7a55;background:rgb(255 255 255 / 0.55);font:800 .95rem var(--display);animation:ds-stamp .45s cubic-bezier(0.16,1,0.3,1) both;} @keyframes ds-stamp{from{opacity:0;transform:rotate(-9deg) scale(1.6);}to{opacity:1;transform:rotate(-9deg) scale(1);}} @media (prefers-reduced-motion: reduce){.ds-holo{transform:none;transition:none;}.ds-holo-stamp{animation:none;}}"
+    },
+    {
+      "name": "Card with Command Block",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Graphite card with a title, tags and a mono command block with a small Copy pill.",
+      "html": "<div class=\"ds-card\"><h3>2. Sign it</h3><p><code>ssh-ed25519</code> <span class=\"ds-tag ok\">on-chain</span> <span class=\"ds-tag\">not synced</span></p><div class=\"ds-cmd\"><pre>ssh-keygen -Y sign -n sereno@v1 -O hashalg=sha256 -f ~/.ssh/id_ed25519 intent.txt</pre><button class=\"ds-btn ds-small\">Copy</button></div></div>",
+      "css": ":host{--bg:#0b0b12;--surface:#15151d;--surface-2:#1c1c27;--line:#2a2a38;--fg:#f5f5fa;--muted:#a3a3b8;--primary:#f5f5fa;--on-primary:#0b0b12;--ok:#6ef0c2;--ok-bg:rgb(110 240 194 / 0.12);--err:#ff8f8f;--err-bg:rgb(255 143 143 / 0.1);--link:#b8c9ff;--display:\"Unbounded Variable\",\"Unbounded\",ui-sans-serif,system-ui,sans-serif;--ui:\"Onest Variable\",\"Onest\",ui-sans-serif,system-ui,sans-serif;--mono:ui-monospace,\"SF Mono\",\"Cascadia Mono\",Menlo,Consolas,monospace;--r:16px;--r-sm:10px;} .ds-btn{background:var(--primary,#f5f5fa);color:var(--on-primary,#0b0b12);border:0;border-radius:999px;padding:11px 20px;font:700 0.95rem var(--ui);cursor:pointer;transition:transform .15s ease-out,filter .15s ease-out;} .ds-btn:hover{filter:brightness(0.92);} .ds-btn:active{transform:scale(0.98);} .ds-btn:focus-visible{outline:2px solid var(--link,#b8c9ff);outline-offset:2px;} .ds-btn:disabled{opacity:.45;cursor:default;} .ds-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:22px;color:var(--fg);font-family:var(--ui);} .ds-card h3{font:600 1rem var(--display);letter-spacing:-0.01em;margin:0 0 8px;} .ds-card code{font-family:var(--mono);font-size:.85em;} .ds-tag{display:inline-block;font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--surface-2);color:var(--muted);} .ds-tag.ok{background:var(--ok-bg);color:var(--ok);} .ds-cmd{display:flex;gap:8px;align-items:flex-start;} .ds-cmd pre{flex:1;min-width:0;margin:0;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px;overflow-x:auto;font:.82rem var(--mono);} .ds-small{padding:6px 12px;font-size:.8rem;}"
+    },
+    {
+      "name": "Done Panel",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Paid state: mint check disc, Unbounded line, transaction link, secondary Pay again.",
+      "html": "<div class=\"ds-done\"><span class=\"ck\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"/></svg></span><strong>Sent 5 USDC to @octocat</strong><a href=\"#\">View transaction</a><button class=\"ds-btn ds-btn-secondary\">Pay again</button></div>",
+      "css": ":host{--bg:#0b0b12;--surface:#15151d;--surface-2:#1c1c27;--line:#2a2a38;--fg:#f5f5fa;--muted:#a3a3b8;--primary:#f5f5fa;--on-primary:#0b0b12;--ok:#6ef0c2;--ok-bg:rgb(110 240 194 / 0.12);--err:#ff8f8f;--err-bg:rgb(255 143 143 / 0.1);--link:#b8c9ff;--display:\"Unbounded Variable\",\"Unbounded\",ui-sans-serif,system-ui,sans-serif;--ui:\"Onest Variable\",\"Onest\",ui-sans-serif,system-ui,sans-serif;--mono:ui-monospace,\"SF Mono\",\"Cascadia Mono\",Menlo,Consolas,monospace;--r:16px;--r-sm:10px;} .ds-btn{background:var(--primary,#f5f5fa);color:var(--on-primary,#0b0b12);border:0;border-radius:999px;padding:11px 20px;font:700 0.95rem var(--ui);cursor:pointer;transition:transform .15s ease-out,filter .15s ease-out;} .ds-btn:hover{filter:brightness(0.92);} .ds-btn:active{transform:scale(0.98);} .ds-btn:focus-visible{outline:2px solid var(--link,#b8c9ff);outline-offset:2px;} .ds-btn:disabled{opacity:.45;cursor:default;} .ds-btn-secondary{background:transparent;color:var(--fg);border:1px solid var(--line);} .ds-done{display:grid;justify-items:center;gap:8px;text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:24px 18px;color:var(--fg);font-family:var(--ui);} .ds-done .ck{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--ok);color:#0b0b12;} .ds-done strong{font:700 1.15rem var(--display);} .ds-done a{color:var(--link);text-underline-offset:3px;}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Holo Card",
+    "overview": "Every GitHub developer is a collectible holographic card, and paying them is handing value to that card. The world around the card is a near-black violet night: graphite surfaces, hairline borders, moonlight-white text and white pill actions. Against that restraint the holographic foil is the only decorative saturated surface, so the developer's card is unmistakably the subject of every screen.\n\nThe density is a single calm column (640px), one task per view, with the card centred and tilting gently under the pointer like a trading card in the hand. The voice is friendly, colourful crypto-wallet craft meant to sit beside Phantom and MetaMask, built from three self-hosted faces: Unbounded for display, Onest for the interface, and the system monospace for anything the chain or a signature reads byte for byte.\n\nThe world rejects the category default of a white card with one blue button, and it rejects plain or generic looks and heavy real-world metaphors (cheques, envelopes, key boards). The lantern mascot, the night watchman's light, is the brand mark and the one illustration.",
+    "keyCharacteristics": [
+      "Dark-only single theme on a violet-black ground with a faint periwinkle glow at the top.",
+      "Holographic foil (pink, lilac, periwinkle, mint, butter, peach) only on the identity card and the lantern.",
+      "White pill = the primary action or the current selection; everything else is graphite or outlined.",
+      "Mint means ok, coral means refused, and the card itself turns grey with a coral ring when it is refused.",
+      "Monospace for addresses, IDs, balances and signed text.",
+      "No third-party font, script or tracker requests; fonts ship from the bundle."
+    ],
+    "rules": [
+      {
+        "name": "The One Foil Rule",
+        "body": "The holographic foil is the only decorative saturated surface. It belongs to the identity card and the lantern. Outside them, saturated colour is either a small foil-derived accent (caret, selection, focus underline, top glow), the periwinkle link, or semantic status. No other gradients, colour panels or accent buttons.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mint and Coral Rule",
+        "body": "Mint means verified or ok and coral means refused. Neither is ever decoration, and neither is used for a neutral state.",
+        "section": "colors"
+      },
+      {
+        "name": "The Dark Night Rule",
+        "body": "There is one theme, dark (`color-scheme: dark`). Don't add a light mode or light surfaces.",
+        "section": "colors"
+      },
+      {
+        "name": "The Machine Reads Mono Rule",
+        "body": "Anything that is copied, signed or checked byte for byte is set in monospace: addresses, IDs, ENS names, balances, commands and the signed intent. Never set them in Onest or Unbounded.",
+        "section": "typography"
+      },
+      {
+        "name": "The Self-Hosted Faces Rule",
+        "body": "Both faces are bundled through `@fontsource-variable` packages. Never load fonts from a CDN or a third-party font service.",
+        "section": "typography"
+      },
+      {
+        "name": "The Only One Floats Rule",
+        "body": "Only the holo card is lifted. Cards, the paybox, the facts block and forms stay flat on Hairline borders.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** keep a single dark theme on Night (#0b0b12) with Graphite surfaces and 1px Hairline borders.",
+      "**Do** use the Moonlight pill with Night ink for the primary action and for the current selection (active tab, chosen quick amount); keep every other control graphite or outlined.",
+      "**Do** reserve the holographic foil for the identity card and the lantern; pick foil pink only for small accents such as the caret, selection and the amount focus underline.",
+      "**Do** use Verified Mint for ok and Refusal Coral for refused, and turn the card itself refused when the name and the account disagree.",
+      "**Do** set addresses, IDs, ENS names, balances, commands and signed text in monospace.",
+      "**Do** keep the foil and tilt pointer-driven and still under `prefers-reduced-motion`.",
+      "**Do** load fonts only from the bundled `@fontsource-variable` packages.",
+      "**Do** draw icons as inline SVG in `currentColor` (check, cross, lantern)."
+    ],
+    "donts": [
+      "**Don't** add a light theme or light surfaces.",
+      "**Don't** introduce other saturated colours, gradients or a blue accent button; the white card with one blue button is the default this world rejects.",
+      "**Don't** use mint or coral decoratively, or for a neutral state.",
+      "**Don't** lift anything but the holo card with a shadow.",
+      "**Don't** request third-party fonts, scripts, analytics or trackers.",
+      "**Don't** use cheque, envelope or keyboard metaphors in place of the card."
+    ]
+  }
+}
