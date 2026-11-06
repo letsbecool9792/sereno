@@ -159,7 +159,7 @@ Intent builder, chain config (chain IDs, RPCs, USDC, ENSIP-11 coin types), deplo
 
 ```
 contracts/        Foundry (WS1): verifier, account, factory, key oracle, ENS resolver/registrar (WS2), deploy scripts
-cre/              Chainlink CRE TypeScript project (WS2), workflow "github-keys"
+cre/              Chainlink CRE TypeScript project (WS2), workflows "github-keys" and "github-bounty"
 gateway/          CCIP-read gateway, Bun + TS (WS2)
 relayer/          relayer service, Bun + TS (WS1)
 cli/              `ak` CLI, Bun + TS (WS3): wraps ssh-keygen and git; npm package `sereno-ak` built by cli/scripts/pack.ts (Node bundle)
@@ -271,6 +271,7 @@ Redeploy (idempotent): `DEPLOYER_KEY=$(cat .secrets/deployer.key) forge script s
 - **Secrets:** `secrets.yaml` maps an id to an environment variable (`secretsNames: { GITHUB_TOKEN: [GITHUB_TOKEN_ALL] }`). The target's `secrets-path` in `workflow.yaml` points to it. Read it with `runtime.getSecret({ id }).result().value` **in DON mode** and pass it into the node-mode function as an argument (`NodeRuntime` has no `getSecret`). For simulation, pass the value through the environment only.
 - Simulate: `cre workflow simulate github-keys --target <target> --non-interactive --trigger-index 0 [--broadcast]`. Each target in `project.yaml` lists its chain's RPC.
 - `github-keys` triggers: **0 = cron** (every ID in `githubIds`), **1 = HTTP** (one user on demand: `--trigger-index 1 --http-payload '{"githubId":"172588240"}'`). Deployed, the HTTP trigger only accepts callers listed in `httpAuthorizedKeys`.
+- `github-bounty` (D1) has one trigger, **0 = HTTP** `{"repo": "owner/repo", "issue": "12"}`. It pays only when the issue's latest close came from a merged PR in the same repo by a GitHub user, and writes BountyBoard's report through the gate. It needs the GitHub token (GraphQL refuses anonymous requests). Workflow names `github-bounty-base` and `github-bounty-arbitrum`; their gate `nameKey`s are in `cre/github-bounty/README.md`.
 - **`--broadcast` needs `-e ../.secrets/cre.env`** (or a real key in `cre/.env`). With the template placeholder in `cre/.env`, `cre` exits 1 after "Loading settings" with no message. The broadcasting key must be on the ReportGate's broadcaster list, and the configs' `receiver` is the gate.
 - **gasLimit about 2M on Sepolia** (L2s are fine with 1.5M). A forwarder transaction can report "success" while the receiver ran out of gas, so always read the oracle's state afterwards.
 - Simulation is enough for the CRE prize; production deployment needs `cre account access`.
