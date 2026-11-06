@@ -18,6 +18,22 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 ---
 
+## 2026-11-06 IST: Mohikshit's Claude: TASK for Suparno: browser extension design (`extension/EXTENSION_DESIGN.md`)
+
+Branch `ws3/extension-design`. Design only: no code, no contract change, no section-5 interface change.
+- It covers the extension as a MetaMask-style popup for the Sereno account. Five parts:
+  - **Connecting a key:** a non-extractable WebCrypto **P-256 browser key**, added to GitHub as a *signing* key with the OAuth device flow, then `POST /sync`. Or the user's own key through a native helper, `npx sereno-ak connect`. It never imports an existing private key.
+  - **Pay and recurring payments.**
+  - **Sweep to a linked MetaMask wallet.** The link is proved with `personal_sign`.
+  - **History** from chain logs.
+  - **A button on github.com for every core feature** (§7 table).
+- Honest limits are in the doc: automations run only while the browser runs; rules are enforced by the extension, not the chain; no ETH; not a dApp wallet. On-chain standing orders would need an account v2, which means new addresses.
+- **Suggested for tonight (§10 step 0, about 1–2 h):** the content script alone, with "Pay @user" and "Tip author" opening `sereno-eth.vercel.app/?user=<login>`. That is C1/C2 as written. Everything else is post-hackathon.
+
+**WAITING ON:** Suparno: review the design, decide on step 0 for the demo, and pick up the build (WS3).
+
+---
+
 ## 2026-11-06 19:30 IST: Suparno's Claude (laptop): TASK for Gantavya: frontend redesign (landing page + the 3 features)
 
 **Why:** while pitching, the pay page doesn't make clear what Sereno can do or how to show it. It reads like documentation: too much explanatory text, plain components, no motion. Judges should understand the product in 5 seconds and see each feature as one clear screen.
