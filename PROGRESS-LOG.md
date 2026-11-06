@@ -26,7 +26,9 @@ Arch Linux, `psycocodes`, key `~/.ssh/id_ed25519`, no `GITHUB_TOKEN`, using the 
 - `ak send 0.05 letsbecool9792`: **1,068,986 gas** ([tx](https://sepolia.basescan.org/tx/0xca6cac5cd10fbd47883b197377761b1d4c2eb423318b6da079613d23ecac1432)). The relayer deployed the account first.
 - `ak commit-pay 0.05 letsbecool9792 --relay` (local repo): **1,070,854 gas** ([tx](https://sepolia.basescan.org/tx/0xeee8271aa45a64d98504f9161dd4fe29142308b739f426a201b4433cc0ab0c52)).
 - The account is now deployed: nonce 2, 0.45 USDC.
-- **Still to do:** `commit-pay --push` from a GitHub repo of Mohikshit's, and M5. Both wait on a test repo he creates.
+- `ak commit-pay 0.05 letsbecool9792 --push` into **`letsbecool9792/sereno-demo`**: paid by the hosted relayer **6 s after the push**, at **1,083,391 gas** ([commit](https://github.com/letsbecool9792/sereno-demo/commit/4648fe00ff93be1b5b3f66e4a10d178e5cf0f07a), [tx](https://sepolia.basescan.org/tx/0x142ddfa3c941f3dd1ce965583d2dfd58816eee42009fe4226cbe1261d688a9f5)). GitHub shows it as not Verified because Mohikshit's key is an authentication key, not a signing key.
+- An earlier push test on a throwaway branch of `letsbecool9792/sereno` also paid ([tx](https://sepolia.basescan.org/tx/0xee1dc01b3ce1c615f1d93b8582063a75599fcaa363f15d4956954d97365803cf)); the branch has been deleted.
+- **M5 is not done:** it needs a repo no other relayer watches. `sereno-demo` is watched by the hosted relayer, so the Action doesn't go there.
 
 ---
 
