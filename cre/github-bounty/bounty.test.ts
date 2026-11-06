@@ -33,6 +33,33 @@ describe("decide", () => {
   test("pays the author of the merged PR that closed the issue", () => {
     expect(decide(answer(mergedPr))).toEqual({ pay: true, pr: 18131, author: "stevencartavia", authorGithubId: "112043913" });
   });
+  // GitHub's real shape for letsbecool9792/sereno-demo#3: PR #4 says "Fixes #3" and so does its commit's message, so
+  // GitHub credits the close to the commit, not the PR.
+  const rebased = (prs: Record<string, unknown>[], declared = [4]): CloserResponse =>
+    ({
+      data: {
+        repository: {
+          nameWithOwner: "letsbecool9792/sereno-demo",
+          issue: {
+            state: "CLOSED",
+            closedByPullRequestsReferences: { nodes: declared.map((number) => ({ number })) },
+            timelineItems: { nodes: [{ closer: { __typename: "Commit", associatedPullRequests: { nodes: prs } } }] },
+          },
+        },
+      },
+    }) as CloserResponse;
+  const pr4 = { number: 4, merged: true, repository: { nameWithOwner: "letsbecool9792/sereno-demo" }, author: { __typename: "User", login: "g4ntavya", databaseId: 1 } };
+  test("a merged PR that fixes the issue pays its author when GitHub credits its commit", () => {
+    expect(decide(rebased([pr4]))).toEqual({ pay: true, pr: 4, author: "g4ntavya", authorGithubId: "1" });
+  });
+  test("a commit closing the issue pays nobody unless it comes from one merged PR in the repo that declares the fix", () => {
+    expect(decide(rebased([])).pay).toBe(false); // pushed straight to main
+    expect(decide(rebased([pr4], [])).pay).toBe(false); // the PR doesn't say it fixes this issue
+    expect(decide(rebased([{ ...pr4, merged: false }])).pay).toBe(false);
+    expect(decide(rebased([{ ...pr4, repository: { nameWithOwner: "someone/fork" } }])).pay).toBe(false);
+    expect(decide(rebased([pr4, { ...pr4, number: 5 }], [4, 5])).pay).toBe(false); // ambiguous
+    expect(decide(rebased([{ ...pr4, author: { __typename: "Bot", login: "dependabot" } }])).pay).toBe(false);
+  });
   test("matches the repo case-insensitively", () => {
     expect(decide(answer({ ...mergedPr, repository: { nameWithOwner: "Foundry-RS/foundry" } })).pay).toBe(true);
   });

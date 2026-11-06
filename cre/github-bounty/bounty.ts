@@ -4,18 +4,26 @@ import { encodeAbiParameters, type Hex, keccak256, parseAbiParameters, stringToB
 export type BountyRequest = { repo: string; issue: number };
 
 /// The latest close of an issue, and the PR behind it if a PR closed it. GitHub's GraphQL API answers this directly
-/// (`ClosedEvent.closer`); REST doesn't say which PR closed an issue.
+/// (`ClosedEvent.closer`); REST doesn't say which PR closed an issue. When a commit inside the PR also says "Fixes #N" (and
+/// with rebase merges), GitHub names that *commit* as the closer, so the query also asks which PRs the commit belongs
+/// to, and which PRs declare that they close the issue.
 export const CLOSER_QUERY = `query ($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
     nameWithOwner
     issue(number: $number) {
       state
+      closedByPullRequestsReferences(first: 10, includeClosedPrs: true) { nodes { number } }
       timelineItems(itemTypes: [CLOSED_EVENT], last: 1) {
         nodes {
           ... on ClosedEvent {
             closer {
               __typename
               ... on PullRequest { number merged repository { nameWithOwner } author { __typename login ... on User { databaseId } } }
+              ... on Commit {
+                associatedPullRequests(first: 5) {
+                  nodes { number merged repository { nameWithOwner } author { __typename login ... on User { databaseId } } }
+                }
+              }
             }
           }
         }
@@ -24,18 +32,25 @@ export const CLOSER_QUERY = `query ($owner: String!, $name: String!, $number: In
   }
 }`;
 
-type Closer = {
-  __typename: string;
+type Pr = {
   number?: number;
   merged?: boolean;
   repository?: { nameWithOwner: string };
   author?: { __typename: string; login: string; databaseId?: number } | null;
 };
+type Closer = Pr & {
+  __typename: string;
+  associatedPullRequests?: { nodes: Pr[] };
+};
 export type CloserResponse = {
   data?: {
     repository: {
       nameWithOwner: string;
-      issue: { state: string; timelineItems: { nodes: { closer?: Closer | null }[] } } | null;
+      issue: {
+        state: string;
+        closedByPullRequestsReferences?: { nodes: { number: number }[] };
+        timelineItems: { nodes: { closer?: Closer | null }[] };
+      } | null;
     } | null;
   } | null;
   errors?: { type?: string; message: string }[];
@@ -75,8 +90,19 @@ export function decide(res: CloserResponse): Verdict {
   if (!issue) return { pay: false, reason: "no such issue (or it is a pull request)" };
   if (issue.state !== "CLOSED") return { pay: false, reason: "the issue is open" };
   const closes = issue.timelineItems.nodes;
-  const closer = closes[closes.length - 1]?.closer;
-  if (!closer || closer.__typename !== "PullRequest") return { pay: false, reason: "the issue was closed without a pull request" };
+  let closer: Pr | null | undefined = closes[closes.length - 1]?.closer;
+  if (closer && (closer as Closer).__typename === "Commit") {
+    // Closed by a commit: pay only if that commit came from exactly one merged PR in this repo that declares it fixes
+    // this issue. A commit pushed straight to the branch has no such PR, so it still pays nobody.
+    const declared = new Set((issue.closedByPullRequestsReferences?.nodes ?? []).map((n) => n.number));
+    const prs = ((closer as Closer).associatedPullRequests?.nodes ?? []).filter(
+      (p) => p.merged && declared.has(p.number!) && p.repository?.nameWithOwner.toLowerCase() === repo.nameWithOwner.toLowerCase(),
+    );
+    if (prs.length !== 1) return { pay: false, reason: "the issue was closed by a commit that isn't from a merged pull request fixing it" };
+    closer = prs[0];
+  } else if (!closer || (closer as Closer).__typename !== "PullRequest") {
+    return { pay: false, reason: "the issue was closed without a pull request" };
+  }
   if (!closer.merged) return { pay: false, reason: `PR #${closer.number} is not merged` };
   if (closer.repository?.nameWithOwner.toLowerCase() !== repo.nameWithOwner.toLowerCase()) {
     return { pay: false, reason: `PR #${closer.number} is in another repository (${closer.repository?.nameWithOwner})` };
