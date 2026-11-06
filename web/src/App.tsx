@@ -7,7 +7,6 @@ import {
   getAddress,
   parseUnits,
   type Address,
-  type EIP1193Provider,
   type Hex,
 } from "viem";
 import {
@@ -21,34 +20,11 @@ import {
   type ChainKey,
   type GithubUser,
 } from "@sereno/shared";
-import { clientFor, fetchProfile, PAY_CHAINS, short } from "./lib";
+import { clientFor, fetchProfile, PAY_CHAINS, short, useWallets } from "./lib";
+import { Bounties } from "./Bounties";
 import { Spend } from "./Spend";
 
-declare global {
-  interface Window {
-    ethereum?: EIP1193Provider;
-  }
-}
-
 const ensClient = clientFor("sepolia");
-/// Wallets announced through EIP-6963 (so MetaMask and Phantom can both be installed without fighting over window.ethereum).
-interface WalletOption {
-  name: string;
-  provider: EIP1193Provider;
-}
-function useWallets(): WalletOption[] {
-  const [wallets, setWallets] = useState<WalletOption[]>([]);
-  useEffect(() => {
-    const onAnnounce = (e: Event) => {
-      const { info, provider } = (e as CustomEvent<{ info: { name: string; uuid: string }; provider: EIP1193Provider }>).detail;
-      setWallets((ws) => (ws.some((w) => w.name === info.name) ? ws : [...ws, { name: info.name, provider }]));
-    };
-    window.addEventListener("eip6963:announceProvider", onAnnounce);
-    window.dispatchEvent(new Event("eip6963:requestProvider"));
-    return () => window.removeEventListener("eip6963:announceProvider", onAnnounce);
-  }, []);
-  return wallets.length > 0 ? wallets : window.ethereum ? [{ name: "Browser wallet", provider: window.ethereum }] : [];
-}
 
 interface Lookup {
   user: GithubUser;
@@ -256,8 +232,8 @@ function Pay() {
   );
 }
 
-type Page = "pay" | "spend";
-const pageFromHash = (): Page => (window.location.hash === "#spend" ? "spend" : "pay");
+type Page = "pay" | "spend" | "bounties";
+const pageFromHash = (): Page => (window.location.hash === "#spend" ? "spend" : window.location.hash === "#bounties" ? "bounties" : "pay");
 
 export function App() {
   const [page, setPage] = useState<Page>(pageFromHash);
@@ -274,9 +250,10 @@ export function App() {
         <nav className="tabs">
           <a href="#pay" className={page === "pay" ? "on" : ""}>Pay someone</a>
           <a href="#spend" className={page === "spend" ? "on" : ""}>Spend your balance</a>
+          <a href="#bounties" className={page === "bounties" ? "on" : ""}>Issue bounties</a>
         </nav>
       </header>
-      {page === "spend" ? <Spend /> : <Pay />}
+      {page === "spend" ? <Spend /> : page === "bounties" ? <Bounties /> : <Pay />}
       <footer>
         No sign-up, no seed phrase, no trackers. Open source (MIT). Testnet: {PAY_CHAINS.map((k) => CHAINS[k].chain.name).join(" and ")}, Circle USDC.
       </footer>

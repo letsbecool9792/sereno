@@ -75,3 +75,5 @@ textarea { font-family: ui-monospace, monospace; font-size: 0.8rem; margin-botto
 .note { color: var(--muted); margin: 10px 0; }
 .card .error, .card .note { margin: 10px 0; }
 .keys { margin: 4px 0 6px; }
+button.secondary { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+.card h3 + .pay { margin-top: 4px; }

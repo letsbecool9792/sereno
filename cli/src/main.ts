@@ -9,12 +9,14 @@ import { fileURLToPath } from "node:url";
 import { createPublicClient, erc20Abi, formatUnits, getAddress, http, isAddress, parseUnits, type Address, type Hex } from "viem";
 import {
   accountFactoryAbi,
+  bountyBoardAbi,
   buildIntent,
   CHAINS,
   chainByKey,
   CORE,
   DEFAULT_CHAIN,
   ENS_DEPLOYMENT,
+  EXTRAS,
   githubKeys,
   githubUser,
   keyHash,
@@ -36,6 +38,9 @@ const USAGE = `ak: pay and spend with the SSH key already on your GitHub profile
   ak commit-pay <amount> <to> --as <github-user> --key <ssh key> [--repo .] [--push] [--relay]
   ak claim --as <github-user> --key <ssh key>
   ak sync <github-user>          have the Chainlink key oracle copy the user's GitHub SSH keys on-chain
+  ak bounty <issue> [--chain ...] [--settle]
+                                 an issue bounty (fund it on the pay page); --settle has the Chainlink
+                                 workflow check for a merged PR that closed it and pays its author
 
 <to> is a 0x address or a GitHub username. Amounts are in USDC. --key is your SSH private key file
 (for example ~/.ssh/id_ed25519; a .pub file works when the key is in ssh-agent).
@@ -237,6 +242,34 @@ async function cmdSync(login: string) {
   die("key sync still pending; check later with `ak account`");
 }
 
+async function cmdBounty(ref: string, c: ChainConfig, settle: boolean) {
+  if (!EXTRAS) die("the bounty board isn't deployed yet");
+  const m = ref.trim().match(/(?:github\.com\/)?([\w.-]+\/[\w.-]+?)(?:\/issues\/|#)(\d+)\/?$/i);
+  if (!m) die("expected an issue link (https://github.com/owner/repo/issues/12) or owner/repo#12");
+  const [repo, issue] = [m![1]!.toLowerCase(), m![2]!];
+  const pub = client(c);
+  const board = { address: EXTRAS!.BountyBoard, abi: bountyBoardAbi } as const;
+  const show = async () => {
+    const repoHash = await pub.readContract({ ...board, functionName: "repoHashOf", args: [repo] });
+    const [winner, pot] = await Promise.all([
+      pub.readContract({ ...board, functionName: "winnerOf", args: [await pub.readContract({ ...board, functionName: "issueKey", args: [repoHash, BigInt(issue)] })] }),
+      pub.readContract({ ...board, functionName: "potOf", args: [await pub.readContract({ ...board, functionName: "potKey", args: [repoHash, BigInt(issue), c.usdc] })] }),
+    ]);
+    console.log(`${repo}#${issue} on ${c.key}: ${formatUnits(pot, DECIMALS)} USDC unpaid; ${winner === 0n ? "not settled" : `won by GitHub ${winner} (account ${await accountOf(c, winner)})`}`);
+  };
+  await show();
+  if (!settle) return;
+  let r = await post("/bounty", { chainId: c.chain.id, repo, issue });
+  for (let i = 0, last = ""; i < 120; i++) {
+    if (r.state !== last) console.log(`  ${(last = r.state!)}${r.detail ? `: ${r.detail}` : ""}${r.paid ? `: paid ${r.paid}` : ""}`);
+    if (r.state === "done") return show();
+    if (r.state === "failed") die("the bounty wasn't settled");
+    await new Promise((res) => setTimeout(res, 5000));
+    r = (await (await fetch(`${RELAYER}/bounty/status?${new URLSearchParams({ chainId: String(c.chain.id), repo, issue })}`)).json()) as Record<string, string>;
+  }
+  die("still pending; check again later with `ak bounty`");
+}
+
 async function cmdClaim(opts: Record<string, string | true>) {
   if (!ENS_DEPLOYMENT) die("ENS not set up");
   const me = await userOf(need(opts.as, "--as <your GitHub user>"));
@@ -272,6 +305,9 @@ switch (pos[0]) {
     break;
   case "claim":
     await cmdClaim(opts);
+    break;
+  case "bounty":
+    await cmdBounty(need(pos[1], "<issue link or owner/repo#N>"), chain, !!opts.settle);
     break;
   case "sync":
     await cmdSync(need(pos[1], "<github-user>"));

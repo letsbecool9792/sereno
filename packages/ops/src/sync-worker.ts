@@ -13,7 +13,7 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createPublicClient, http } from "viem";
-import { chainByKey, CORE, githubKeys, HOSTED_RELAYER_URL, keyHash, keyOracleAbi, type ChainKey } from "@sereno/shared";
+import { bountyBoardAbi, chainById, chainByKey, CORE, EXTRAS, githubKeys, HOSTED_RELAYER_URL, keyHash, keyOracleAbi, type ChainKey } from "@sereno/shared";
 
 const ROOT = join(import.meta.dir, "../../..");
 const args = process.argv.slice(2);
@@ -44,12 +44,12 @@ if (!GH) console.warn("sync-worker: no GITHUB_TOKEN; GitHub allows 60 requests a
 const log = (m: string) => console.log(`${new Date().toISOString().slice(11, 19)} ${m}`);
 const auth = { Authorization: `Bearer ${WORKER_TOKEN}` };
 
-/// Runs the workflow for one user on one target; resolves with the exit code and the output's tail.
-function runCre(target: string, githubId: string): Promise<{ code: number | null; tail: string }> {
+/// Runs a workflow's HTTP trigger on one target with --broadcast; resolves with the exit code and the output's tail.
+function runCre(workflow: string, target: string, trigger: number, payload: unknown): Promise<{ code: number | null; tail: string }> {
   return new Promise((resolve) => {
     const p = spawn(
       CRE,
-      ["workflow", "simulate", "github-keys", "--target", target, "--non-interactive", "--trigger-index", "1", "--http-payload", JSON.stringify({ githubId }), "--broadcast", "-e", ENV_FILE],
+      ["workflow", "simulate", workflow, "--target", target, "--non-interactive", "--trigger-index", String(trigger), "--http-payload", JSON.stringify(payload), "--broadcast", "-e", ENV_FILE],
       { cwd: join(ROOT, "cre"), env: { ...process.env, GITHUB_TOKEN_ALL: process.env.GITHUB_TOKEN_ALL ?? GH ?? "" } },
     );
     let out = "";
@@ -89,7 +89,7 @@ async function syncOne(githubId: string, login: string): Promise<{ ok: boolean; 
     let good = false;
     for (let attempt = 1; attempt <= ATTEMPTS && !good; attempt++) {
       const t0 = Date.now();
-      const r = await runCre(target, githubId);
+      const r = await runCre("github-keys", target, 1, { githubId });
       good = r.code === 0 && (lines.length === 0 || (await listed(chain, githubId, lines)));
       const secs = Math.round((Date.now() - t0) / 1000);
       log(`  ${login} on ${chain}: ${good ? "synced" : `FAILED (cre exit ${r.code}), attempt ${attempt}/${ATTEMPTS}`} in ${secs}s`);
@@ -101,15 +101,56 @@ async function syncOne(githubId: string, login: string): Promise<{ ok: boolean; 
   return { ok, detail: `${lines.length} key(s); ${results.join(", ")}` };
 }
 
+/// Runs github-bounty for owner/repo#issue on one chain. The workflow writes a report only for an issue closed by a
+/// merged PR; done = the board now records a winner (read back, as for keys).
+async function settleBounty(chainId: number, repo: string, issue: string): Promise<{ ok: boolean; detail: string }> {
+  if (!EXTRAS) return { ok: false, detail: "this worker's checkout has no BountyBoard address (pull, then restart)" };
+  const c = chainById(chainId);
+  const target = { "base-sepolia": "base-settings", "arbitrum-sepolia": "arbitrum-settings" }[c.key as string];
+  if (!target) return { ok: false, detail: `no bounty workflow target for ${c.key}` };
+  const pub = createPublicClient({ chain: c.chain, transport: http(c.rpc, { retryCount: 3 }) });
+  const board = { address: EXTRAS.BountyBoard, abi: bountyBoardAbi } as const;
+  const key = await pub.readContract({ ...board, functionName: "issueKey", args: [await pub.readContract({ ...board, functionName: "repoHashOf", args: [repo] }), BigInt(issue)] });
+  const winner = () => pub.readContract({ ...board, functionName: "winnerOf", args: [key] });
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+    const r = await runCre("github-bounty", target, 0, { repo, issue });
+    // "skipped: <reason>" is the workflow's own answer that nothing should be paid (open issue, unmerged PR, ...).
+    const skipped = r.tail.match(/skipped: ([^"\n]+)/)?.[1];
+    if (r.code === 0 && skipped) return { ok: false, detail: `not payable: ${skipped}` };
+    for (let i = 0; r.code === 0 && i < 6; i++) {
+      const w = await winner();
+      if (w !== 0n) return { ok: true, detail: `settled: winner GitHub ${w}` };
+      await new Promise((res) => setTimeout(res, 2_000));
+    }
+    log(`  ${repo}#${issue} on ${c.key}: FAILED (cre exit ${r.code}), attempt ${attempt}/${ATTEMPTS}`);
+    console.log(r.tail.split("\n").filter((l) => l.trim()).slice(-8).map((l) => `    | ${l}`).join("\n"));
+  }
+  return { ok: false, detail: "the bounty workflow didn't settle it (see the worker's log)" };
+}
+
+interface Job {
+  id: string;
+  kind?: "keys" | "bounty";
+  githubId?: string;
+  login?: string;
+  chainId?: number;
+  repo?: string;
+  issue?: string;
+}
+
 async function tick() {
   const res = await fetch(`${RELAYER}/sync/next`, { headers: auth });
   if (!res.ok) throw new Error(`relayer /sync/next: ${res.status} ${(await res.text()).slice(0, 200)}`);
-  const jobs = (await res.json()) as { githubId: string; login: string }[];
+  const jobs = (await res.json()) as Job[];
   for (const j of jobs) {
-    log(`syncing ${j.login} (${j.githubId}) on ${TARGETS.map((t) => t.chain).join(", ")}`);
-    const r = await syncOne(j.githubId, j.login).catch((e) => ({ ok: false, detail: (e as Error).message }));
-    await fetch(`${RELAYER}/sync/done`, { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify({ githubId: j.githubId, ...r }) });
-    log(`${j.login}: ${r.ok ? "done" : "failed"} (${r.detail})`);
+    const what = j.kind === "bounty" ? `bounty ${j.repo}#${j.issue} on chain ${j.chainId}` : `keys of ${j.login} (${j.githubId})`;
+    log(`${what}: running`);
+    const r = await (j.kind === "bounty" ? settleBounty(j.chainId!, j.repo!, j.issue!) : syncOne(j.githubId!, j.login!)).catch((e) => ({
+      ok: false,
+      detail: (e as Error).message,
+    }));
+    await fetch(`${RELAYER}/sync/done`, { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify({ id: j.id ?? j.githubId, ...r }) });
+    log(`${what}: ${r.ok ? "done" : "failed"} (${r.detail})`);
   }
 }
 

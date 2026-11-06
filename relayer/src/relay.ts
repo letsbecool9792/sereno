@@ -12,10 +12,12 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import {
   accountFactoryAbi,
+  bountyBoardAbi,
   chainById,
   CHAINS,
   CORE,
   ENS_DEPLOYMENT,
+  EXTRAS,
   fromGithubVerification,
   githubGet,
   nameRegistrarAbi,
@@ -126,6 +128,30 @@ export function makeRelayer(key: Hex) {
         functionName: "executeCommit",
         args: [i.token, i.to, i.amount, i.fee, `0x${Buffer.from(commit.headers, "utf8").toString("hex")}`, unarmor(commit.signature)],
       });
+      return { chain: c.key, account, ...r };
+    },
+
+    /// A bounty's state on `chainId`: the winner's GitHub ID (0 = unsettled) and the unpaid USDC pot.
+    async bounty(chainId: number, repo: string, issue: bigint) {
+      if (!EXTRAS) throw new RelayError(503, "the bounty board isn't deployed yet");
+      const c = chainById(chainId);
+      const { pub } = clientsFor(c);
+      const board = { address: EXTRAS.BountyBoard, abi: bountyBoardAbi } as const;
+      const repoHash = await pub.readContract({ ...board, functionName: "repoHashOf", args: [repo] });
+      const [winner, pot] = await Promise.all([
+        pub.readContract({ ...board, functionName: "winnerOf", args: [await pub.readContract({ ...board, functionName: "issueKey", args: [repoHash, issue] })] }),
+        pub.readContract({ ...board, functionName: "potOf", args: [await pub.readContract({ ...board, functionName: "potKey", args: [repoHash, issue, c.usdc] })] }),
+      ]);
+      return { chain: c.key, repoHash, winner, pot };
+    },
+
+    /// Pays a settled bounty's USDC pot to the winner's account (BountyBoard.payout is permissionless; we pay the gas).
+    async bountyPayout(chainId: number, repo: string, issue: bigint): Promise<Relayed | null> {
+      const b = await this.bounty(chainId, repo, issue);
+      if (b.winner === 0n || b.pot === 0n) return null;
+      const c = chainById(chainId);
+      const r = await submit(c, { address: EXTRAS!.BountyBoard, abi: bountyBoardAbi, functionName: "payout", args: [b.repoHash, issue, c.usdc] });
+      const account = await clientsFor(c).pub.readContract({ address: core.AccountFactory, abi: accountFactoryAbi, functionName: "addressOf", args: [b.winner] });
       return { chain: c.key, account, ...r };
     },
 

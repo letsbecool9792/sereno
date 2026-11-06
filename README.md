@@ -14,6 +14,7 @@ Every GitHub user already has an account anyone can pay, by username. The SSH ke
 - **Spend your balance** (the *Spend* tab): it builds the payment text and gives you the stock command to sign it, `ssh-keygen -Y sign …` or `git commit -S`. Paste the signature, or the link of the pushed commit, and the relayer pays. Your key never touches the page.
   - First time? Press **Sync my keys from GitHub**, so the Chainlink key oracle copies your SSH keys on-chain.
   - Any SSH key on your GitHub profile works, authentication or signing.
+- **Issue bounties** (the *Issue bounties* tab): put USDC on any GitHub issue from your wallet. When a merged PR closes it, anyone presses *Check GitHub and pay the PR author*: a Chainlink CRE workflow confirms it with GitHub, and the author is paid into their Sereno account by GitHub ID. Funders can take their money back after their deadline if nobody earns it.
 - **CLI** (Node 20+): [`sereno-ak`](https://www.npmjs.com/package/sereno-ak)
 
 ```sh
@@ -22,6 +23,7 @@ npx sereno-ak sync <you>                                                    # co
 npx sereno-ak send 1 alice --as <you> --key ~/.ssh/id_ed25519               # signs with ssh-keygen, relayer submits
 npx sereno-ak commit-pay 1 alice --as <you> --key ~/.ssh/id_ed25519 --push  # in any GitHub repo: the push is the payment
 npx sereno-ak claim --as <you> --key ~/.ssh/id_ecdsa                        # make <you>.sereno.eth a real ENSv2 subname
+npx sereno-ak bounty https://github.com/owner/repo/issues/12 --settle        # settle an issue bounty and pay the PR author
 ```
 
 A name claim is verified on Ethereum Sepolia, where the ed25519 verifier doesn't fit the gas limit, so it needs a P-256 key (`ssh-keygen -t ecdsa`) or a security key / phone (`-t ecdsa-sk`). Payments accept ed25519, P-256, RSA and security keys.
@@ -38,7 +40,7 @@ A name claim is verified on Ethereum Sepolia, where the ed25519 verifier doesn't
 | Path | What |
 |---|---|
 | `contracts/` | Foundry: SSH signature verifier, account and factory, key oracle, ENS resolver and name registrar |
-| `cre/` | Chainlink CRE workflow that syncs GitHub keys on-chain |
+| `cre/` | Chainlink CRE workflows: `github-keys` syncs GitHub keys on-chain; `github-bounty` confirms a merged PR closed an issue |
 | `gateway/` | CCIP-read gateway for `<user>.sereno.eth` |
 | `relayer/` | Submits SSH-signed payments and pushed payment commits |
 | `cli/` | `ak`: sign and send payments, commit-pay, claim your name |

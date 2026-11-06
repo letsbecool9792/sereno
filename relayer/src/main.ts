@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { getAddress, type Hex } from "viem";
 import { githubGet, parseCommitObject, parseIntent } from "@sereno/shared";
 import { commitFromGithub, makeRelayer, RelayError } from "./relay";
-import { makeSyncQueue } from "./sync";
+import { bountyJobId, makeSyncQueue, type Job } from "./sync";
 
 const secret = (n: string) => {
   const p = join(import.meta.dir, "../../.secrets", `${n}.key`);
@@ -25,6 +25,24 @@ const json = (body: unknown, status = 200) =>
   Response.json(JSON.parse(JSON.stringify(body, (_, v) => (typeof v === "bigint" ? v.toString() : v))), { status, headers: cors });
 const log = (msg: string) => console.log(`${new Date().toISOString()} ${msg}`);
 
+function bountyArgs(chainId: unknown, repo: unknown, issue: unknown) {
+  const r = String(repo ?? "").toLowerCase();
+  const i = String(issue ?? "");
+  if (!/^[a-z0-9-]{1,39}\/[a-z0-9._-]{1,100}$/.test(r) || !/^[1-9][0-9]{0,9}$/.test(i)) throw new RelayError(400, "expected repo \"owner/repo\" and a positive issue number");
+  return { chainId: Number(chainId), repo: r, issue: i };
+}
+
+/// After the bounty workflow settled an issue, pay its USDC pot to the winner (also callable by anyone on-chain).
+async function payBounty(j: Job) {
+  try {
+    const paid = await relayer.bountyPayout(j.chainId!, j.repo!, BigInt(j.issue!));
+    if (paid) j.paid = paid.url;
+    else j.detail = `${j.detail ?? ""} (nothing to pay out)`.trim();
+  } catch (e) {
+    j.detail = `${j.detail ?? ""}; payout failed: ${(e as Error).message}`.trim();
+  }
+}
+
 async function route(req: Request): Promise<Response> {
   const url = new URL(req.url);
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
@@ -32,6 +50,11 @@ async function route(req: Request): Promise<Response> {
   try {
     if (req.method === "GET" && url.pathname.startsWith("/sync/status/")) return json(sync.status(url.pathname.slice("/sync/status/".length)));
     if (req.method === "GET" && url.pathname === "/sync/next") return json(sync.next(req));
+    if (req.method === "GET" && url.pathname === "/bounty/status") {
+      const q = bountyArgs(url.searchParams.get("chainId"), url.searchParams.get("repo"), url.searchParams.get("issue"));
+      const b = await relayer.bounty(q.chainId, q.repo, BigInt(q.issue));
+      return json({ ...sync.status(bountyJobId(q.chainId, q.repo, q.issue)), winner: b.winner, pot: b.pot });
+    }
     if (req.method !== "POST") return json({ message: "not found" }, 404);
     const body = (await req.json()) as Record<string, string>;
     if (url.pathname === "/sync") {
@@ -40,8 +63,23 @@ async function route(req: Request): Promise<Response> {
       return json(r);
     }
     if (url.pathname === "/sync/done") {
-      const r = sync.done(req, body as { githubId?: string; ok?: boolean; detail?: string });
-      log(`sync ${r.login} (${r.githubId}): ${r.state}${r.detail ? ` ${r.detail}` : ""}`);
+      const r = sync.done(req, body as { id?: string; githubId?: string; ok?: boolean; detail?: string });
+      if (r.kind === "bounty" && r.state === "done") await payBounty(r);
+      log(`${r.kind} ${r.login ?? `${r.repo}#${r.issue} on ${r.chainId}`}: ${r.state}${r.detail ? ` ${r.detail}` : ""}`);
+      return json(r);
+    }
+    if (url.pathname === "/bounty") {
+      const q = bountyArgs(body.chainId, body.repo, body.issue);
+      const b = await relayer.bounty(q.chainId, q.repo, BigInt(q.issue));
+      if (b.winner !== 0n) {
+        // Already settled: no workflow run needed, just pay out whatever USDC is still in the pot.
+        const paid = await relayer.bountyPayout(q.chainId, q.repo, BigInt(q.issue));
+        log(`bounty ${q.repo}#${q.issue} on ${b.chain}: settled earlier${paid ? `, paid ${paid.url}` : ""}`);
+        return json({ id: bountyJobId(q.chainId, q.repo, q.issue), state: "done", winner: b.winner, paid: paid?.url, detail: paid ? undefined : "already paid out" });
+      }
+      if (b.pot === 0n) throw new RelayError(400, `no USDC bounty on ${q.repo}#${q.issue} on ${b.chain}`);
+      const r = sync.requestBounty(q.chainId, q.repo, q.issue);
+      log(`bounty check requested for ${q.repo}#${q.issue} on ${b.chain}: ${r.state}`);
       return json(r);
     }
     if (url.pathname === "/intent") {
