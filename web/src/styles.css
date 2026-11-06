@@ -85,6 +85,8 @@ textarea { font-family: var(--mono); font-size: 0.8rem; width: 100%; margin-bott
 /* Status text */
 .busy { color: var(--muted); display: flex; align-items: center; gap: 10px; margin: 0; }
 .error { color: var(--err); background: var(--err-bg); border-radius: var(--r-sm); padding: 10px 14px; margin: 0; }
+.error.moved { display: grid; gap: 8px; justify-items: start; border: 1px solid var(--err); }
+.error.moved p { margin: 0; }
 .ok-msg { color: var(--ok); background: var(--ok-bg); border-radius: var(--r-sm); padding: 10px 14px; margin: 0; }
 .note { color: var(--muted); margin: 10px 0; }
 .card .error, .card .note, .card .ok-msg { margin: 10px 0; }

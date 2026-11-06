@@ -2,36 +2,58 @@
 // the OffchainResolver trusts.
 //
 //   GATEWAY_KEY=0x... [GITHUB_TOKEN=...] [PORT=8787] [CACHE_FILE=path] bun src/main.ts
-//   (GATEWAY_KEY defaults to .secrets/gateway.key; CACHE_FILE keeps username -> ID lookups across restarts)
+//   (GATEWAY_KEY defaults to .secrets/gateway.key; CACHE_FILE keeps username -> ID lookups and changes of owner
+//   across restarts)
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { createPublicClient, http, type Address, type Hex } from "viem";
+import { createPublicClient, http, keccak256, toBytes, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { accountFactoryAbi, CHAINS, CORE, DEFAULT_CHAIN, ENS_DEPLOYMENT, githubKeys, githubUser, type GithubUser } from "@sereno/shared";
+import {
+  accountFactoryAbi,
+  CHAINS,
+  CORE,
+  DEFAULT_CHAIN,
+  ENS_DEPLOYMENT,
+  githubGet,
+  githubKeys,
+  githubUser,
+  keyOracleAbi,
+  nameRegistrarAbi,
+} from "@sereno/shared";
+import { MoveLog, movedMessage, QUARANTINE_MS, type Move } from "./moves";
 import { GatewayError, handle, type Lookups } from "./resolve";
 
 if (!CORE || !ENS_DEPLOYMENT) throw new Error("contracts not deployed; run `bun run sync`");
 const core = CORE;
+const ens = ENS_DEPLOYMENT;
 const keyFile = join(import.meta.dir, "../../.secrets/gateway.key");
 const key = (process.env.GATEWAY_KEY ?? (existsSync(keyFile) ? readFileSync(keyFile, "utf8").trim() : "")) as Hex;
 if (!key) throw new Error("set GATEWAY_KEY (or create .secrets/gateway.key)");
 const signer = privateKeyToAccount(key);
-if (signer.address !== ENS_DEPLOYMENT.gatewaySigner) console.warn(`warning: ${signer.address} is not the resolver's signer ${ENS_DEPLOYMENT.gatewaySigner}`);
+if (signer.address !== ens.gatewaySigner) console.warn(`warning: ${signer.address} is not the resolver's signer ${ens.gatewaySigner}`);
 
 const chain = CHAINS[DEFAULT_CHAIN];
 const pub = createPublicClient({ chain: chain.chain, transport: http(chain.rpc, { retryCount: 2 }) });
+// The registrar and the oracle it trusts live on Sepolia: on-chain hints that a login changed owner.
+const sepolia = createPublicClient({ chain: CHAINS.sepolia.chain, transport: http(CHAINS.sepolia.rpc, { retryCount: 1 }) });
 const ids = new Map<string, { id: bigint | null; at: number }>();
 const accounts = new Map<bigint, Address>();
+const moves = new MoveLog();
 
 // Username -> ID cache on disk, so a restart doesn't refetch everyone and a GitHub outage still answers known names.
 const cacheFile = process.env.CACHE_FILE;
-type CacheJson = { ids: Record<string, { id: string | null; at: number }>; accounts: Record<string, Address> };
+type CacheJson = {
+  ids: Record<string, { id: string | null; at: number }>;
+  accounts: Record<string, Address>;
+  moves?: Record<string, { fromId: string; at: number }>;
+};
 if (cacheFile && existsSync(cacheFile)) {
   try {
     const c = JSON.parse(readFileSync(cacheFile, "utf8")) as CacheJson;
     for (const [login, v] of Object.entries(c.ids ?? {})) ids.set(login, { id: v.id === null ? null : BigInt(v.id), at: v.at });
     for (const [id, a] of Object.entries(c.accounts ?? {})) accounts.set(BigInt(id), a);
-    console.log(`cache: ${ids.size} logins, ${accounts.size} accounts from ${cacheFile}`);
+    for (const [login, v] of Object.entries(c.moves ?? {})) moves.entries.set(login, { fromId: BigInt(v.fromId), at: v.at });
+    console.log(`cache: ${ids.size} logins, ${accounts.size} accounts, ${moves.entries.size} changes of owner from ${cacheFile}`);
   } catch (e) {
     console.warn(`cache: ignoring unreadable ${cacheFile}: ${(e as Error).message}`);
   }
@@ -41,9 +63,10 @@ function save() {
   if (!cacheFile || saveTimer) return;
   saveTimer = setTimeout(() => {
     saveTimer = undefined;
-    const c: CacheJson = { ids: {}, accounts: {} };
+    const c: CacheJson = { ids: {}, accounts: {}, moves: {} };
     for (const [login, v] of ids) c.ids[login] = { id: v.id === null ? null : v.id.toString(), at: v.at };
     for (const [id, a] of accounts) c.accounts[id.toString()] = a;
+    for (const [login, v] of moves.entries) c.moves![login] = { fromId: v.fromId.toString(), at: v.at };
     try {
       mkdirSync(dirname(cacheFile), { recursive: true });
       writeFileSync(`${cacheFile}.tmp`, JSON.stringify(c));
@@ -52,6 +75,47 @@ function save() {
       console.warn(`cache: write failed: ${(e as Error).message}`);
     }
   }, 1_000);
+}
+
+/// Remembers it when a login we knew now belongs to a different ID (or to nobody).
+function sawOwner(login: string, previous: { id: bigint | null } | undefined, id: bigint | null) {
+  if (previous && previous.id !== null && previous.id !== id && moves.note(login, previous.id, Date.now())) save();
+}
+
+/// The quarantine on `login` (now GitHub ID `id`), from what this gateway has seen plus two hints on Sepolia: the key
+/// oracle still giving the login to another ID, and the registrar's record of a released claimed name.
+const checkedAt = new Map<string, number>();
+async function moveOf(login: string, id: bigint): Promise<Move | null> {
+  const now = Date.now();
+  if (now - (checkedAt.get(login) ?? 0) >= 60_000) {
+    checkedAt.set(login, now);
+    const [oracleId, q, account] = await Promise.all([
+      sepolia
+        .readContract({ address: core.KeyOracle, abi: keyOracleAbi, functionName: "idOfLoginHash", args: [keccak256(toBytes(login))] })
+        .catch(() => 0n),
+      sepolia
+        .readContract({ address: ens.nameRegistrar, abi: nameRegistrarAbi, functionName: "quarantineOf", args: [login] })
+        .catch(() => null), // registrars before the quarantine don't have it
+      lookups.accountOf(id),
+    ]);
+    let changed = oracleId !== 0n && oracleId !== id && moves.note(login, oracleId, now);
+    if (q && q[0] > 0n && q[1].toLowerCase() !== account.toLowerCase()) {
+      changed = moves.note(login, q[2], Number(q[0]) * 1000 - QUARANTINE_MS) || changed;
+    }
+    if (changed) save();
+  }
+  return moves.active(login, id, now);
+}
+
+/// The previous owner's current username, for the error message.
+const loginsById = new Map<bigint, string | null>();
+async function loginOf(id: bigint): Promise<string | null> {
+  if (id === 0n) return null;
+  if (!loginsById.has(id)) {
+    const login = await githubGet<{ login: string }>(`/user/${id}`, process.env.GITHUB_TOKEN).then((u) => u.login.toLowerCase(), () => null);
+    loginsById.set(id, login);
+  }
+  return loginsById.get(id) ?? null;
 }
 
 const lookups: Lookups = {
@@ -69,6 +133,7 @@ const lookups: Lookups = {
       }
       id = null;
     }
+    sawOwner(login, hit, id);
     ids.set(login, { id, at: Date.now() });
     save();
     return id;
@@ -82,19 +147,34 @@ const lookups: Lookups = {
     }
     return a;
   },
+  async moved(login, githubId) {
+    const m = await moveOf(login, githubId);
+    return m && movedMessage(`${login}.${ens.parentName}`, m, await loginOf(m.fromId));
+  },
 };
 
 /// Profile + SSH keys for the pay page, through our token and a short cache (browsers hit GitHub's 60/hour limit fast).
-const profiles = new Map<string, { at: number; body: unknown }>();
-async function profile(login: string) {
-  const hit = profiles.get(login);
-  if (hit && Date.now() - hit.at < 60_000) return hit.body;
-  const u: GithubUser = await githubUser(login, process.env.GITHUB_TOKEN);
-  const body = { login: u.login, id: u.id.toString(), name: u.name, avatarUrl: u.avatarUrl, keys: await githubKeys(u.id, process.env.GITHUB_TOKEN) };
-  ids.set(u.login.toLowerCase(), { id: u.id, at: Date.now() });
-  save();
-  profiles.set(login, { at: Date.now(), body });
-  return body;
+/// A login in quarantine throws with `moved` and `profile` set: /lookup answers 409, so paying refuses by default,
+/// while the account's own owner (spending, checking a balance) can still use the profile.
+type Profile = { login: string; id: string; name: string | null; avatarUrl: string; keys: string[] };
+const profiles = new Map<string, { at: number; body: Profile }>();
+async function profile(login: string): Promise<Profile> {
+  let hit = profiles.get(login);
+  if (!hit || Date.now() - hit.at >= 60_000) {
+    const u = await githubUser(login, process.env.GITHUB_TOKEN);
+    sawOwner(login, ids.get(login), u.id);
+    ids.set(login, { id: u.id, at: Date.now() });
+    save();
+    hit = { at: Date.now(), body: { login: u.login, id: u.id.toString(), name: u.name, avatarUrl: u.avatarUrl, keys: await githubKeys(u.id, process.env.GITHUB_TOKEN) } };
+    profiles.set(login, hit);
+  }
+  const m = await moveOf(login, BigInt(hit.body.id));
+  if (m) {
+    const fromLogin = await loginOf(m.fromId);
+    const moved = { fromId: m.fromId.toString(), fromLogin, since: m.since, until: m.until };
+    throw Object.assign(new Error(movedMessage(`${login}.${ens.parentName}`, m, fromLogin)), { moved, profile: hit.body });
+  }
+  return hit.body;
 }
 
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type" };
@@ -110,10 +190,12 @@ const server = Bun.serve({
       try {
         return json(await profile(lookup[1]!.toLowerCase()));
       } catch (e) {
+        const { moved, profile: body } = e as { moved?: unknown; profile?: Profile };
+        if (moved) return json({ message: (e as Error).message, moved, profile: body }, 409);
         return json({ message: (e as Error).message }, (e as { notFound?: boolean }).notFound ? 404 : 502);
       }
     }
-    if (url.pathname === "/health") return json({ ok: true, parent: ENS_DEPLOYMENT!.parentName, signer: signer.address });
+    if (url.pathname === "/health") return json({ ok: true, parent: ens.parentName, signer: signer.address });
     let sender: string | undefined;
     let data: string | undefined;
     const m = /^\/(0x[0-9a-fA-F]{40})\/(0x[0-9a-fA-F]*)(\.json)?$/.exec(url.pathname);
@@ -121,7 +203,7 @@ const server = Bun.serve({
     else if (req.method === "POST") ({ sender, data } = (await req.json()) as { sender?: string; data?: string });
     if (!sender || !data) return json({ message: "expected /{sender}/{data}.json" }, 400);
     try {
-      const out = await handle(sender as Address, data as Hex, { resolver: ENS_DEPLOYMENT!.resolver, parent: ENS_DEPLOYMENT!.parentName, signer, lookups });
+      const out = await handle(sender as Address, data as Hex, { resolver: ens.resolver, parent: ens.parentName, signer, lookups });
       return json({ data: out });
     } catch (e) {
       const status = e instanceof GatewayError ? e.status : 500;
@@ -130,4 +212,4 @@ const server = Bun.serve({
     }
   },
 });
-console.log(`gateway for *.${ENS_DEPLOYMENT.parentName} on :${server.port}, signer ${signer.address}`);
+console.log(`gateway for *.${ens.parentName} on :${server.port}, signer ${signer.address}`);

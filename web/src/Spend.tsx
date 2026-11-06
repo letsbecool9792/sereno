@@ -132,7 +132,7 @@ export function Spend() {
     try {
       const c = CHAINS[chainKey];
       const pub = clientFor(chainKey);
-      const { user, keys: lines } = await fetchProfile(me.trim());
+      const { user, keys: lines } = await fetchProfile(me.trim(), true);
       let toAddr: Address;
       let toLabel: string;
       if (isAddress(to.trim())) {

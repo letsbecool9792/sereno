@@ -13,47 +13,64 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 | WS | Owner | Now working on | Blocked on | Last update |
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | M1–M5 done; extras deployed; demo bounty PR open | Suparno merges sereno-demo#2 on stage | 6 Nov 13:18 |
-| WS2 CRE and ENS | Gantavya | stale-name release for renames (PR); pay-to-SSH task queued | registrar redeploy (Suparno); VM access, a throwaway key, test USDC (Gantavya) | 6 Nov 15:55 |
+| WS2 CRE and ENS | Gantavya | renamed usernames: release + 15-day loud failure (PR #24); pay-to-SSH task queued | registrar redeploy + gateway/Vercel redeploy (Suparno); VM access, a throwaway key, test USDC (Gantavya) | 6 Nov 17:05 |
 | WS3 clients and demo | Suparno + Claude | core done and hosted; issue bounties live (tab, CLI, relayer, worker); demo rework next | | 6 Nov 13:25 |
 
 ---
 
-## 2026-11-06 15:55 IST: Gantavya's Claude: claimed names now follow GitHub renames (stale-name release)
+## 2026-11-06 17:05 IST: Gantavya's Claude: renamed usernames fail loudly instead of paying a stranger (PR #24)
 
 Branch `ws2/stale-name-release`.
 
-**The bug.** Say Gantavya claims `gantavya.sereno.eth`, then renames to `suparno` on GitHub, and a stranger later takes `gantavya`:
-- the claimed name still points to Gantavya's account, so the stranger's payments land with Gantavya;
-- the stranger can't claim it, because it's taken;
-- nothing on-chain could free it except the deployer's root key.
+**The problem.** Alice renames to bob on GitHub, and a stranger takes "alice". Someone who still pays `alice.sereno.eth` would silently pay the stranger, and crypto payments can't be reversed. Claimed names had a second bug: they never followed renames at all.
 
-**The fix (`NameRegistrar`):**
-- **`holderOf(label)`** returns the name's holder and whether it's **stale**: held by anyone other than `factory.addressOf(oracle.idOfLoginHash(label))`. The oracle already follows renames (`KeyOracle._setLogin` drops the old login and maps the new one), so it's the proof.
-- **`release(label)`:** anyone can free a stale name. It emits `Released`, and the name falls back to the wildcard gateway, which follows GitHub live.
-- **`claim` frees a stale name itself,** so the login's current owner just claims. A claim of your own existing name reverts with `AlreadyClaimed`.
-- **One resolver proxy per claim** (salt `keccak256(githubId, claimCount)`). Before, the salt was the GitHub ID, so each ID could claim only once and a renamed user couldn't claim their new login.
-- **No new storage,** so names claimed before this change are covered too.
-- **`ens-setup.ts`** now also grants the registrar `UNREGISTER` (`1 << 12`).
+**The fix:** a quarantine plus "show who you're paying", like UPI with recycled phone numbers (90 days there; 15 days here).
+- **Contract (`NameRegistrar`):**
+  - **`holderOf(label)`:** a name is **stale** when its holder isn't `factory.addressOf(oracle.idOfLoginHash(label))`. The oracle already follows renames.
+  - **`release(label)`:** anyone can free a stale name, which starts a **15-day quarantine** (`QUARANTINE`).
+  - **During the quarantine:**
+    - `claim` by anyone but the previous holder reverts `Quarantined(until)`;
+    - a stale name that hasn't been released reverts `StaleNotReleased`;
+    - `quarantineOf(label)` says until when and who held it (`claimedBy` is now recorded at claim).
+  - **The previous holder renaming back** can reclaim at once.
+  - **One resolver proxy per claim** (salt `keccak256(githubId, claimCount)`). Before, the salt was the GitHub ID, so each ID could claim only once and a renamed user couldn't claim their new login.
+  - **`ens-setup.ts`** grants the registrar `UNREGISTER` (`1 << 12`) too.
+- **Gateway:**
+  - A username that changed owner answers **409 for 15 days**, both to ENS lookups and to `/lookup`. The message says when it changed and who had it ("the previous owner is now @bob").
+  - **How it knows:**
+    - it saw the login with another ID before (kept in `CACHE_FILE`);
+    - the Sepolia KeyOracle still maps the login to another ID;
+    - the registrar's `quarantineOf`.
+  - `/lookup`'s 409 carries the profile too, so the owner can still use their own account.
+- **Pay page:**
+  - It accepts `name.sereno.eth` as well as a username.
+  - A quarantined name shows a red **"Not paying: … changed owner"** box with a "Look up @bob instead" button.
+  - Otherwise the card shows the person's avatar, @username, real name and GitHub ID before paying.
+  - No fallback to GitHub on a 409.
+  - The Spend tab: your own username still works; a quarantined recipient is refused.
+- **CLI:**
+  - `ak` always asks the gateway first, even with a token.
+  - `ak send` to a quarantined name stops with "not paying: …".
+  - `--as` and `ak account` only print a note.
 
-**Tests:** 7 new Foundry tests in `NameRegistrar.t.sol`:
-- a current name can't be released;
-- releasing an unclaimed name reverts;
-- after a rename anyone can release;
-- the stranger claims the stale name directly;
-- the stranger syncing first is enough;
-- a renamed user claims the new login with fresh records;
-- the old holder can't take the name back.
-
-`forge test`: 92/92. `bun run typecheck` is clean, `bun test` gives 22/22, and the ABIs are regenerated (`bun run sync`).
+**Tests:**
+- **`forge test` 94/94:** 9 new registrar tests. They cover release, waiting out the quarantine, the stranger syncing first, `quarantineOf`, renaming back, the new login with fresh records, and the old holder.
+- **`bun test` 28/28:** quarantine logic, and 409s for both `addr` forms.
+- **`bun run typecheck`** clean; **`vite build`** OK.
+- **Live, locally:** a gateway seeded with "torvalds used to be GitHub #1" answered `/lookup` and the ENS lookup with 409, naming @mojombo. `g4ntavya` resolved normally. The pay page showed the red box, and "Look up @mojombo" showed his card.
 
 **WAITING ON:**
-- **Suparno:** review and merge, then **redeploy the registrar on Sepolia** (laptop, deployer key):
-  1. In `contracts/deployments/ens.json`, move `nameRegistrar` to `previousNameRegistrar`.
-  2. `cd packages/ops && PARENT_NAME=sereno.eth bun src/ens-setup.ts`. This deploys the new registrar and grants `REGISTRAR | UNREGISTER | SET_SUBREGISTRY | SET_RESOLVER`.
-  3. Revoke the old registrar's roles on the UserRegistry, as on 6 Nov 01:45.
-  4. `bun run sync`.
+- **Suparno:** review and merge, then:
+  1. **Redeploy the registrar on Sepolia** (laptop, deployer key):
+     1. In `contracts/deployments/ens.json`, move `nameRegistrar` to `previousNameRegistrar`.
+     2. `cd packages/ops && PARENT_NAME=sereno.eth bun src/ens-setup.ts`. This deploys the new registrar and grants `REGISTRAR | UNREGISTER | SET_SUBREGISTRY | SET_RESOLVER`.
+     3. Revoke the old registrar's roles on the UserRegistry, as on 6 Nov 01:45.
+     4. `bun run sync`, then commit `ens.json` and the generated files.
+  2. **Redeploy the gateway on Railway,** ideally with a volume for `CACHE_FILE`, so changes of owner survive restarts.
+  3. **Redeploy the pay page on Vercel.**
+  4. **Publish `sereno-ak`** if you want the CLI check on npm.
 
-  Do it before the live phone claim, so the stage claim goes through the new registrar. Names claimed through the old registrar are still covered, because the rule reads only the registry and the oracle.
+  Do step 1 before the live phone claim.
 
 ---
 

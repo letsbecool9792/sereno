@@ -22,6 +22,8 @@ export interface Lookups {
   githubId(login: string): Promise<bigint | null>;
   /// numeric ID -> account address (the same on every chain).
   accountOf(githubId: bigint): Promise<Address>;
+  /// If the login changed owner recently and is quarantined, the error to show (see moves.ts); null otherwise.
+  moved(login: string, githubId: bigint): Promise<string | null>;
 }
 
 export class GatewayError extends Error {
@@ -71,6 +73,8 @@ export async function answer(labels: string[], parent: string, inner: Hex, looku
 
   const id = await lookups.githubId(login);
   if (id === null) throw new GatewayError(404, `no GitHub user ${login}`);
+  const moved = await lookups.moved(login, id);
+  if (moved) throw new GatewayError(409, moved);
   const account = await lookups.accountOf(id);
   if (call.args.length === 1) return encodeAbiParameters([{ type: "address" }], [account]);
   const coinType = call.args[1] as bigint;

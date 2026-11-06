@@ -215,18 +215,32 @@ contract NameRegistrarTest is Test {
         assertTrue(stale);
 
         vm.expectEmit(address(registrar));
-        emit NameRegistrar.Released("letsbecool9792", accounts.addressOf(ID));
+        emit NameRegistrar.Released("letsbecool9792", accounts.addressOf(ID), block.timestamp + 15 days);
         vm.prank(address(0xBEEF)); // permissionless
         registrar.release("letsbecool9792");
         assertEq(_owner("letsbecool9792"), address(0), "name still registered");
     }
 
-    function test_the_new_owner_of_a_username_claims_the_stale_name_directly() public {
+    function test_the_new_owner_of_a_username_waits_out_the_quarantine() public {
         registrar.claim("letsbecool9792", ID, _claimSig(KEY, "letsbecool9792", ID));
         _sync(ID, "suparno", KEY);
         _sync(ID2, "letsbecool9792", KEY2); // a stranger takes the freed username
+        bytes memory sig = _claimSig(KEY2, "letsbecool9792", ID2);
 
-        address resolver = registrar.claim("letsbecool9792", ID2, _claimSig(KEY2, "letsbecool9792", ID2));
+        vm.expectRevert(NameRegistrar.StaleNotReleased.selector);
+        registrar.claim("letsbecool9792", ID2, sig);
+
+        registrar.release("letsbecool9792");
+        uint256 until = block.timestamp + 15 days;
+        vm.expectRevert(abi.encodeWithSelector(NameRegistrar.Quarantined.selector, until));
+        registrar.claim("letsbecool9792", ID2, sig);
+
+        vm.warp(until - 1);
+        vm.expectRevert(abi.encodeWithSelector(NameRegistrar.Quarantined.selector, until));
+        registrar.claim("letsbecool9792", ID2, sig);
+
+        vm.warp(until);
+        address resolver = registrar.claim("letsbecool9792", ID2, sig);
         assertEq(_owner("letsbecool9792"), accounts.addressOf(ID2), "payments would still go to the old holder");
         assertEq(MockPermissionedResolver(resolver).defaultAddress(60), abi.encodePacked(accounts.addressOf(ID2)));
     }
@@ -237,8 +251,36 @@ contract NameRegistrarTest is Test {
         _sync(ID2, "letsbecool9792", KEY2);
         (, bool stale) = registrar.holderOf("letsbecool9792");
         assertTrue(stale);
+        registrar.release("letsbecool9792");
+        vm.warp(block.timestamp + 15 days);
         registrar.claim("letsbecool9792", ID2, _claimSig(KEY2, "letsbecool9792", ID2));
         assertEq(_owner("letsbecool9792"), accounts.addressOf(ID2));
+    }
+
+    function test_quarantine_reports_who_held_the_name() public {
+        registrar.claim("letsbecool9792", ID, _claimSig(KEY, "letsbecool9792", ID));
+        assertEq(registrar.claimedBy(keccak256("letsbecool9792")), ID);
+        _sync(ID, "suparno", KEY);
+        registrar.release("letsbecool9792");
+
+        (uint256 until, address previous, uint256 previousId) = registrar.quarantineOf("letsbecool9792");
+        assertEq(until, block.timestamp + 15 days);
+        assertEq(previous, accounts.addressOf(ID));
+        assertEq(previousId, ID, "the gateway needs the ID to say who the name belonged to");
+
+        vm.warp(until);
+        (until, previous, previousId) = registrar.quarantineOf("letsbecool9792");
+        assertEq(until, 0);
+        assertEq(previous, address(0));
+    }
+
+    function test_the_previous_holder_renaming_back_skips_the_quarantine() public {
+        registrar.claim("letsbecool9792", ID, _claimSig(KEY, "letsbecool9792", ID));
+        _sync(ID, "suparno", KEY);
+        registrar.release("letsbecool9792");
+        _sync(ID, "letsbecool9792", KEY); // changed their mind
+        registrar.claim("letsbecool9792", ID, _claimSig(KEY, "letsbecool9792", ID));
+        assertEq(_owner("letsbecool9792"), accounts.addressOf(ID));
     }
 
     function test_a_renamed_user_can_claim_their_new_login_with_fresh_records() public {
