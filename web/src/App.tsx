@@ -22,6 +22,8 @@ import {
 } from "@sereno/shared";
 import { clientFor, fetchProfile, PAY_CHAINS, short, useWallets } from "./lib";
 import { Bounties } from "./Bounties";
+import { HoloCard } from "./HoloCard";
+import { Lantern } from "./Lantern";
 import { Spend } from "./Spend";
 
 const ensClient = clientFor("sepolia");
@@ -51,15 +53,25 @@ function Pay() {
   const walletChoice =
     wallets.find((w) => w.name === walletName) ?? wallets.find((w) => /metamask/i.test(w.name)) ?? wallets[0];
 
-  async function find(e?: React.FormEvent, key = chainKey) {
+  // ?user=<login> deep link: prefill and look up once on load.
+  useEffect(() => {
+    const u = cleanLogin(new URLSearchParams(window.location.search).get("user") ?? "");
+    if (u) {
+      setLogin(u);
+      void find(undefined, chainKey, u);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function find(e?: React.FormEvent, key = chainKey, who = cleanLogin(login)) {
     e?.preventDefault();
-    if (!login.trim() || !CORE || !ENS_DEPLOYMENT) return;
-    setBusy("Looking up…");
+    if (!who || !CORE || !ENS_DEPLOYMENT) return;
+    setBusy(`Looking up ${who} on GitHub…`);
     setError(null);
     setPaid(null);
     setLookup(null);
     try {
-      const { user, keys: lines } = await fetchProfile(login.trim());
+      const { user, keys: lines } = await fetchProfile(who);
       const name = `${user.login.toLowerCase()}.${ENS_DEPLOYMENT.parentName}`;
       const c = CHAINS[key];
       const pub = clientFor(key);
@@ -90,7 +102,7 @@ function Pay() {
         keys,
       });
     } catch (err) {
-      setError((err as Error).message.includes("not found") ? `No GitHub user "${login.trim()}"` : (err as Error).message);
+      setError((err as Error).message.includes("not found") ? `No GitHub user "${who}". Check the spelling.` : (err as Error).message);
     } finally {
       setBusy(null);
     }
@@ -141,8 +153,9 @@ function Pay() {
       });
       setBusy("Waiting for the transaction…");
       await clientFor(chainKey).waitForTransactionReceipt({ hash });
+      // Refresh first: find() clears `paid`, so set it after.
+      await find(undefined, chainKey, lookup.user.login);
       setPaid(`${chain.explorer}/tx/${hash}`);
-      await find(undefined, chainKey);
     } catch (err) {
       const code = (err as { code?: number; cause?: { code?: number } }).code ?? (err as { cause?: { code?: number } }).cause?.code;
       const msg = (err as Error).message.split("\n")[0] ?? "payment failed";
@@ -158,78 +171,117 @@ function Pay() {
     }
   }
 
-  const mismatch = lookup && lookup.ensAddress && lookup.ensAddress !== lookup.factoryAddress;
+  const mismatch = !!lookup?.ensAddress && lookup.ensAddress !== lookup.factoryAddress;
+  const listedKeys = lookup?.keys.filter((k) => k.listed).length ?? 0;
 
   return (
     <>
       <form onSubmit={find} className="search">
         <span className="at">github.com/</span>
-        <input value={login} onChange={(e) => setLogin(e.target.value)} placeholder="username" autoFocus spellCheck={false} />
-        <select value={chainKey} onChange={(e) => { const k = e.target.value as ChainKey; setChainKey(k); if (lookup) void find(undefined, k); }}>
+        <input value={login} onChange={(e) => setLogin(e.target.value)} placeholder="username" autoFocus spellCheck={false} aria-label="GitHub username" />
+        <select aria-label="Chain" value={chainKey} onChange={(e) => { const k = e.target.value as ChainKey; setChainKey(k); if (lookup) void find(undefined, k, lookup.user.login); }}>
           {PAY_CHAINS.map((k) => (
             <option key={k} value={k}>{CHAINS[k].chain.name}</option>
           ))}
         </select>
-        <button disabled={!!busy || !login.trim()}>Find</button>
+        <button disabled={!!busy || !cleanLogin(login)}>Find</button>
       </form>
 
-      {busy && <p className="busy">{busy}</p>}
-      {error && <p className="error">{error}</p>}
+      {busy && !lookup && <p className="busy"><span className="spin" aria-hidden="true" />{busy}</p>}
+      {error && !lookup && <p className="error">{error}</p>}
+
+      {!lookup && !busy && !error && (
+        <div className="empty">
+          <Lantern size={56} />
+          <p>Type a GitHub username to see their card. Money can arrive before they've ever heard of Sereno.</p>
+        </div>
+      )}
 
       {lookup && (
-        <section className="card">
-          <div className="who">
-            <img src={lookup.user.avatarUrl} alt="" width={64} height={64} />
-            <div>
-              <div className="login">{lookup.user.name ?? lookup.user.login} <span className="muted">@{lookup.user.login}</span></div>
-              <div className="muted">GitHub ID {lookup.user.id.toString()} (the account follows this ID, not the username)</div>
-            </div>
-          </div>
+        <section className="payflow">
+          <HoloCard
+            user={lookup.user}
+            name={lookup.name}
+            claimed={lookup.claimed}
+            check={!lookup.ensAddress ? "unresolved" : mismatch ? "mismatch" : "ok"}
+            received={paid ? `${amount} USDC` : undefined}
+          />
 
-          <dl>
-            <dt>ENS name</dt>
+          {mismatch && <p className="error">The name points to {short(lookup.ensAddress!)} but {lookup.user.login}'s account is {short(lookup.factoryAddress)}. Not paying.</p>}
+          {!lookup.ensAddress && <p className="error">The name didn't resolve; the name gateway may be down. Try again in a minute. Not paying.</p>}
+
+          {paid ? (
+            <div className="done">
+              <span className="done-ck" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+              </span>
+              <strong>Sent {amount} USDC to @{lookup.user.login}</strong>
+              <a href={paid} target="_blank" rel="noreferrer">View transaction</a>
+              <button type="button" className="secondary" onClick={() => setPaid(null)}>Pay again</button>
+            </div>
+          ) : (
+            <div className="paybox">
+              <label className="amount">
+                <span className="sr-only">Amount in USDC</span>
+                <input type="number" min="0" step="0.01" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ width: `${Math.max(1, amount.length) + 0.6}ch` }} />
+                <span>USDC</span>
+              </label>
+              <div className="quick" role="group" aria-label="Quick amounts">
+                {["1", "5", "10", "25"].map((q) => (
+                  <button type="button" key={q} className={amount === q ? "on" : ""} onClick={() => setAmount(q)}>{q}</button>
+                ))}
+              </div>
+              {wallets.length > 1 && (
+                <select aria-label="Wallet" value={walletChoice?.name} onChange={(e) => setWalletName(e.target.value)}>
+                  {wallets.map((w) => (
+                    <option key={w.name}>{w.name}</option>
+                  ))}
+                </select>
+              )}
+              <button className="primary" onClick={pay} disabled={!!busy || !lookup.ensAddress || mismatch || !(Number(amount) > 0)}>
+                {busy ? <><span className="spin" aria-hidden="true" />{busy}</> : `Pay @${lookup.user.login}`}
+              </button>
+              {error && <p className="error">{error}</p>}
+              <p className="fine">Your wallet opens only when you press Pay. No sign-up, no trackers.</p>
+            </div>
+          )}
+
+          <dl className="facts">
+            <dt>Account</dt>
             <dd>
-              {lookup.name} {lookup.claimed ? <span className="tag ok">claimed, owned by the account</span> : <span className="tag">wildcard</span>}
+              <a className="mono" href={`${chain.explorer}/address/${lookup.factoryAddress}`} target="_blank" rel="noreferrer">{short(lookup.factoryAddress)}</a>
+              <span className="muted"> on {chain.chain.name} · {lookup.deployed ? "deployed" : "new, it can already receive"}</span>
             </dd>
-            <dt>Account on {chain.chain.name}</dt>
-            <dd>
-              <a href={`${chain.explorer}/address/${lookup.factoryAddress}`} target="_blank" rel="noreferrer">{lookup.factoryAddress}</a>
-              <div className="muted">{lookup.deployed ? "deployed" : "not deployed yet; it can already receive"} · balance {formatUnits(lookup.balance, 6)} USDC</div>
-            </dd>
+            <dt>Balance</dt>
+            <dd className="mono">{formatUnits(lookup.balance, 6)} USDC</dd>
             <dt>Keys that can spend</dt>
             <dd>
-              {lookup.keys.length === 0 && <span className="muted">No SSH keys on this GitHub profile yet; money waits until they add one.</span>}
-              {lookup.keys.map((k, i) => (
-                <div key={i}>
-                  <code>{k.type}</code> {k.comment && <span className="muted">{k.comment}</span>}{" "}
-                  {k.listed ? <span className="tag ok">watched on-chain</span> : <span className="tag">not synced yet</span>}
-                </div>
-              ))}
+              {lookup.keys.length === 0 ? (
+                <span className="muted">No SSH keys on this profile yet; the money waits until they add one.</span>
+              ) : (
+                <>
+                  <span className="muted">{listedKeys} of {lookup.keys.length} on-chain</span>
+                  <ul className="keylist">
+                    {lookup.keys.map((k, i) => (
+                      <li key={i}>
+                        <code>{k.type}</code> {k.comment && <span className="muted">{k.comment}</span>}
+                        {k.listed ? <span className="tag ok">on-chain</span> : <span className="tag">not synced yet</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </dd>
           </dl>
-
-          {mismatch && <p className="error">The ENS name and the account factory disagree ({short(lookup.ensAddress!)} vs {short(lookup.factoryAddress)}). Not paying.</p>}
-          {!lookup.ensAddress && <p className="error">The ENS name did not resolve (is the gateway reachable?).</p>}
-
-          <div className="pay">
-            {wallets.length > 1 && (
-              <select value={walletChoice?.name} onChange={(e) => setWalletName(e.target.value)}>
-                {wallets.map((w) => (
-                  <option key={w.name}>{w.name}</option>
-                ))}
-              </select>
-            )}
-            <input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
-            <span>USDC</span>
-            <button onClick={pay} disabled={!!busy || !lookup.ensAddress || !!mismatch || !(Number(amount) > 0)}>
-              Pay {lookup.name}
-            </button>
-          </div>
-          {paid && <p className="ok-msg">Paid. <a href={paid} target="_blank" rel="noreferrer">View transaction</a></p>}
         </section>
       )}
     </>
   );
+}
+
+/// "octocat", "@octocat" or "https://github.com/octocat" → "octocat".
+function cleanLogin(s: string): string {
+  return s.trim().replace(/^https?:\/\/(www\.)?github\.com\//i, "").replace(/^@/, "").split(/[/?#]/)[0]!;
 }
 
 type Page = "pay" | "spend" | "bounties";
@@ -245,8 +297,8 @@ export function App() {
   return (
     <main>
       <header>
-        <h1>Sereno</h1>
-        <p className="tagline">Pay any developer by their GitHub username. They spend with the SSH key they already have.</p>
+        <h1><Lantern size={40} />Sereno</h1>
+        <p className="tagline"><strong>We didn't build a wallet. GitHub already was one.</strong> Pay any developer by their GitHub username; they spend with the SSH key they already have.</p>
         <nav className="tabs">
           <a href="#pay" className={page === "pay" ? "on" : ""}>Pay someone</a>
           <a href="#spend" className={page === "spend" ? "on" : ""}>Spend your balance</a>
