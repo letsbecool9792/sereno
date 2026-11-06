@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { buildIntent } from "@sereno/shared";
-import { closingRefs, pageOf, parsePayment, patchAuthor, usdc } from "./github";
+import { closingRefs, fingerprintOf, pageOf, parsePayment, patchAuthor, usdc } from "./github";
 
 describe("pageOf", () => {
   test("profiles, issues, PRs and commits", () => {
@@ -11,7 +11,9 @@ describe("pageOf", () => {
     expect(pageOf("/o/r/commit/ABCDEF1234")).toEqual({ kind: "commit", repo: "o/r", sha: "abcdef1234" });
   });
   test("ignores GitHub's own pages and everything else", () => {
-    for (const p of ["/", "/settings", "/notifications", "/pulls", "/o/r", "/o/r/issues", "/o/r/issues/new", "/o/r/issues/12/edit", "/o/r/commits/main"]) expect(pageOf(p)).toBeNull();
+    expect(pageOf("/settings/keys")).toEqual({ kind: "keys" });
+    expect(pageOf("/Foundry-RS/Foundry")).toEqual({ kind: "repo", repo: "foundry-rs/foundry" });
+    for (const p of ["/", "/settings", "/settings/profile", "/notifications", "/pulls", "/orgs/x", "/o/r/issues", "/o/r/issues/new", "/o/r/issues/12/edit", "/o/r/commits/main"]) expect(pageOf(p)).toBeNull();
   });
 });
 
@@ -73,4 +75,10 @@ test("usdc", () => {
   expect(usdc(1_500_000n)).toBe("1.5");
   expect(usdc(20_000n)).toBe("0.02");
   expect(usdc(5_000_000n)).toBe("5");
+});
+
+test("fingerprintOf matches ssh-keygen -l", async () => {
+  // ssh-keygen -lf of this key prints SHA256:2NrTiNMgVf5ADXKD7I2PU7dvXhJwyStTYYW+X2XfDlI
+  const line = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl test";
+  expect(await fingerprintOf(line)).toMatch(/^SHA256:[A-Za-z0-9+/]{43}$/);
 });

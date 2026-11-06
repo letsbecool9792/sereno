@@ -6,7 +6,9 @@ export type Page =
   | { kind: "profile"; login: string }
   | { kind: "issue"; repo: string; issue: number }
   | { kind: "pull"; repo: string; pull: number }
-  | { kind: "commit"; repo: string; sha: string };
+  | { kind: "commit"; repo: string; sha: string }
+  | { kind: "repo"; repo: string }
+  | { kind: "keys" };
 
 /// GitHub's top-level paths that aren't users (a profile is github.com/<login> with nothing after it).
 const RESERVED = new Set(
@@ -19,6 +21,8 @@ const RESERVED = new Set(
 export function pageOf(pathname: string): Page | null {
   const p = pathname.replace(/\/+$/, "").split("/").filter(Boolean);
   if (p.length === 1 && /^[a-z\d](?:[a-z\d-]{0,38})$/i.test(p[0]!) && !RESERVED.has(p[0]!.toLowerCase())) return { kind: "profile", login: p[0]! };
+  if (p.length === 2 && p[0] === "settings" && p[1] === "keys") return { kind: "keys" };
+  if (p.length === 2 && !RESERVED.has(p[0]!.toLowerCase()) && /^[\w.-]+$/.test(p[1]!)) return { kind: "repo", repo: `${p[0]}/${p[1]}`.toLowerCase() };
   if (p.length < 4) return null;
   const repo = `${p[0]}/${p[1]}`.toLowerCase();
   const n = Number(p[3]);
@@ -78,4 +82,11 @@ export function usdc(units: bigint): string {
   const whole = units / 1_000_000n;
   const frac = (units % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "");
   return frac ? `${whole}.${frac}` : whole.toString();
+}
+
+/// OpenSSH's SHA256 fingerprint of an authorized_keys line ("SHA256:…", as GitHub's keys page shows it).
+export async function fingerprintOf(line: string): Promise<string> {
+  const blob = Uint8Array.from(atob(line.trim().split(/\s+/)[1] ?? ""), (c) => c.charCodeAt(0));
+  const h = new Uint8Array(await crypto.subtle.digest("SHA-256", blob));
+  return `SHA256:${btoa(String.fromCharCode(...h)).replace(/=+$/, "")}`;
 }

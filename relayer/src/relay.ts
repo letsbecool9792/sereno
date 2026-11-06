@@ -18,6 +18,7 @@ import {
   CHAINS,
   CORE,
   ENS_DEPLOYMENT,
+  escrowAbi,
   EXTRAS,
   fromGithubVerification,
   githubGet,
@@ -155,6 +156,20 @@ export function makeRelayer(key: Hex) {
       const c = chainById(chainId);
       const r = await submit(c, { address: EXTRAS!.BountyBoard, abi: bountyBoardAbi, functionName: "payout", args: [b.repoHash, issue, c.usdc] });
       const account = await clientsFor(c).pub.readContract({ address: core.AccountFactory, abi: accountFactoryAbi, functionName: "addressOf", args: [b.winner] });
+      return { chain: c.key, account, ...r };
+    },
+
+    /// Claims an escrow deposit for its GitHub ID's account (Escrow.claim is permissionless; we pay the gas). The
+    /// signature is over Escrow.claimText(id) in namespace sereno@v1, by a key the oracle lists for that ID.
+    async escrowClaim(p: { chainId: number; id: bigint; signature: string }): Promise<Relayed> {
+      if (!EXTRAS) throw new RelayError(503, "the escrow isn't deployed yet");
+      const c = chainById(p.chainId);
+      const sig = p.signature.startsWith("0x") ? (p.signature as Hex) : unarmor(p.signature);
+      const escrow = { address: EXTRAS.Escrow, abi: escrowAbi } as const;
+      const [, , done, , githubId] = await clientsFor(c).pub.readContract({ ...escrow, functionName: "deposits", args: [p.id] });
+      if (done) throw new RelayError(400, `escrow ${p.id} is already claimed or reclaimed`);
+      const r = await submit(c, { ...escrow, functionName: "claim", args: [p.id, sig] });
+      const account = await clientsFor(c).pub.readContract({ address: core.AccountFactory, abi: accountFactoryAbi, functionName: "addressOf", args: [githubId] });
       return { chain: c.key, account, ...r };
     },
 

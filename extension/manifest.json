@@ -1,21 +1,63 @@
 {
   "manifest_version": 3,
-  "name": "Sereno for GitHub",
-  "short_name": "Sereno",
-  "version": "0.1.0",
-  "description": "Pay any developer from their GitHub profile, fund issue bounties that pay out on merge, and tip commit and PR authors.",
-  "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },
-  "action": { "default_title": "Sereno", "default_popup": "popup.html", "default_icon": { "16": "icons/16.png", "32": "icons/32.png" } },
-  "background": { "service_worker": "background.js" },
-  "content_scripts": [{ "matches": ["https://github.com/*"], "js": ["content.js"], "run_at": "document_end" }],
+  "name": "sereno for GitHub",
+  "short_name": "sereno",
+  "version": "0.2.0",
+  "description": "Your GitHub account is the wallet: pay by username, fund bounties that pay on merge, tip authors, and spend with a key this browser keeps.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvLEokZH62px82DYYacQBDFaNNlvnKLm/6nVqx+q0Y9lPRwku3h0ksJs++Ho3YvF2+ui3rx9ViUEyLv4V33kQ4GPHMJGQz98OQzQUhH8DRVVmwNm9ZHwcj/pmK1NcpnohkEevvcnIF684O1+niTTUv+NjgFwh6t+2s5B4n2wlanOg5hLLtsBfpcTVPAWBhnDHewtUN/CVk2H11kCKo50jlhQDYI/4Rk8Y5ijMKMejpGVHJLBC1Sh+29W9zOmA4utedamDju7gjekOPBZj6WIRbCAHouQL9wONXORbPxoX8EhLGKEYh2Nar3YGYhLOlKGcdvjMpIRFwqj+/6rCV6AjhQIDAQAB",
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "action": {
+    "default_title": "sereno",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://github.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "permissions": [
+    "storage",
+    "alarms"
+  ],
+  "optional_permissions": [
+    "nativeMessaging"
+  ],
   "host_permissions": [
+    "https://api.github.com/*",
+    "https://sereno-production.up.railway.app/*",
+    "https://happy-curiosity-production-7074.up.railway.app/*",
     "https://sepolia.base.org/*",
     "https://base-sepolia-rpc.publicnode.com/*",
     "https://base-sepolia.drpc.org/*",
     "https://sepolia-rollup.arbitrum.io/*",
     "https://arbitrum-sepolia-rpc.publicnode.com/*",
     "https://arbitrum-sepolia.drpc.org/*",
-    "https://happy-curiosity-production-7074.up.railway.app/*",
-    "https://api.github.com/*"
-  ]
+    "https://ethereum-sepolia-rpc.publicnode.com/*",
+    "https://sepolia.gateway.tenderly.co/*",
+    "https://0xrpc.io/*"
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://sereno-eth.vercel.app/*",
+      "http://localhost/*"
+    ]
+  }
 }

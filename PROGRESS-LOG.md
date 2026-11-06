@@ -18,6 +18,51 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 ---
 
+## 2026-11-06 22:10 IST: Suparno's Claude (laptop): the full extension (Mohikshit's spec, #27), in the redesign's look; PR #25 now sits on #26
+
+- **Branch `ws3/extension`, rebased onto Gantavya's `ws3/frontend-redesign` (#26).** Merge #26 first; #25 then holds only the extension. The pay page's deep links (`?amount=`, `?issue=`) are re-applied on his redesigned files.
+- **Built per `extension/EXTENSION_DESIGN.md`** (now in this branch, so #27 is superseded). Details are in `extension/README.md`.
+  - **Browser key:** WebCrypto P-256 SSHSIG.
+  - **Vault:** PBKDF2 600k → AES-GCM; session-only plaintext; auto-lock; a growing wait after wrong passwords; the password again over a set amount.
+  - **Onboarding:** copy the key to GitHub as a Signing Key, watched on the profile, then sync with a tick per chain.
+  - **Popup in the redesign's look:**
+    - Home: balance, name, key status, escrows waiting.
+    - Send: the exact signed text read from the contract, and pre-checks.
+    - History: chain logs, `@login` labels, CSV export.
+    - Automate: sweep to a linked wallet, recurring payments by GitHub ID, daily cap, a password to widen, stop after 3 errors.
+    - Settings: badges, limits, claim name, own SSH key, remove.
+  - **Pay site:** a new `#link-wallet` page (`web/src/LinkWallet.tsx`), where a wallet signs the link text and the extension checks it.
+  - **CLI:** `ak connect` / `ak native-host` (`cli/src/native.ts`) register the native host `com.sereno.ak` for Chrome, Edge and Brave.
+  - **Relayer:** `POST /escrow/claim`.
+  - **GitHub buttons:**
+    - profile: Pay, Other wallet; your own profile: account, Sync, Claim;
+    - issue: Fund, Pay out, Refund;
+    - PR: Tip, "merging pays";
+    - commit: Tip, payment status, Relay;
+    - repo: Pay by commit;
+    - settings/keys: per-key status, Sync.
+  - **Privacy:** badges are off by default, so nothing is looked up while browsing.
+- **Cut (Suparno's call):** the GitHub OAuth device flow, "Pay with refund" (escrow) on profiles, and passkey unlock.
+- **Tested:**
+  - `bun run typecheck`, `bun test` (38 pass), and both the extension and web builds.
+  - **The browser key's SSHSIG is accepted** by the deployed SshSigVerifier (an `eth_call` on Base Sepolia, 4 fresh keys) and by `ssh-keygen -Y verify`.
+  - **Headless Edge with the extension:**
+    - vault create, lock, wrong password, unlock;
+    - Home with live balances (39.439 USDC);
+    - Send review for @octocat, with the contract's intent text (nonce 19) and the "not synced" block;
+    - History: 29 rows, 19 sent matching nonce 19, `@psycocodes` label;
+    - rule guardrails: no password, a sweep to an unlinked address, automations on without a password, all refused;
+    - GitHub pages: the profile shows claimed and balance; issue #3 "won by @g4ntavya"; PR #4 Tip; commit c046124 "Paid"; repo "Pay by commit"; "Tip" opens the Send window;
+    - native-host protocol: ping, info, refusing non-sereno text.
+  - **Not run:** a real payment with the browser key (it needs the key added on GitHub and the sync worker), and `ak connect` (it writes the registry).
+- **WAITING ON:** Suparno:
+  - Merge #26, then #25.
+  - **Redeploy the Railway relayer** (`/escrow/claim`) and the gateway; Vercel deploys `#link-wallet` from main.
+  - Load `extension/dist`, add the browser key on GitHub, sync, and send 1 USDC.
+  - Optionally run `npx sereno-ak connect` (after an npm republish), or `bun cli/src/main.ts connect` from the repo.
+
+---
+
 ## 2026-11-06 21:25 IST: Gantavya's Claude: frontend redesign (landing page + Pay, Spend, Bounties)
 
 Branch `ws3/frontend-redesign` (the 19:30 task). Presentation only: `lib.ts` untouched, and the chain, gateway and relayer calls in `App.tsx`, `Spend.tsx` and `Bounties.tsx` are unchanged.
