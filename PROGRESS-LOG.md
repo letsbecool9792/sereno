@@ -18,6 +18,15 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 ---
 
+## 2026-11-06 05:45 IST: Suparno's Claude (laptop): letsbecool9792.sereno.eth freed for the live phone claim
+
+- **Unregistered** `letsbecool9792` from our UserRegistry on Sepolia, using the deployer's root UNREGISTER role ([tx](https://sepolia.etherscan.io/tx/0xd725d23b4175ba408b62054bf536d100cc0034136b371b291ecec8169b8b7856)). The name still resolves to the same account through the wildcard gateway until it's claimed again.
+- **Rehearsed first on an anvil fork of Sepolia:** unregister, then `NameRegistrar.claim` signed with the `yo` key. It succeeds (`Claimed`, about 2.65M gas); the new registrar's resolver proxy doesn't collide with the old registrar's.
+- **The phone key is now listed on the Sepolia oracle** (CRE HTTP trigger, sepolia-settings, [tx](https://sepolia.etherscan.io/tx/0xf9d45427821a1970ef487fbc4e1caed413efe6a387f4c1c412772f3c79c878a0)). A claim checks keys on Sepolia, and the earlier cron run only synced Base.
+- **The claim is one-shot per GitHub ID with this registrar** (resolver proxy salt = GitHub ID). Don't rehearse `ak claim` as letsbecool9792; keep it for the demo.
+
+---
+
 ## 2026-11-06 05:35 IST: Suparno's Claude (laptop): relayer hosted on Railway; push-to-pay needs no laptop
 
 **The relayer runs on Railway** at `https://happy-curiosity-production-7074.up.railway.app`, next to the gateway.
