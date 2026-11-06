@@ -6,6 +6,8 @@ import {
   createPublicClient,
   createWalletClient,
   http,
+  keccak256,
+  toBytes,
   type Address,
   type Hex,
 } from "viem";
@@ -20,6 +22,7 @@ import {
   EXTRAS,
   fromGithubVerification,
   githubGet,
+  keyOracleAbi,
   nameRegistrarAbi,
   parseIntent,
   sshAccountAbi,
@@ -160,8 +163,34 @@ export function makeRelayer(key: Hex) {
       if (!ENS_DEPLOYMENT) throw new RelayError(503, "ENS not set up");
       const c = CHAINS.sepolia;
       const sig = p.signature.startsWith("0x") ? (p.signature as Hex) : unarmor(p.signature);
-      const r = await submit(c, { address: ENS_DEPLOYMENT.nameRegistrar, abi: nameRegistrarAbi, functionName: "claim", args: [p.label.toLowerCase(), p.githubId, sig] });
-      const account = await clientsFor(c).pub.readContract({ address: core.AccountFactory, abi: accountFactoryAbi, functionName: "addressOf", args: [p.githubId] });
+      const label = p.label.toLowerCase();
+      const name = `${label}.${ENS_DEPLOYMENT.parentName}`;
+      const { pub } = clientsFor(c);
+      const reg = { address: ENS_DEPLOYMENT.nameRegistrar, abi: nameRegistrarAbi } as const;
+      const account = await pub.readContract({ address: core.AccountFactory, abi: accountFactoryAbi, functionName: "addressOf", args: [p.githubId] });
+
+      // The oracle must already give this login to this GitHub ID (a new user, or one who just renamed, syncs first).
+      const owner = await pub.readContract({ address: core.KeyOracle, abi: keyOracleAbi, functionName: "idOfLoginHash", args: [keccak256(toBytes(label))] });
+      if (owner !== p.githubId) {
+        throw new RelayError(400, `the key oracle doesn't give ${label} to GitHub #${p.githubId} yet. Sync first (ak sync ${label}), then claim again`);
+      }
+      // Still held by the previous owner of this username (they renamed): release it, which anyone may do once the
+      // oracle shows the login moved. That starts the quarantine. Registrars before the quarantine lack holderOf.
+      const held = await pub.readContract({ ...reg, functionName: "holderOf", args: [label] }).catch(() => null);
+      if (held && held[1]) {
+        const rel = await submit(c, { ...reg, functionName: "release", args: [label] });
+        console.log(`released stale ${name} (held by ${held[0]}): ${rel.url}`);
+      }
+      const q = await pub.readContract({ ...reg, functionName: "quarantineOf", args: [label] }).catch(() => null);
+      if (q && q[0] > 0n && q[1].toLowerCase() !== account.toLowerCase()) {
+        const until = new Date(Number(q[0]) * 1000).toISOString().slice(0, 16).replace("T", " ");
+        throw new RelayError(
+          409,
+          `${name} belonged to the previous owner of the username ${label}${q[2] ? ` (GitHub #${q[2]})` : ""}. It is quarantined until ${until} UTC, ` +
+            `so people who still use the old name get an error instead of paying you by mistake. Claim it again after that.`,
+        );
+      }
+      const r = await submit(c, { ...reg, functionName: "claim", args: [label, p.githubId, sig] });
       return { chain: c.key, account, ...r };
     },
   };
