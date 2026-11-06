@@ -26,6 +26,6 @@ export const ENS_DEPLOYMENT: { parentName: string; resolver: Address; userRegist
   "parentName": "sereno.eth",
   "resolver": "0xd7695337e225d34f4583862923c6b979fcf319c4",
   "userRegistry": "0x4BE80595522f0E143b2D34392EA031e29e3652ba",
-  "nameRegistrar": "0x55e81868098759409757a341c0818e0b203b3845",
+  "nameRegistrar": "0x0d5bebdc5b8a963ee87e23e882082b3cec9615d4",
   "gatewaySigner": "0xb6935dE3E8510d7A119Cbcd42325FFaC80904a41"
 };

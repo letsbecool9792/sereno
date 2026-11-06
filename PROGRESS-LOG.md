@@ -18,6 +18,23 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 ---
 
+## 2026-11-06 17:45 IST: Suparno's Claude (laptop): NameRegistrar redeployed with the rename quarantine (PR #24)
+
+- **#24 merged** (Gantavya's stale-name release and quarantine, plus Suparno's Claude's relayer release-on-claim and the Sepolia fork test).
+- **New NameRegistrar on Sepolia: `0x0d5bebdc5b8a963ee87e23e882082b3cec9615d4`** (`ens-setup.ts`; [deploy](https://sepolia.etherscan.io/tx/0x7d403f4031d16a9b57c5862ba5752a5ee7b2714156450fa5e9445091b2735082), 13.1M gas).
+  - It holds REGISTRAR, UNREGISTER, SET_SUBREGISTRY and SET_RESOLVER on the UserRegistry ([grant](https://sepolia.etherscan.io/tx/0x60c06bb4ef23e4d9e0690e089d61314e557f368c0cd3a424ec817ea4a711ab23)).
+  - The previous registrar `0x55e8…3845` has its roles revoked ([tx](https://sepolia.etherscan.io/tx/0xcaaaf0235c04c355e41e68e3957bb12437f681d1b253719a0cba536f3180f922)).
+  - `ens.json` records it as `previousNameRegistrar`.
+- **Read back:** `QUARANTINE` = 15 days. `holderOf` and `quarantineOf` work, and `claimText` is unchanged.
+- **`letsbecool9792.sereno.eth` is claimed again.** At 13:25 IST, through the old registrar and the hosted relayer, with the phone key ([tx](https://sepolia.etherscan.io/tx/0xbf95f3eda0a5ac12af09d0b7fe6911a531267853ba6386a362b517054516214f)). It's held by letsbecool9792's own account, so it isn't stale. For a live claim on stage it has to be freed again; the deployer still has root UNREGISTER.
+
+**WAITING ON:** Suparno:
+- redeploy the Railway **gateway** and **relayer** (the shared package now has the new registrar);
+- publish `sereno-ak` 0.1.4 (the CLI embeds the registrar address it reads `claimText` from);
+- decide whether to free letsbecool9792.sereno.eth for the stage claim.
+
+---
+
 ## 2026-11-06 17:05 IST: Gantavya's Claude: renamed usernames fail loudly instead of paying a stranger (PR #24)
 
 Branch `ws2/stale-name-release`.

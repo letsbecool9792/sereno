@@ -262,7 +262,7 @@ packages/shared/  intent builder, ABIs, addresses, chain config
 | Ed25519Verifier | `0xb02e08fC377DF33E66640B738eAE1BB13505E9fB` | Base Sepolia, Arbitrum Sepolia (not Sepolia) |
 | OffchainResolver for `sereno.eth` (wildcard; gateway signer `0xb693…4a41`; URL `https://sereno-production.up.railway.app/{sender}/{data}.json`) | `0xd7695337e225d34f4583862923c6b979fcf319c4` | Sepolia (ENS) |
 | UserRegistry (subregistry of `sereno.eth`) | `0x4BE80595522f0E143b2D34392EA031e29e3652ba` | Sepolia (ENS) |
-| NameRegistrar (6 Nov redeploy with text records; the first one `0x8163…47c5` has its roles revoked; the rename quarantine (PR #24) needs another redeploy, see the log's 17:05 entry) | `0x55e81868098759409757a341c0818e0b203b3845` | Sepolia (ENS) |
+| NameRegistrar (6 Nov 17:40 IST redeploy with the rename quarantine, PR #24: `holderOf`, `release`, `quarantineOf`; roles REGISTRAR, UNREGISTER, SET_SUBREGISTRY, SET_RESOLVER. Earlier registrars `0x55e8…3845` and `0x8163…47c5` have their roles revoked; names they registered stay registered and the new one can release them if stale) | `0x0d5bebdc5b8a963ee87e23e882082b3cec9615d4` | Sepolia (ENS) |
 
 **ENS parent name: `sereno.eth`** (registered 6 Nov on Sepolia ENSv2, owned by the deployer; `packages/ops/src/ens-register.ts`, then `PARENT_NAME=sereno.eth bun src/ens-setup.ts`). The earlier temporary setup under `authorizedkeys.eth` is in `contracts/deployments/ens.authorizedkeys.json`. Sepolia deploys: `sh script/deploy-sepolia.sh` (node gas estimates, explicit fees, no Ed25519).
 
