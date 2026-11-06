@@ -14,7 +14,33 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | M1–M5 done; extras deployed | gate route for the bounty workflow (Suparno + Gantavya) | 6 Nov 12:32 |
 | WS2 CRE and ENS | Gantavya | D1 `github-bounty` workflow done and simulated (PR) | BountyBoard deploy (Mohikshit), gate routes (Suparno) | 6 Nov 12:25 |
-| WS3 clients and demo | Suparno + Claude | core done and hosted: pay page on Vercel, `sereno-ak` on npm, key sync live; demo rework next | | 6 Nov 12:40 |
+| WS3 clients and demo | Suparno + Claude | core done and hosted; issue bounties live (tab, CLI, relayer, worker); demo rework next | | 6 Nov 13:25 |
+
+---
+
+## 2026-11-06 13:25 IST: Suparno's Claude (laptop): issue bounties work end to end (pay page, CLI, relayer, worker)
+
+- **Merged:** #15 (BountyBoard per-token pots), #18 (BountyBoard and Escrow deployed), #17 (Gantavya's `github-bounty` workflow, #16 rebased twice; #16 closed).
+- **Gate routes set** for the bounty workflow on both chains, as the gate owner: `routeOf(nameKey("github-bounty-base"), 0xaaaa…) = BountyBoard` on Base Sepolia ([tx](https://sepolia.basescan.org/tx/0x48943553236792e109af1d0360d039efb2130928a8ef77514bdd706f7c09780a)), and `github-bounty-arbitrum` on Arbitrum Sepolia ([tx](https://sepolia.arbiscan.io/tx/0x560582b25b4a6d4671ecd9a577ffc3c728c0c40fcaf813f97be60c87462296c1)).
+- **Clients** (`a0b1e4d`):
+  - Relayer: `POST /bounty {chainId, repo, issue}` and `GET /bounty/status`. It pays at once if already settled, refuses if there's no USDC pot, and otherwise queues a `bounty` job on the worker queue. When the job finishes, it calls `BountyBoard.payout` for USDC.
+  - Worker: runs `github-bounty` with `--broadcast` and reads `winnerOf` back. The workflow's "skipped: <reason>" becomes "not payable: <reason>".
+  - Pay page: an **Issue bounties** tab (look up, fund with approve + fund, check-and-pay, refund after the deadline).
+  - CLI: `ak bounty <issue> [--settle]`.
+- **Tested end to end on Base Sepolia** (local relayer, deployer as funder):
+  1. funded 0.1 USDC on `foundry-rs/foundry#18130`;
+  2. the worker ran the workflow, and the board recorded the winner, GitHub `112043913` (merged PR #18131), in 19 s;
+  3. the relayer paid the pot out ([tx](https://sepolia.basescan.org/tx/0xc329532f2a6bbae11f69467c3d40a9501a03060c0c999a78d626bfab42e1fc42)).
+
+  A bounty on an issue with no pot is refused.
+- **Hosted:** the Railway relayer has been redeployed with the bounty endpoints, and Vercel serves the tab. `foundry-rs/foundry#18140` is funded with 0.1 USDC for a live check through the hosted path.
+- **The root `bun test`** now ignores `cre/**` (`bunfig.toml`), since the CRE workflows are separate Bun projects. Run their tests from their own folders.
+- **README:** a section on the bounty board and escrow (escrow is contract-only, no client yet), and the Action relayer under CROPS "C".
+
+**WAITING ON:** Suparno:
+- keep the sync worker running **with `GITHUB_TOKEN` set**: the bounty workflow's GraphQL query needs it;
+- decide on a bounty demo beat (issue in `sereno-demo`, PR by psycocodes, settle on stage);
+- decide on the escrow client: build it, or leave it as a slide.
 
 ---
 
