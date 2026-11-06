@@ -27,10 +27,31 @@ interface Prepared {
   amount: bigint;
   fee: bigint;
   text: string;
-  keys: { type: string; comment: string; listed: boolean }[];
+  keys: { type: string; comment: string; listed: boolean; fingerprint: string }[];
 }
 
 type Result = { url: string; note?: string } | null;
+
+/// The file name ssh-keygen gives a key of this type by default (in ~/.ssh).
+const usualFile = (type: string) =>
+  ({
+    "ssh-ed25519": "id_ed25519",
+    "ecdsa-sha2-nistp256": "id_ecdsa",
+    "ssh-rsa": "id_rsa",
+    "sk-ecdsa-sha2-nistp256@openssh.com": "id_ecdsa_sk",
+    "sk-ssh-ed25519@openssh.com": "id_ed25519_sk",
+  })[type] ?? "id_ed25519";
+
+/// OpenSSH's fingerprint of a key blob (base64), as `ssh-keygen -l` and GitHub's settings page print it.
+async function fingerprint(blobB64: string): Promise<string> {
+  try {
+    const bytes = Uint8Array.from(atob(blobB64), (ch) => ch.charCodeAt(0));
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+    return `SHA256:${btoa(String.fromCharCode(...digest)).replace(/=+$/, "")}`;
+  } catch {
+    return "";
+  }
+}
 
 function Copy({ text }: { text: string }) {
   const [done, setDone] = useState(false);
@@ -57,7 +78,8 @@ export function Spend() {
   const [amount, setAmount] = useState("1");
   const [fee, setFee] = useState("0.02");
   const [chainKey, setChainKey] = useState<ChainKey>("base-sepolia");
-  const [keyPath, setKeyPath] = useState("~/.ssh/id_ed25519");
+  const [keyChoice, setKeyChoice] = useState<number | "other">(0);
+  const [otherPath, setOtherPath] = useState("");
   const [mode, setMode] = useState<"sign" | "commit">("sign");
   const [prep, setPrep] = useState<Prepared | null>(null);
   const [sig, setSig] = useState("");
@@ -137,11 +159,14 @@ export function Spend() {
       const keys = await Promise.all(
         lines.map(async (line) => {
           const since = await pub.readContract({ address: CORE!.KeyOracle, abi: keyOracleAbi, functionName: "firstSeen", args: [user.id, keyHash(line)] });
-          const [type = "", , comment = ""] = line.split(" ");
-          return { type, comment, listed: since > 0n };
+          const [type = "", blob = "", comment = ""] = line.split(" ");
+          return { type, comment, listed: since > 0n, fingerprint: await fingerprint(blob) };
         }),
       );
       setPrep({ chainKey, user, account, balance, nonce, to: toAddr, toLabel, amount: amt, fee: f, text, keys });
+      // Pre-pick the key most people sign with: one already on-chain that needs no touch or phone.
+      const best = keys.findIndex((x) => x.listed && !x.type.startsWith("sk-"));
+      setKeyChoice(best >= 0 ? best : Math.max(0, keys.findIndex((x) => x.listed)));
     } catch (err) {
       setError((err as Error).message.includes("not found") ? "GitHub user not found" : (err as Error).message.split("\n")[0]!);
     } finally {
@@ -200,7 +225,9 @@ export function Spend() {
 
   // As a shell argument that works in PowerShell and bash alike: PowerShell doesn't expand `~` for programs and
   // Windows' ssh-keygen doesn't either, but both shells expand "$HOME" inside double quotes.
-  const k = `"${(keyPath.trim() || "~/.ssh/id_ed25519").replace(/^~(?=$|[\\/])/, "$HOME")}"`;
+  const keyPath =
+    keyChoice === "other" ? otherPath.trim() || "~/.ssh/id_ed25519" : `~/.ssh/${usualFile(prep?.keys[keyChoice]?.type ?? "ssh-ed25519")}`;
+  const k = `"${keyPath.replace(/^~(?=$|[\\/])/, "$HOME")}"`;
   const needed = prep ? prep.amount + prep.fee : 0n;
   const listed = prep?.keys.some((x) => x.listed);
 
@@ -223,7 +250,6 @@ export function Spend() {
             </select>
           </label>
         </div>
-        <label>Your SSH private key file (only used to fill in the commands below)<input value={keyPath} onChange={(e) => setKeyPath(e.target.value)} spellCheck={false} /></label>
         <button disabled={!!busy || !me.trim() || !to.trim() || !(Number(amount) > 0)}>Prepare payment</button>
       </form>
 
@@ -254,11 +280,29 @@ export function Spend() {
               </div>
             )
           )}
-          <div className="muted keys">
-            {prep.keys.map((x, i) => (
-              <span key={i}><code>{x.type}</code> {x.listed ? <span className="tag ok">on-chain</span> : <span className="tag">not synced</span>} </span>
-            ))}
-          </div>
+          {prep.keys.length > 0 && (
+            <fieldset className="keypick">
+              <legend>Which key will you sign with?</legend>
+              {prep.keys.map((x, i) => (
+                <label key={i}>
+                  <input type="radio" name="key" checked={keyChoice === i} onChange={() => setKeyChoice(i)} />
+                  <code>~/.ssh/{usualFile(x.type)}</code> <span className="muted">{x.type}</span>{" "}
+                  {x.listed ? <span className="tag ok">on-chain</span> : <span className="tag">not synced</span>}
+                  <span className="muted fp">{x.fingerprint}</span>
+                </label>
+              ))}
+              <label>
+                <input type="radio" name="key" checked={keyChoice === "other"} onChange={() => setKeyChoice("other")} />
+                another file:{" "}
+                <input value={otherPath} onFocus={() => setKeyChoice("other")} onChange={(e) => setOtherPath(e.target.value)} placeholder="path to the private key" spellCheck={false} />
+              </label>
+              <p className="muted">
+                These are the keys on your GitHub profile, with the file name <code>ssh-keygen</code> gives each type by default. If yours has another
+                name, check a file with <code>ssh-keygen -lf "$HOME/.ssh/&lt;name&gt;.pub"</code> and match the SHA256 fingerprint. Or skip this: the CLI
+                finds the key itself, <code>npx sereno-ak send &lt;amount&gt; &lt;to&gt; --as {prep.user.login}</code>.
+              </p>
+            </fieldset>
+          )}
 
           <h3>1. Save the text you're signing</h3>
           <div className="cmd">

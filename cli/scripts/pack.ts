@@ -8,7 +8,7 @@
 import { chmodSync, copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const VERSION = "0.1.2";
+const VERSION = "0.1.3";
 const cli = join(import.meta.dir, "..");
 const out = join(cli, "dist/npm");
 rmSync(out, { recursive: true, force: true });
@@ -56,13 +56,15 @@ Every GitHub user has an account anyone can pay by username; you sign a readable
 \`ssh-keygen\` or \`git commit -S\`. No seed phrase, no signup. Testnet only (Base Sepolia, Arbitrum Sepolia).
 
 \`\`\`sh
-npx sereno-ak account <github-user>
-npx sereno-ak send 5 alice --as <you> --key ~/.ssh/id_ed25519
-npx sereno-ak commit-pay 5 alice --as <you> --key ~/.ssh/id_ed25519 --push   # in any GitHub repo: the push is the payment
-npx sereno-ak claim --as <you> --key ~/.ssh/id_ecdsa                         # your <you>.sereno.eth name (P-256 or security key)
+npx sereno-ak account <github-user>                    # address, balance, which keys are on-chain
+npx sereno-ak sync <you>                               # copy your GitHub SSH keys on-chain (first time)
+npx sereno-ak send 5 <friend> --as <you>               # signs with your ssh-keygen; the relayer pays
+npx sereno-ak commit-pay 5 <friend> --as <you> --push  # in any GitHub repo: the push is the payment
+npx sereno-ak claim --as <you>                         # your <you>.sereno.eth name (P-256 or security key)
+npx sereno-ak bounty https://github.com/o/r/issues/1 --settle
 \`\`\`
 
-Needs Node 20+, OpenSSH's \`ssh-keygen\` and git. The key never leaves your machine: \`ak\` only runs \`ssh-keygen -Y sign\`
+Needs Node 20+, OpenSSH's \`ssh-keygen\` and git. \`ak\` finds your key itself: the one in \`~/.ssh\` whose public half is on your GitHub profile (\`--key <file>\` picks another). The key never leaves your machine: \`ak\` only runs \`ssh-keygen -Y sign\`
 and sends the signature to a relayer, which can't change the recipient, amount or fee. MIT licensed.
 `,
 );

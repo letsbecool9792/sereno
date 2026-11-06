@@ -2,7 +2,7 @@
 // ak: pay and spend with the SSH key already on your GitHub profile. Runs under Bun (bun cli/src/main.ts) or, bundled
 // by cli/scripts/pack.ts, under Node as the npm package `sereno-ak` (npx sereno-ak ...).
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -34,16 +34,17 @@ import {
 const USAGE = `ak: pay and spend with the SSH key already on your GitHub profile.
 
   ak account <github-user> [--chain base-sepolia|arbitrum-sepolia]
-  ak send <amount> <to> --as <github-user> --key <ssh key> [--chain ...] [--fee 0.02]
-  ak commit-pay <amount> <to> --as <github-user> --key <ssh key> [--repo .] [--push] [--relay]
-  ak claim --as <github-user> --key <ssh key>
+  ak send <amount> <to> --as <github-user> [--key <ssh key>] [--chain ...] [--fee 0.02]
+  ak commit-pay <amount> <to> --as <github-user> [--key <ssh key>] [--repo .] [--push] [--relay]
+  ak claim --as <github-user> [--key <ssh key>]
   ak sync <github-user>          have the Chainlink key oracle copy the user's GitHub SSH keys on-chain
   ak bounty <issue> [--chain ...] [--settle]
                                  an issue bounty (fund it on the pay page); --settle has the Chainlink
                                  workflow check for a merged PR that closed it and pays its author
 
-<to> is a 0x address or a GitHub username. Amounts are in USDC. --key is your SSH private key file
-(for example ~/.ssh/id_ed25519; a .pub file works when the key is in ssh-agent).
+<to> is a 0x address or a GitHub username. Amounts are in USDC. Without --key, ak uses the key in ~/.ssh
+that is on your GitHub profile; --key picks a private key file yourself (a .pub works when the key is in
+ssh-agent).
 commit-pay makes a signed commit whose message is the payment; --push pushes it and has the relayer
 pay it from GitHub, --relay submits the local commit directly.
 Env: GITHUB_TOKEN (ask GitHub directly instead of our gateway), AK_RELAYER, AK_GATEWAY (other hosts),
@@ -117,6 +118,31 @@ function keyFile(key: string): string {
   return p;
 }
 
+/// With no --key: the private key in ~/.ssh whose public half is on the user's GitHub profile. For a name claim
+/// (`p256Only`) only P-256 keys count, since Sepolia's verifier has no ed25519. Security keys come last (they need a
+/// touch or a phone). A .pub is returned when only the public half is there (the key lives in ssh-agent).
+function findKey(githubKeys: string[], login: string, p256Only = false): string {
+  const dir = join(homedir(), ".ssh");
+  const onGithub = new Set(githubKeys.map((l) => l.split(" ").slice(0, 2).join(" ")));
+  const found: { file: string; type: string }[] = [];
+  for (const f of existsSync(dir) ? readdirSync(dir).filter((n) => n.endsWith(".pub")) : []) {
+    const [type = "", blob = ""] = readFileSync(join(dir, f), "utf8").trim().split(/\s+/);
+    if (!onGithub.has(`${type} ${blob}`)) continue;
+    if (p256Only && !type.includes("nistp256")) continue;
+    const priv = join(dir, f.slice(0, -4));
+    found.push({ file: existsSync(priv) ? priv : join(dir, f), type });
+  }
+  found.sort((a, b) => Number(a.type.startsWith("sk-")) - Number(b.type.startsWith("sk-")));
+  if (!found.length) {
+    die(
+      `no key in ${dir} matches ${p256Only ? "a P-256 key" : "an SSH key"} on ${login}'s GitHub profile. ` +
+        `Pass --key <private key file>, or add one of your keys at github.com/settings/keys${p256Only ? " (a name claim needs ssh-keygen -t ecdsa or -t ecdsa-sk)" : ""}`,
+    );
+  }
+  console.log(`using ${found[0]!.file} (${found[0]!.type}, on ${login}'s GitHub profile)${found.length > 1 ? `; --key picks another of ${found.length}` : ""}`);
+  return found[0]!.file;
+}
+
 /// Signs `text` with ssh-keygen in our namespace (SHA-256 message hash) and returns the armored signature.
 function sshSign(text: string, key: string): string {
   const dir = mkdtempSync(join(tmpdir(), "ak-"));
@@ -184,8 +210,8 @@ async function cmdAccount(login: string, c: ChainConfig) {
 
 async function cmdSend(pos: string[], opts: Record<string, string | true>, c: ChainConfig, asCommit: boolean) {
   const [amountStr, toStr] = [need(pos[1], "<amount>"), need(pos[2], "<to>")];
-  const key = need(opts.key, "--key <ssh key file>");
-  const me = await userOf(need(opts.as, "--as <your GitHub user>"));
+  const { user: me, keys: myKeys } = await profile(need(opts.as, "--as <your GitHub user>"));
+  const key = typeof opts.key === "string" ? opts.key : findKey(myKeys, me.login);
   const to = await recipient(c, toStr);
   const amount = parseUnits(amountStr, DECIMALS);
   const fee = parseUnits(typeof opts.fee === "string" ? opts.fee : "0.02", DECIMALS);
@@ -290,7 +316,8 @@ async function cmdBounty(ref: string, c: ChainConfig, settle: boolean) {
 
 async function cmdClaim(opts: Record<string, string | true>) {
   if (!ENS_DEPLOYMENT) die("ENS not set up");
-  const me = await userOf(need(opts.as, "--as <your GitHub user>"));
+  const { user: me, keys: myKeys } = await profile(need(opts.as, "--as <your GitHub user>"));
+  const key = typeof opts.key === "string" ? opts.key : findKey(myKeys, me.login, true);
   const label = me.login.toLowerCase();
   const pub = client(CHAINS.sepolia);
   const text = Buffer.from(
@@ -298,7 +325,7 @@ async function cmdClaim(opts: Record<string, string | true>) {
     "hex",
   ).toString("utf8");
   showText("Name claim", text);
-  const signature = sshSign(text, need(opts.key, "--key <ssh key file>"));
+  const signature = sshSign(text, key);
   const r = await post("/claim", { label, githubId: me.id.toString(), signature });
   console.log(`\nclaimed ${label}.${ENS_DEPLOYMENT!.parentName}: ${r.url}`);
   console.log(`see it: https://sepolia.app.ens.domains/${label}.${ENS_DEPLOYMENT!.parentName}`);
