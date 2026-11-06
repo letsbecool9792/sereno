@@ -168,11 +168,11 @@ function RuleForm({ kind, wallets, done }: { kind: "sweep" | "recurring"; wallet
           </>
         )}
         <label>Password<PasswordInput value={pw} onChange={setPw} /></label>
-        <Err e={err} />
         <div className="row">
-          <button type="button" className="secondary" onClick={done}>Cancel</button>
+          <button type="button" className="ghost" onClick={done}>Cancel</button>
           <button className="grow" disabled={busy || !pw || (kind === "recurring" && !login)}>{busy ? <><Spinner /> Saving…</> : "Save rule"}</button>
         </div>
+        <Err e={err} />
       </form>
     </main>
   );

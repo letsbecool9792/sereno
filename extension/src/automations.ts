@@ -20,7 +20,7 @@ async function badge() {
   const locked = !(await isUnlocked());
   const text = broken ? "!" : active && locked ? "off" : "";
   await chrome.action.setBadgeText({ text });
-  await chrome.action.setBadgeBackgroundColor({ color: broken ? "#ff8b80" : "#f2b35b" });
+  await chrome.action.setBadgeBackgroundColor({ color: broken ? "#ff8b80" : "#2b59ff" });
 }
 
 /// One pass over the rules. Called from the minute alarm.
