@@ -240,6 +240,16 @@ CLI from the repo: `bun run ak <command>` (same commands as `npx sereno-ak`). Bu
 
 **Key sync worker.** While the CRE workflow runs in simulation, on-demand key syncs (`POST /sync` on the relayer) are carried out by a worker on a machine with the `cre` login and an allowlisted broadcaster key: `bun packages/ops/src/sync-worker.ts` (it needs `.secrets/cre.env` and the relayer's `SYNC_WORKER_TOKEN` in `.secrets/sync-worker.token`). Deployed on a CRE DON, the workflow's HTTP trigger would take these requests itself.
 
+Restarting the worker:
+```
+cd D:\Programming\sereno
+git pull
+$env:GITHUB_TOKEN = gh auth token
+$env:CRE_BIN = "$env:LOCALAPPDATA\Programs\cre\cre.exe"
+$env:SYNC_ATTEMPTS = 4
+bun packages/ops/src/sync-worker.ts
+```
+
 Contracts: `cd contracts && forge test`.
 
 ### Relay payment commits from your own repo (no server)
