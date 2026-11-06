@@ -13,7 +13,7 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 | WS | Owner | Now working on | Blocked on | Last update |
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | M1–M5 done; extras deployed | gate route for the bounty workflow (Suparno + Gantavya) | 6 Nov 12:32 |
-| WS2 CRE and ENS | Gantavya | G1–G4 code done (4 branches); G1 deploy, G2/G3 live runs | Fly account verification, `cre login` | 6 Nov 00:20 |
+| WS2 CRE and ENS | Gantavya | D1 `github-bounty` workflow done and simulated (PR) | BountyBoard deploy (Mohikshit), gate routes (Suparno) | 6 Nov 12:25 |
 | WS3 clients and demo | Suparno + Claude | core done and hosted: pay page on Vercel, `sereno-ak` on npm, key sync live; demo rework next | | 6 Nov 12:40 |
 
 ---
@@ -61,6 +61,58 @@ Deployed from `main` (`b32960a`, 85/85 tests) with `DeployExtras.s.sol` and Mohi
      - in CROPS "C", add that any repo can relay with `sereno-relay.yml`, so no server of ours is needed. Proven: [run](https://github.com/psycocodes/sereno-pay-test/actions/runs/42178010583), Verified commit paid;
      - decide whether the extras get a demo beat or a slide.
   5. *(Optional, WS3)* Pay-page or `ak` buttons for fund, payout, escrow deposit and escrow claim. Mohikshit can write the `ak` side if you want it.
+
+---
+
+## 2026-11-06 12:25 IST: Gantavya's Claude: D1 `github-bounty` CRE workflow
+
+Branch `ws2/bounty-workflow`. This covers Gantavya's items 1 and 2 from the 12:40 entry.
+
+**What it does (`cre/github-bounty/`):**
+- **Trigger 0, HTTP:** `{"repo": "owner/repo", "issue": "12"}`; there's no cron.
+- **Check:** each node asks GitHub's GraphQL API for the issue's latest `ClosedEvent.closer`. It pays only when:
+  - the issue is closed now;
+  - the closer is a **merged** PR in the same repo;
+  - the PR's author is a GitHub user, not a bot or a deleted account. The author's numeric `databaseId` is the payee.
+
+  Anything else is a deterministic "no", and no report is written. GitHub errors other than "not found" fail the run.
+- **Consensus:** the nodes agree with `consensusIdenticalAggregation`.
+- **Report:** exactly the agreed format, `abi.encode(bytes32 repoHash, uint256 issue, uint256 authorGithubId)` with `repoHash = keccak256(lowercase "owner/repo")`. **OK from Gantavya on the format.**
+- **Write:** to the ReportGate `0x55ad…6Cb9` on Base and Arbitrum Sepolia, `gasLimit` 1.5M.
+- **Token required:** it needs the `GITHUB_TOKEN` secret, because GraphQL refuses anonymous requests.
+- **Code layout:** the decision and encoding live in `bounty.ts`, with no SDK, and 9 `bun test` cases. `main.ts` only wires it into CRE.
+
+**Workflow names, for the gate routes** (simulation owner `0xaaaa…aaaa`, target = BountyBoard once deployed):
+
+| Target | workflow-name | `nameKey` (read from the deployed gate) |
+|---|---|---|
+| `base-settings` | `github-bounty-base` | `0x31303131646239396337` |
+| `arbitrum-settings` | `github-bounty-arbitrum` | `0x39343865656566396630` |
+
+**Simulated without `--broadcast`:**
+- **Pay case:** `foundry-rs/foundry#18130` (Base target) was closed by merged PR #18131 from stevencartavia, GitHub `112043913`. Sample report:
+  ```
+  0xcb6b3688f7b402f4b8b5ff64e5275ea714e2d44024259b3f371837aa1b10fb65 00000000000000000000000000000000000000000000000000000000000046d2 0000000000000000000000000000000000000000000000000000000006ada789
+  ```
+  The three words are `keccak256("foundry-rs/foundry")`, 18130 and 112043913.
+- **No-payout case:** `foundry-rs/foundry#17979` (Arbitrum target) gives "skipped: the issue was closed without a pull request".
+- **Checks:** `bun test` (20 across the repo) and `bun run typecheck` pass.
+- **Not run:** a `--broadcast` to a real BountyBoard. It isn't deployed yet: `0xE4eD…F7A8` has no code on Base Sepolia.
+
+**Housekeeping:**
+- G1–G4 need nothing more.
+- No Fly app was ever created (the account was stuck on verification), so there's nothing to cancel.
+- `cre login` is done on this machine.
+
+**WAITING ON:**
+- **Mohikshit:** the BountyBoard fix and deploy. If the report format changes, tell me.
+- **Suparno's Claude:** once BountyBoard is deployed:
+  - `setRoute(<nameKey above>, 0xaaaa…aaaa, BountyBoard)` on the gate on both chains;
+  - a funded test issue;
+  - a `--broadcast` run, then read the board's `Settled` event.
+
+  A good demo issue: any issue in a repo of ours that a merged PR closes with "Fixes #N".
+
 ---
 
 ## 2026-11-06 12:17 IST: Mohikshit's Claude: M1 passes on Linux with an ed25519 key (hosted relayer)

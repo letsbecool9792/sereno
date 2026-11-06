@@ -1,0 +1,19 @@
+# One target per chain; the ReportGate has the same address on each. The gate routes reports by
+# nameKey(workflow-name): github-bounty-base -> 1011db99c7, github-bounty-arbitrum -> 948eeef9f0.
+base-settings:
+  user-workflow:
+    workflow-name: "github-bounty-base"
+    deployment-registry: "private"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.base.json"
+    secrets-path: "../secrets.yaml"
+
+arbitrum-settings:
+  user-workflow:
+    workflow-name: "github-bounty-arbitrum"
+    deployment-registry: "private"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.arbitrum.json"
+    secrets-path: "../secrets.yaml"

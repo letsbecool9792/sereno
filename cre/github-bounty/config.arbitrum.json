@@ -1,0 +1,6 @@
+{
+  "chainName": "ethereum-testnet-sepolia-arbitrum-1",
+  "receiver": "0x55adaccD67e0A4b7B1DcE91A188041D2D5046Cb9",
+  "gasLimit": "1500000",
+  "githubTokenSecret": "GITHUB_TOKEN"
+}
