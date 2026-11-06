@@ -36,6 +36,9 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 2. **Pay by name** (`#pay`, today's "Pay someone"): username → name → address → pay USDC. Keep the `?user=<login>` deep link working.
 3. **Spend your balance** (`#spend`): ssh-keygen signing and pasting a payment commit.
 4. **Issue bounties** (`#bounties`).
+- **Spend page fixes (include these):**
+  - **Replace the "Which key will you sign with?" radio list with one key-file box**, prefilled with the best guess. It only fills `-f <file>` in the `ssh-keygen` command; the payment is identical whichever key signs. Today two keys of the same type both show `~/.ssh/id_ecdsa`, so the choice does nothing. Keep the fingerprints as a small collapsed "which file is which?" helper (`ssh-keygen -lf <file>.pub`).
+  - **Move "Paste a payment commit" into the "Pay with a git commit" flow as its last step** ("3. Paste the pushed commit's link"), instead of a separate card. It's the submit step for a commit made with plain git; on its own it reads as if pasting any commit turns it into a payment. Say in one line that `ak commit-pay --push` and pushes to the watched demo repo don't need it.
 - Keep the existing hash routes (`#spend`, `#bounties`, `?user=`); the README and earlier log entries link to them. If the Pay form moves off `/`, update README step 2 ("type `<you>` and press Find").
 
 **Design direction:**
