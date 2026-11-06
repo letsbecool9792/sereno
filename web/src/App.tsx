@@ -26,7 +26,7 @@ import { LinkWallet } from "./LinkWallet";
 import { Bounties } from "./Bounties";
 import { HoloCard } from "./HoloCard";
 import { Landing } from "./Landing";
-import { Lantern } from "./Lantern";
+import { Mark } from "./Mark";
 import { gsap, prefersReducedMotion, useMotion } from "./motion";
 import { Spend } from "./Spend";
 import { CopyButton, Done, Icon, PageHead, Skeleton, Stepper, WalletHint } from "./ui";
@@ -417,9 +417,7 @@ export function App() {
     setPage("pay");
   }
 
-  // The lantern's keyhole flame breathes, slowly, wherever the mark appears.
   useMotion(shell, () => {
-    gsap.to(".lantern .flame", { opacity: 0.7, scale: 0.92, svgOrigin: "16 17", duration: 1.8, ease: "sine.inOut", yoyo: true, repeat: -1 });
     if (introDelay) gsap.from(".nav", { yPercent: -100, autoAlpha: 0, duration: 1, delay: introDelay + 0.2 });
   });
   useMotion(view, () => {
@@ -434,7 +432,7 @@ export function App() {
       <header className="nav">
         <div className="nav-inner">
           <a className="brand" href={window.location.pathname} aria-label="sereno home" onClick={(e) => { e.preventDefault(); go("home"); }}>
-            <Lantern size={30} />
+            <Mark size={30} />
             <span>sereno</span>
           </a>
           <nav aria-label="Main">
@@ -461,7 +459,7 @@ export function App() {
           <div className="footer-top">
             <div className="footer-about">
               <a className="brand" href={window.location.pathname} aria-label="sereno home" onClick={(e) => { e.preventDefault(); go("home"); }}>
-                <Lantern size={30} />
+                <Mark size={30} />
                 <span>sereno</span>
               </a>
               <p>

@@ -1,108 +1,207 @@
 ---
 name: sereno
-description: Pay any GitHub developer by username. The night watchman's round: warm black, one lantern amber, brass edges, and a horizon of SSH key characters.
+description: Pay any GitHub developer by username. Night ground, an electric-blue card in a frosted lime wallet, Geist type, soft chunky buttons, and feedback that appears where you clicked.
+version: 2 (7 Nov 2026, replaces the amber "night watchman" language)
 colors:
-  ground: "#0a0908"
-  surface: "#13110e"
-  surface-2: "#1a1713"
-  surface-3: "#24201a"
-  line: "rgb(255 236 210 / 0.08)"
-  line-strong: "rgb(255 236 210 / 0.16)"
-  ink: "#f4efe6"
-  muted: "#a69f93"
-  faint: "#6f695f"
-  amber: "#f2b35b"
-  amber-hover: "#f7c67f"
-  amber-ink: "#1a1206"
-  brass: "#c9964f"
-  ok: "#62e3a5"
+  ground: "#070a17"
+  surface: "#0f1428"
+  surface-2: "#151b34"
+  surface-3: "#1d2442"
+  line: "rgb(214 224 255 / 0.08)"
+  line-strong: "rgb(214 224 255 / 0.16)"
+  ink: "#f2f4fa"
+  muted: "#a3abc4"
+  faint: "#6b7392"
+  accent: "#2b59ff"        # tone A: actions
+  accent-hover: "#3d68ff"
+  accent-edge: "#2147d4"
+  accent-ink: "#eef2ff"
+  accent-text: "#8aa4ff"   # tone A as text on dark (accent itself is 3.7:1, too low for text)
+  accent-soft: "rgb(43 89 255 / 0.16)"
+  lime: "#c6f432"          # tone B: identity
+  lime-text: "#d4f76a"
+  lime-soft: "rgb(198 244 50 / 0.12)"
+  lime-line: "rgb(198 244 50 / 0.28)"
+  glass: "#e0f98e"         # the logo's frosted pocket
+  ok: "#5fe0a3"
   err: "#ff8b80"
 typography:
-  display: "Bricolage Grotesque Variable, 600, tracking -0.025em to -0.05em"
-  ui: "DM Sans Variable, 400/500/600, 16px body, line-height 1.55"
-  mono: "JetBrains Mono Variable, for keys, addresses, IDs, signed text and commands"
-spacing: "4 8 12 16 24 32 48 64 96 144 (px)"
-rounded: "10 (fields), 16 (blocks), 22 to 24 (cards), pill (buttons, search, chips)"
+  ui: "Geist Variable, 400/500/600/700, 16px body, line-height 1.55"
+  display: "Geist Variable 600-700, tracking -0.03em to -0.05em"
+  mono: "Geist Mono Variable, for keys, addresses, IDs, signed text and commands"
+  github-injections: "Inter, then GitHub's own system stack"
+rounded: "10 fields, 14 buttons, 16 blocks, 22-24 cards, pill for the search and chips"
 ---
 
-# Design system: sereno
+# Design system: sereno v2
 
-## Concept
+Source of truth for the web app (`web/`) and the extension (`extension/`). Both copy the tokens below; if a value changes, change it here first.
 
-A *sereno* was the night watchman of old Spanish towns. He carried the lantern and the keys to every door and called out the hour and that all was calm ("¡sereno!"). The site borrows that world.
+## Picks this is built from (7 Nov)
 
-```
-Idea:        Pay any developer by GitHub username; the SSH key they already have is the key to the wallet.
-Metaphor:    the watchman's round: a dark street, one lantern, a ring of keys
-Signature:   the boot, where the lantern draws itself, its keyhole flame catches and the night lifts like a curtain
-             onto a horizon made of SSH key characters
-Emotion:     calm certainty ("all is calm"), not crypto noise
-Motion verb: catch light and settle
-Screenshot:  the headline over the amber ASCII horizon, the developer's card rising out of it
-```
+| Area | Pick |
+|---|---|
+| Logo | The glass wallet (from a Pinterest reference) with the GitHub mark as the glyph |
+| Color | **D1 Electric × Lime**, dark, buttons with softer contrast |
+| Type | **T2** Geist + Geist Mono (Inter for buttons we inject into github.com) |
+| Buttons | **B2** chunky press, toned down |
+| Inputs | **I1** the `github.com/` prefix pill |
+| Feedback | **FB1** under the button you pressed, **FB3** the panel becomes the status |
+| Motion | **M1** WebGL dither field, **M5** check draws itself, **M6** decode |
 
-The name is always lowercase: **sereno**. Copy is labels and states, one short line per idea. No em or en dashes in visible text, sentence case, no filler.
+Research behind these: 23 ETHGlobal finalist sites (the "Sereno Design Kit" artifact). Most finalists look like developer tools (black, mono, one blue or green); warm, friendly and readable is the gap.
 
-## The mark
+## The logo
 
-A lantern whose flame is a keyhole (`src/Lantern.tsx`): the watchman's light and his keys in one shape. Line art in ink (`--l-frame`), the flame filled in amber with a soft glow (`--l-flame`, `--l-glow`). The flame breathes slowly wherever the mark appears.
+A solid **electric-blue card** tilted about 10° behind a **frosted lime wallet** with a thumb notch at the top. The card glows through the glass. A near-black GitHub mark sits in the pocket.
 
-## Colors
+- **Geometry** (viewBox `10 14 100 100`):
+  - Card: `rect x=34 y=27 w=58 h=40 rx=9`, `rotate(10 63 47)`, fill `accent`.
+  - Pocket: the notched rounded rect in `web/src/Mark.tsx`, fill `glass`.
+  - The card is drawn twice: once behind the pocket, once inside it, clipped to the pocket and blurred (`feGaussianBlur` 7, opacity 0.95). That's the glass.
+  - Edge: a 1.2px white stroke, 75% opacity at the top fading to 15% at the bottom.
+  - Glyph: GitHub mark at `translate(45 61) scale(1.25)`, fill `#0a1030`.
+- **Glyph color:** near-black, never white. White disappears on the pale lime, and GitHub only permits white, black or grey marks anyway.
+- **Sizes:**
+  - Nav: 30px.
+  - Boot: 112px.
+  - Favicon: SVG, plus a 32px PNG.
+  - Extension icons: 16/32/48/128 PNG, exported to `extension/icons/` from `web/public/mark.svg`.
+- **Wordmark:** "sereno" in Geist 700, tracking -0.04em, always lowercase.
+- **Risk, owned by the team:** GitHub's brand policy says not to use any GitHub logo "as the icon or logo for your … project" and forbids co-branded logos. The team chose it anyway on 7 Nov. Two consequences:
+  - The README states that Sereno is not affiliated with or endorsed by GitHub.
+  - If the Chrome Web Store or judges object, swap the glyph for the commit graph or the keyhole. It's one path in `Mark.tsx` and one in `extension/src/ui.ts`.
 
-- **Ground and surfaces:** warm black, three surface steps, hairline borders in warm white at 8 and 16% so lines read as engraved rather than drawn.
-- **Ink:** warm white. **Muted:** warm grey, about 7:1 on the ground, for secondary text. **Faint:** captions and eyebrows only.
-- **Amber (the lantern):** the only action colour: primary buttons, focus rings, the active step, the hero underline. Dark text on amber.
-- **Brass:** edges and rings on the card and avatars; never a fill.
-- **Grain:** a fixed SVG noise layer at 5% over the whole page, so the dark reads as a material.
-- **Status:** mint means done or ok; coral means refused.
+## Color
 
-## Typography
+Two tones on a night ground.
 
-- **Display (Bricolage Grotesque):** headlines, page titles, amounts, names, the wordmark. Tight negative tracking; the hero runs at clamp(2.7rem, 6.4vw, 6rem).
-- **UI (DM Sans):** everything else, 16px body, 0.875rem labels.
-- **Mono (JetBrains Mono):** keys, addresses, IDs, signed text, commands, and the uppercase eyebrows in the footer.
-- All three are self-hosted through fontsource; no third-party font requests.
+- **Tone A, electric blue, is for doing things:**
+  - the primary button;
+  - the search ring and focus rings;
+  - the active nav item, stepper progress and amounts being sent;
+  - the logo's card.
+  - Use `accent-text` (#8aa4ff) when blue is text.
+- **Tone B, lime, is for who and what:**
+  - ENS names, `@login`, "claimed" tags and avatar rings;
+  - eyebrows, the terminal prompt and the secondary button;
+  - the logo's glass.
+  - Lime is never a big filled block, except the logo.
+- **Neutrals** are cool (blue-tinted), from `ground` up to `surface-3`. Lines are cool white at 8% and 16%.
+- **Status:** green `ok` means sent or verified, coral `err` means refused. Never use A or B for status.
+- **Contrast:**
+  - Body text and muted text on `surface` pass AA.
+  - The primary button's text (`accent-ink` on `accent`) is 4.7:1. That's the "softer contrast" ask: not pure white on a saturated block.
+- **Retired:** amber, brass, the warm grain tint and gradient text.
 
-## Layout
+## Type
 
-- 8px scale. Page grid max 1160px with a fluid gutter (16 to 40px).
-- **Landing**, in order: centered hero over a full-bleed ASCII horizon (headline, one line, the username search, the live card); a large statement that brightens word by word on scroll; how it works (three steps); what you can do (one tall card, two stacked, pointer spotlight); `npx sereno-ak` (command list beside a terminal that types each one and shows what happens); built on; a final search; the footer.
-- **Pay:** search, then the card beside the payment panel (stacks below 960px).
-- **Spend:** one centered column of 760px. Step 1 payment details; step 2 a from → to strip, then the signing method. The "prefer the terminal?" command sits below as a single row. No side column.
-- **Footer:** the sereno story, product, developers (copy `npx sereno-ak`), network, then a giant faint wordmark.
-- **Phone (390px):** one column, full-width search, no horizontal scroll (long commands scroll inside their own box), tap targets at least 44px.
+- **Geist** for everything: 16px body, labels 0.875rem 500, headings 600-700 with negative tracking (hero -0.05em, page titles -0.04em).
+- **Geist Mono** for keys, addresses, IDs, the signed intent, commands and small uppercase eyebrows (0.72rem, +0.14em).
+- Self-hosted through fontsource: `@fontsource-variable/geist`, `@fontsource-variable/geist-mono`. No third-party font requests.
+- **On github.com only:** Inter, then GitHub's own font stack.
 
-## The ASCII horizon
+## Buttons (B2, toned down)
 
-React Bits' Gradient ASCII (`src/vendor/GradientASCII.jsx`, MIT + Commons Clause, see the header) in its "horizon" shape. The glyph ramp is what an SSH public key is made of: light punctuation, then the letters every `ssh-ed25519` key starts with (`AAAAC3NzaC1lZDI1NTE5`), heaviest last. Colours run from the amber horizon line up into a dark sky. A scrim keeps the headline readable. It mounts as the boot curtain lifts so its own fade-in is seen, pauses off screen, and goes still under reduced motion. One change to the vendored file: its cleanup no longer calls `loseContext()`, which left the canvas blank under React StrictMode in dev.
+Hierarchy, so you always know what's what:
 
-## The card
+| Level | Look | Use |
+|---|---|---|
+| **Primary** (one per view) | Solid `accent`, `accent-ink` text, radius 14, a 3px bottom edge in `accent-edge`. Hover lifts 1px (4px edge); press sinks 3px (no edge) | Pay, Find, Prepare payment, Send payment, Fund bounty, Claim |
+| **Secondary** (`.secondary`) | `lime-soft` fill, `lime-text` text, 1px `lime-line` border, a faint 3px lime edge | The useful second action: Copy link, Download intent.txt, New payment, Refund |
+| **Quiet** (`.ghost`) | Transparent, `ink` text, `line-strong` border, no edge | Copy, Back, Cancel, Details |
+| **Disabled** | Flat `surface-3`, faint text, no edge, no motion | |
 
-Brushed obsidian (a dark warm gradient with fine vertical brushing and grain), a 1.5px brass edge drawn with a masked metal gradient, an engraved lantern watermark, and a warm sheen that follows the pointer like a lantern held close. Avatar in a brass ring, the ENS name in amber mono. A failed name check turns the edge coral and the avatar grey; a payment stamps it "Received".
+- Inside the search pill, the button is a pill (radius 999) so it nests.
+- Min height 44px (34px for `.small`).
+- Edges and lifts are subtle on purpose. No glow halos.
+
+## Inputs (I1)
+
+- The search is one pill: a `github.com/` prefix, the input and the button.
+- Focus draws a 4px `accent-soft` ring and an `accent` border.
+- Fields elsewhere: radius 10, `surface` fill, `line-strong` border, the same focus ring.
+
+## Feedback (FB1 + FB3 + M5)
+
+- **FB1:** progress and errors render **right after the button that started them**, in `<Feedback>` (`web/src/ui.tsx`).
+  - It's always mounted and `aria-live`, scrolls itself into view, and shows `WalletHint` when a wallet step is slow (`wallet` prop).
+  - Errors say what went wrong and how to fix it.
+- **FB3:** a finished payment, funding or claim **replaces its panel** with `<Done>`:
+  - a check that draws itself (M5);
+  - "Sent 5 USDC";
+  - the recipient and network;
+  - a receipt link;
+  - one next action.
+- Small confirmations (copied, synced) change the button's own label for about 1.5s. No toasts.
+- Editing a prepared payment resets the signing step, so nobody signs stale text.
 
 ## Motion (GSAP 3.15)
 
-- One ease family (`expo.out`), durations 0.5 to 1.5s, staggers 35 to 100ms. Big things move slower than small things. Only transform, opacity and clip-path.
-- **Boot (first landing visit, about 2.7s):** the lantern lines draw (DrawSVG), the keyhole flame catches, a glow blooms, the wordmark rises letter by letter, "¡sereno! all is calm" decodes (ScrambleText), then the overlay lifts away (clip-path) and the nav drops in.
-- **Hero:** the headline rises line by line through masks (SplitText), the amber underline draws itself, the card arrives with a tilt and turns each time its person changes.
-- **Scroll:** the statement brightens word by word (scrubbed), sections reveal once, the sample address decodes when it comes into view.
-- **Terminal:** each command types itself, then its output lines appear; it cycles until you pick one.
-- **Pay and Spend:** the card settles in after a lookup; a check draws itself on success; the from → to strip staggers in.
-- Under `prefers-reduced-motion` there is no boot, nothing moves, and all content is visible.
-- GSAP is the only animation library (Standard no-charge licence, not MIT).
+- **M1 dither field (landing hero):**
+  - A WebGL fragment shader: value-noise fbm drifting slowly, quantized to 3 tones (`ground`, `accent`, `lime`) with a 4×4 Bayer dither in 3px cells.
+  - Paused when off screen, a single still frame under reduced motion, a CSS gradient if WebGL fails.
+  - A scrim keeps the headline readable.
+- **M5:** the Done check strokes in about 0.6s.
+- **M6:** names, addresses and the boot call decode from SSH-key characters (ScrambleText).
+- **Boot (first landing visit, about 2.4s):**
+  - The pocket rises, the card drops in behind it, and the glow blooms.
+  - The wordmark rises letter by letter.
+  - "¡sereno! all is calm" decodes.
+  - The curtain lifts.
+- One ease family (`expo.out`), 0.5 to 1.5s. Transform, opacity and clip-path only.
+- Under `prefers-reduced-motion`: no boot, nothing moves, everything is visible.
 
-## Components
+## Components (web)
 
-- **Buttons:** amber pill with an inner highlight (primary), outlined pill (secondary), small pill; hover lifts 1px with an amber glow and nudges the trailing arrow; disabled is a flat grey pill.
-- **Search:** one pill with a `github.com/` prefix, the input and the action; amber focus ring.
-- **Segmented control:** network choice and signing mode; fills the width on phones.
-- **Summary rows:** to, network, arrival and fee, shown before paying.
-- **Stepper:** connect, approve, confirm, sent, from the payment's live status.
-- **Skeletons** while the gateway and RPCs answer; **details** disclosure for technical facts.
+- **Nav:** the mark and wordmark; Pay, Spend and Bounties (active = `ink` text with an `accent` dot); a GitHub link.
+- **Developer card (`HoloCard`):** the dark glass card. A 1.5px edge ring runs lime to blue, the avatar has a lime ring, the ENS name is in `lime-text`, plus the "Name matches account" chip (ok) and a "Received" stamp.
+- **Paybox:** the amount (Geist 600, huge), quick chips, a summary list, then one primary button.
+- **Stepper:** connect, approve, confirm, sent. Progress in `accent`.
+- **Code and intent blocks:** `ground` fill, Geist Mono, `line` border, a Copy button (`.ghost .small`).
+
+## The extension
+
+- **Popup:** the same tokens, Geist and buttons as the web. The header uses the mark at 22px. Send keeps Review (the exact signed text) and then Sent (FB3 + M5). Errors go under the button that caused them.
+- **Buttons injected into github.com** (`extension/src/ui.ts`): these must look at home in GitHub's light and dark themes and still read as ours.
+  - Font: Inter, then `-apple-system`, `BlinkMacSystemFont`, `"Segoe UI"`, `"Noto Sans"`, `Helvetica`, `Arial`, `sans-serif`. 12-13px, weight 500/600.
+  - Size: 28px high, radius 6 (GitHub's own), the 14px mark only on the primary button.
+
+  | Level | Look | Use |
+  |---|---|---|
+  | **Primary** | Solid `#2b59ff`, white text, `#2147d4` border, hover `#3d68ff` | Pay @user, Fund bounty |
+  | **Secondary** | GitHub's default button: `var(--button-default-bgColor-rest, #f6f8fa)`, `var(--borderColor-default, #d0d7de)`, default text | Tip author, Copy pay link, Open in sereno |
+  | **Info chip** | Outline pill in GitHub's muted text, with a 6px **lime** dot | 2 keys on-chain, account deployed |
+  | **Status chip** | GitHub's own success and danger colors | Synced, Paid, Not synced |
+
+  - **One primary per bar.** Never lime or blue for status.
 
 ## Do's and don'ts
 
-- Do show who you're paying (avatar, username, real name, GitHub ID) before any wallet opens.
-- Do keep technical detail one tap away, not on the first screen.
-- Don't add a second accent colour, rainbow or foil gradients, or motion that carries no meaning.
-- Don't put explanatory cards beside a task; keep tasks in one column with help inline.
+- **Do** show who you're paying (avatar, username, real name, GitHub ID) before any wallet opens.
+- **Do** keep one primary button per view, with feedback directly below it.
+- **Do** use `accent-text`, not `accent`, for blue text.
+- **Don't** put lime on large surfaces, or use lime or blue for status.
+- **Don't** add glows, foil gradients or gradient text. The only gradients are the logo's glass, the card's 1.5px edge and the dither.
+- **Don't** recolor the GitHub mark to anything but near-black, black or white.
+
+## Rollout (7 Nov), owners
+
+Mohikshit (+ Claude), branch `ws3/redesign`:
+1. Tokens, Geist, buttons, inputs in `web/src/styles.css`.
+2. `Mark.tsx`, plus favicon, apple-touch and `public/mark.svg`.
+3. Nav, footer and HoloCard on the new mark.
+4. Boot with the new mark.
+5. M1 dither hero.
+6. FB1/FB3 on Pay, Spend and Bounties (done for Spend and Bounties).
+7. Extension icon PNGs exported to `extension/icons/`.
+8. README disclaimer.
+
+Suparno (+ Claude), branch `ws3/extension-redesign` from `ws3/redesign`, all in `extension/`:
+1. Popup: tokens, fonts (swap fontsource), buttons, the mark in the header, onboarding and lock, FB1 under buttons, the M5 check on Sent.
+2. GitHub injections in `ui.ts` and `content.ts`: Inter, the button and chip hierarchy above, the mark replacing the lantern SVG.
+3. Manifest and store copy, and check every injected button on github.com in both light and dark themes.
+4. After `ws3/redesign` merges:
+   - polish `Bounties` and `LinkWallet` against this file;
+   - refresh `DEMO.md` and README screenshots;
+   - re-record anything in the demo video that shows the old look.

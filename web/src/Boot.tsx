@@ -1,22 +1,23 @@
 import { useRef } from "react";
-import { Lantern } from "./Lantern";
+import { Mark } from "./Mark";
 import { gsap, useMotion } from "./motion";
 
-/// Runs once, on a first visit to the landing page: the watchman lights his lantern. The mark draws itself, the
-/// keyhole flame catches, the wordmark rises, then the night lifts away like a curtain. About 2.6s; the page itself
-/// starts revealing at BOOT_REVEAL. Never rendered under reduced motion.
-export const BOOT_REVEAL = 1.95;
+/// Runs once, on a first visit to the landing page: the wallet assembles. The glass pocket rises, the blue card drops
+/// in behind it, the glow blooms, the wordmark rises, the call decodes, then the night lifts like a curtain. About
+/// 2.4s; the page starts revealing at BOOT_REVEAL. Never rendered under reduced motion.
+export const BOOT_REVEAL = 1.85;
 
 export function Boot({ onDone }: { onDone: () => void }) {
   const root = useRef<HTMLDivElement>(null);
   useMotion(root, () => {
     const tl = gsap.timeline({ onComplete: onDone });
-    tl.from(".boot .lantern-line", { drawSVG: "0%", duration: 0.8, stagger: 0.06, ease: "power2.inOut" }, 0.1)
-      .from(".boot .flame", { scale: 0, svgOrigin: "16 17", duration: 0.55, ease: "back.out(2.2)" }, 0.7)
-      .from(".boot-glow", { scale: 0.3, autoAlpha: 0, duration: 1 }, 0.7)
-      .from(".boot-word span", { yPercent: 115, duration: 0.75, stagger: 0.035 }, 0.8)
-      .to(".boot-call", { scrambleText: { text: "¡sereno! all is calm", chars: "AaCcNnZz0123456789+/=", speed: 0.5, revealDelay: 0.15 }, duration: 0.8, ease: "none" }, 1.0)
-      .to(".boot-inner", { y: -20, autoAlpha: 0, duration: 0.45, ease: "power2.in" }, 1.8)
+    tl.from(".boot .mark-pocket", { y: 26, autoAlpha: 0, duration: 0.7 }, 0.1)
+      .from(".boot .mark-card", { y: -46, autoAlpha: 0, duration: 0.75, ease: "back.out(1.6)" }, 0.35)
+      .from(".boot .mark-glyph", { scale: 0.4, autoAlpha: 0, svgOrigin: "60 76", duration: 0.5, ease: "back.out(2)" }, 0.75)
+      .from(".boot-glow", { scale: 0.3, autoAlpha: 0, duration: 1 }, 0.55)
+      .from(".boot-word span", { yPercent: 115, duration: 0.75, stagger: 0.035 }, 0.75)
+      .to(".boot-call", { scrambleText: { text: "¡sereno! all is calm", chars: "AaCcNnZz0123456789+/=", speed: 0.5, revealDelay: 0.15 }, duration: 0.8, ease: "none" }, 0.95)
+      .to(".boot-inner", { y: -20, autoAlpha: 0, duration: 0.45, ease: "power2.in" }, 1.7)
       .to(root.current, { clipPath: "inset(0% 0% 100% 0%)", duration: 0.8, ease: "expo.inOut" }, BOOT_REVEAL);
   });
   return (
@@ -24,7 +25,7 @@ export function Boot({ onDone }: { onDone: () => void }) {
       <div className="boot-inner">
         <div className="boot-mark">
           <div className="boot-glow" />
-          <Lantern size={88} />
+          <Mark size={112} />
         </div>
         <div className="boot-word">
           {"sereno".split("").map((ch, i) => <span key={i}>{ch}</span>)}

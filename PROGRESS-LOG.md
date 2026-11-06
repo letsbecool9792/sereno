@@ -12,11 +12,70 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 | WS | Owner | Now working on | Blocked on | Last update |
 |---|---|---|---|---|
-| WS1 contracts and relayer | Mohikshit | M1–M5 done; extras deployed; demo bounty PR open | Suparno merges sereno-demo#2 on stage | 6 Nov 13:18 |
+| WS1 contracts and relayer | Mohikshit | frontend reform v2 (`ws3/redesign`, web half); see 7 Nov 01:40 entry | Suparno takes the extension half | 7 Nov 01:40 |
 | WS2 CRE and ENS | Gantavya | frontend redesign PR (`ws3/frontend-redesign`); pay-to-SSH task queued | Suparno reviews the redesign PR; VM access, a throwaway key, test USDC (Gantavya) | 6 Nov 21:25 |
 | WS3 clients and demo | Suparno + Claude | demo bug fixes; frontend redesign handed to Gantavya (19:30 entry) | Gantavya's redesign PR | 6 Nov 19:30 |
 
 ---
+
+## 2026-11-07 01:40 IST: Mohikshit's Claude: frontend reform v2 (design language + logo); TASK for Suparno: the extension half
+
+**Branch:** `ws3/redesign`.
+**New source of truth:** `web/DESIGN.md` v2. It replaces the amber "night watchman" language.
+
+**Decided (Mohikshit, from the finalist research and the design kit artifacts):**
+- **Logo:** a glass wallet: an electric-blue card behind a frosted lime pocket, with the GitHub mark as the glyph.
+  - GitHub's brand policy forbids its logo in a product logo. The team accepts the risk, and the README gets a "not affiliated" line.
+  - The swap-out plan is in DESIGN.md.
+- **Colors:** D1 Electric × Lime, dark:
+  - blue `#2b59ff` for actions;
+  - lime `#c6f432` for identity (names, tags, the secondary button).
+- **Type:** Geist + Geist Mono (Inter for buttons injected into github.com).
+- **Buttons:** chunky press, toned down.
+- **Search:** the `github.com/` pill.
+- **Feedback:** under the button you pressed (FB1); the panel becomes "Sent ✓" (FB3).
+- **Motion:** WebGL dither hero (M1), check-draw (M5), decode (M6).
+
+**Done so far on the branch:**
+- Spend and Bounties feedback now renders next to the action, with a success panel. The Bounties version keeps Suparno's `WalletHint` through `<Feedback wallet>`.
+- DESIGN.md v2.
+
+**Mohikshit does next (same branch):**
+- tokens, fonts and buttons in `web/src/styles.css`;
+- `Mark.tsx` and the favicons;
+- the boot animation with the new mark;
+- the M1 hero;
+- Pay feedback;
+- extension icon PNGs (16/32/48/128) into `extension/icons/`;
+- the README disclaimer.
+
+**TASK for Suparno** (+ his Claude). Branch `ws3/extension-redesign` from `ws3/redesign`. Read `web/DESIGN.md` first.
+1. **Popup** (`extension/src/popup/*`):
+   - copy the v2 tokens into `popup.css`;
+   - swap fontsource to `@fontsource-variable/geist` and `@fontsource-variable/geist-mono`;
+   - buttons: primary blue chunky, `.secondary` lime tint, `.ghost` quiet;
+   - the mark replaces `Lantern` in the header, Onboard and Lock (copy `web/src/Mark.tsx`);
+   - errors under the button that caused them;
+   - the check-draw on Send's "Sent".
+2. **GitHub injections** (`extension/src/ui.ts`, `content.ts`):
+   - Inter and GitHub's font stack;
+   - one **primary** per bar: solid `#2b59ff`, white text, radius 6, 28px;
+   - **secondary** = GitHub's default button;
+   - **info chips** = a muted outline with a lime dot;
+   - **status** = GitHub's success and danger colors;
+   - the 14px mark replaces the lantern SVG.
+   - Check profiles, issues, PRs, commits, repos and settings/keys in GitHub light **and** dark.
+3. **Manifest and icons:** wire the PNGs I export, update the description, rebuild the zip.
+4. **After `ws3/redesign` merges:**
+   - polish Bounties and LinkWallet against DESIGN.md;
+   - refresh DEMO.md and README screenshots;
+   - re-record any demo footage showing the old amber look.
+
+**Done means:** `bun run typecheck` and `bun run build` pass in `extension/`; no amber, brass or DM Sans left (`grep -ri "f2b35b\|brass\|DM Sans" extension/src` is empty); screenshots of the popup and three GitHub pages in the PR.
+
+**WAITING ON:**
+- Suparno: review `ws3/redesign` when its PR opens, and start the extension half.
+- Mohikshit: finish the web half.
 
 ## 2026-11-06 22:55 IST: Suparno's Claude (laptop): TASK for Gantavya: 10 PRs on sereno-demo (one per demo bounty run); DEMO.md
 

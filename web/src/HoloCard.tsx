@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import type { GithubUser } from "@sereno/shared";
-import { Lantern } from "./Lantern";
+import { Mark } from "./Mark";
 
 export type NameCheck = "ok" | "mismatch" | "unresolved";
 
@@ -31,9 +31,9 @@ export function HoloCard({ user, name, claimed, check, received }: { user: Githu
   const refused = check === "mismatch" || check === "unresolved";
   return (
     <div ref={ref} className={`holo${refused ? " refused" : ""}`} onPointerMove={move} onPointerLeave={leave}>
-      <span className="holo-mark" aria-hidden="true"><Lantern size={190} /></span>
+      <span className="holo-mark" aria-hidden="true"><Mark size={190} /></span>
       <div className="holo-top">
-        <span className="holo-brand"><Lantern size={20} />sereno</span>
+        <span className="holo-brand"><Mark size={22} />sereno</span>
         <span className="holo-id">No. {user.id.toString()}</span>
       </div>
       <img className="holo-av" src={user.avatarUrl} alt="" width={84} height={84} />
