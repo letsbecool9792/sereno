@@ -28,6 +28,132 @@ npx sereno-ak bounty https://github.com/owner/repo/issues/12 --settle        # s
 
 A name claim is verified on Ethereum Sepolia, where the ed25519 verifier doesn't fit the gas limit, so it needs a P-256 key (`ssh-keygen -t ecdsa`) or a security key / phone (`-t ecdsa-sk`). Payments accept ed25519, P-256, RSA and security keys.
 
+## Walkthrough: test every feature
+
+Every step, in demo order, with what to do and what you should see. `<you>` is your GitHub username and `<friend>` is any other GitHub user. Everything is on testnets.
+
+### What you need
+
+- **A GitHub account with an SSH key** (Settings → SSH and GPG keys; an Authentication or Signing key, any type). For step 6 you need a P-256 or security key (`ssh-keygen -t ecdsa` or `-t ecdsa-sk`).
+- **A browser wallet** (MetaMask, Rabby or Phantom) on Base Sepolia, with a little ETH for gas and some Circle USDC ([faucet](https://faucet.circle.com)).
+- **Node 20+, git and OpenSSH** for the terminal steps (`npx sereno-ak …` needs no install).
+
+Keep amounts small: a key that first appeared on-chain less than 72 hours ago can't spend more than 50 USDC at a time.
+
+### 1. Your GitHub account is already a wallet
+
+1. Open `https://github.com/<you>.keys`. These are your public SSH keys, published by GitHub. (It lists only authentication keys; signing keys count too.)
+2. On [sereno-eth.vercel.app](https://sereno-eth.vercel.app), type `<you>` and press Find.
+
+   You should see:
+   - your account address, derived from your numeric GitHub ID;
+   - `<you>.sereno.eth`;
+   - your SSH keys, each marked *on-chain* or *not synced yet*.
+3. If any key says *not synced yet*, run `npx sereno-ak sync <you>`, or press **Sync my keys from GitHub** on the Spend tab.
+
+   You should see: a Chainlink CRE workflow copies your key hashes on-chain, `done … base-sepolia ok …`, and the keys switch to *on-chain*.
+
+`npx sereno-ak account <you>` shows the same in a terminal: address, balance, nonce, and which keys are on-chain.
+
+### 2. Receive money by username
+
+1. On the **Pay someone** tab, type `<you>` (or `<friend>`), enter an amount, press **Pay @`<user>`** and confirm in your wallet.
+
+   You should see: a *Received* stamp on the card, the transaction link, and the account's balance going up. This works even if the account isn't deployed yet: it shows *new, it can already receive*.
+2. Open the account address on Basescan.
+
+   You should see: the USDC sitting at that address.
+
+### 3. Spend it with `ssh-keygen`
+
+1. On the **Spend your balance** tab:
+   - enter `<you>`, the recipient (`<friend>` or a 0x address), the amount and the chain;
+   - enter the path to your SSH private key (it's only used to fill in the command);
+   - press **Prepare payment**.
+
+   You should see the exact text you'll sign: chain, account, nonce, amount, token, recipient and relayer fee.
+2. Press **Download intent.txt**. In a terminal, in the folder where it downloaded, run the command the page shows:
+   ```sh
+   ssh-keygen -Y sign -n sereno@v1 -O hashalg=sha256 -f ~/.ssh/<your key> intent.txt
+   ```
+3. Paste the contents of `intent.txt.sig`, or pick the file, and press **Send payment**.
+
+   You should see: *Paid* with a transaction link. The recipient's balance goes up, yours goes down by the amount plus the relayer fee, and your nonce goes up by one.
+
+From a terminal, in one command: `npx sereno-ak send 1 <friend> --as <you> --key ~/.ssh/<your key>`.
+
+### 4. Pay with a git commit
+
+1. **For GitHub's "Verified" badge (optional):** add the key on GitHub as a **Signing Key** as well, and commit with your GitHub noreply or verified email.
+2. In a clone of any GitHub repo you can push to:
+   ```sh
+   npx sereno-ak commit-pay 1 <friend> --as <you> --key ~/.ssh/<your key> --push
+   ```
+   You should see:
+   - a signed, empty commit whose message is exactly the payment text;
+   - the push;
+   - then `paid: <transaction link>`. The relayer read the commit from GitHub.
+3. Open the commit on GitHub.
+
+   You should see: the payment text as the commit message, and **Verified** if you did step 1.
+
+Without the CLI, use the Spend tab: choose **Pay with a git commit**, run the `git commit -S … -F intent.txt` and `git push` it shows, then paste the commit's link under **Paste a payment commit**.
+
+### 5. Issue bounty
+
+1. Open an issue in a GitHub repo you can merge into.
+2. On the **Issue bounties** tab, paste the issue link and press Find. Enter an amount and a refund delay, press **Fund bounty**, and confirm twice in your wallet (approve, then fund).
+
+   You should see: the bounty amount on the card.
+3. Open a pull request, from any account, whose description says `Fixes #<issue number>`. Merge it, and check that GitHub closed the issue.
+   - Fund before merging: once an issue is settled, nobody can add to it.
+   - Don't close the issue by hand: a manual close pays nobody.
+4. Back on the tab, press **Check GitHub and pay the PR author**.
+
+   You should see:
+   - *Chainlink's bounty workflow is asking GitHub…*;
+   - then *Settled and paid to the PR author's account*, with a transaction link;
+   - the winner shown as `@<PR author>`, and the PR author's Sereno balance goes up.
+
+From a terminal: `npx sereno-ak bounty https://github.com/<owner>/<repo>/issues/<n> --settle`.
+
+### 6. Claim your ENS name with a phone or security key
+
+1. **Make a security key:**
+   - on Windows with Win32-OpenSSH 10.x, `ssh-keygen -t ecdsa-sk` and choose "iPhone, iPad, or Android device" (scan the QR code, then use your fingerprint);
+   - elsewhere, a USB security key works the same way.
+
+   Add the `.pub` on GitHub and sync it (step 1.3). A plain P-256 key (`-t ecdsa`) also works.
+2. Run `npx sereno-ak claim --as <you> --key <that key>`. With a phone: scan the QR code and confirm with your fingerprint.
+
+   You should see:
+   - the claim text you signed;
+   - a Sepolia transaction;
+   - [sepolia.app.ens.domains/`<you>`.sereno.eth](https://sepolia.app.ens.domains) shows the name as a real ENSv2 subname owned by your account, with its own resolver.
+
+One claim per GitHub account.
+
+### 7. Revocation
+
+1. Make a throwaway key (`ssh-keygen -t ecdsa -f throwaway`), add `throwaway.pub` on GitHub, and sync it (step 1.3).
+2. On the Spend tab, prepare a small payment and sign `intent.txt` with `throwaway` as in step 3, but don't send it yet.
+3. Delete the throwaway key on GitHub, then sync again (`npx sereno-ak sync <you>`).
+
+   You should see: `npx sereno-ak account <you>` no longer lists that key.
+4. Paste the signature you made in step 2 and press **Send payment**.
+
+   You should see: it's refused with `KeyNotOnProfile`. A signature made before the delete stops working too.
+
+From the repo, one command walks through this: `bun packages/ops/src/revoke-demo.ts <you> --key throwaway`.
+
+### 8. Same address on every chain
+
+Run `npx sereno-ak account <you> --chain arbitrum-sepolia`, or switch the chain on the pay page.
+
+You should see: the same account address as on Base Sepolia. Payments work there too.
+
+**While the CRE workflows run in simulation,** key syncs (steps 1, 6 and 7) and bounty settlement (step 5) are carried out by a worker on our machine. If it's offline, those steps wait in a queue. Everything else is hosted.
+
 ## How it works
 
 1. **Account.** Every GitHub user has a smart account at a CREATE2 address derived from their numeric GitHub ID, the same on every EVM chain. Money can arrive before it is deployed.
