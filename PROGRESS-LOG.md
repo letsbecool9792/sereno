@@ -14,7 +14,57 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | M3+M4 contracts done (PR); M1/M2 on Linux | ETH for relayer `0xd599…80d5` | 6 Nov 01:07 |
 | WS2 CRE and ENS | Gantavya | G1–G4 code done (4 branches); G1 deploy, G2/G3 live runs | Fly account verification, `cre login` | 6 Nov 00:20 |
-| WS3 clients and demo | Suparno + Claude | Spend page, on-demand key sync; `sereno-ak` npm package ready | Railway SYNC_WORKER_TOKEN + redeploy, npm 2FA, Vercel (Suparno) | 6 Nov 11:15 |
+| WS3 clients and demo | Suparno + Claude | core done and hosted: pay page on Vercel, `sereno-ak` on npm, key sync live; demo rework next | | 6 Nov 12:40 |
+
+---
+
+## 2026-11-06 12:40 IST: Suparno's Claude (laptop): pay page live on Vercel; README updated; what's left for Mohikshit and Gantavya
+
+**Done since the last entries:**
+- The pay page is live at **https://sereno-eth.vercel.app** (Vercel, `web/`; it uses the hosted gateway and relayer).
+- `sereno-ak@0.1.1` is on npm: `npx sereno-ak account <user>` works anywhere with no token.
+- On-demand key sync is live (`ak sync <user>`, or the Spend tab's button).
+- README: a "Try it" section (live link, `npx` commands, Spend tab, key sync, P-256 for name claims), hosted-by-default run notes, the sync worker, and CROPS trade-offs for the worker and relayer.
+
+**Core is done and hosted. Everything below is an extra.** We're past the Friday-midday cut, so: **anything not merged and deployed by 22:00 IST tonight becomes a slide.** Pull `main` first; a lot changed (ReportGate, hosted relayer, Spend page, npm CLI, key sync).
+
+### Mohikshit (WS1), in order
+
+1. **BountyBoard griefing fix.** The first funder fixes the token, so 1 wei of a junk token blocks real USDC bounties on that issue. An allowlist of USDC can't go in the constructor, because addresses differ per chain and BountyBoard must have the same address everywhere. Suggested fix:
+   - key the pot by token, `bountyId(repoHash, issue, token)`;
+   - keep the CRE report format unchanged: `onReport` records the winning author for `(repoHash, issue)`;
+   - add a permissionless `payout(repoHash, issue, token)` that sends that token's pot to `factory.addressOf(author)`;
+   - keep `refund` per funder and token while unsettled.
+
+   Add a test for the junk-token case, then open a PR. Update CLAUDE.md §5.2 in the same PR.
+2. **Deploy the extras** after (1) merges, on **Base Sepolia and Arbitrum Sepolia only**, with `DeployExtras.s.sol`, **never `Deploy.s.sol`**. Then `bun run sync`, and open a PR with `deployments/extras.json` and the regenerated shared files. Your relayer `0xd599…80d5` has ETH on both chains.
+3. **M1, Linux check (15 min, no relayer needed):** with your own GitHub account on Linux, run:
+   - `npx sereno-ak account psycocodes`;
+   - `npx sereno-ak sync psycocodes`;
+   - `npx sereno-ak send 0.05 letsbecool9792 --as psycocodes --key ~/.ssh/id_ed25519` (your account holds 0.59 USDC on Base Sepolia);
+   - in any GitHub repo of yours: `npx sereno-ak commit-pay 0.05 letsbecool9792 --as psycocodes --key ~/.ssh/id_ed25519 --push`.
+
+   Post the outputs here. This is our "works on Linux, not just the demo laptop" evidence.
+4. **M5 (lowest priority):** the Action test from the 03:50 entry. `commit-pay --push` now has the hosted relayer pay from any repo, so this only shows the "no server of ours" path.
+
+Use throwaway keys for anything destructive; never delete your real GitHub keys.
+
+### Gantavya (WS2)
+
+1. **D1 bounty workflow:** a new CRE workflow, for example `github-bounty`, in `cre/`.
+   - HTTP trigger `{"repo": "owner/repo", "issue": "12"}`; a cron isn't needed.
+   - In node mode, ask GitHub whether a **merged** PR closed that issue (GraphQL `closedByPullRequestsReferences`, or the issue's timeline `closed` event with a `commit_id`/PR), and take the PR author's **numeric** ID. Nodes agree with `consensusIdenticalAggregation`.
+   - Report `abi.encode(bytes32 repoHash, uint256 issue, uint256 authorGithubId)`, where `repoHash = keccak256(lowercase "owner/repo")`. If Mohikshit's fix keeps the same report format, nothing changes.
+   - `writeReport` to the **ReportGate** `0x55adaccD67e0A4b7B1DcE91A188041D2D5046Cb9` (the receiver for every workflow), on Base and Arbitrum Sepolia. Use `gasLimit` 1.5M, and read BountyBoard afterwards to confirm the payout: forwarder "success" doesn't prove the receiver ran.
+   - Simulate without `--broadcast` until the report bytes are right; post a sample.
+2. **Post each target's `workflow-name`** (for example `github-bounty-base`). The gate routes by `nameKey(workflow-name)`, so Suparno's Claude adds the route to BountyBoard once it's deployed. Suparno can do the `--broadcast` runs from the laptop, so you don't need a funded CRE key. If you'd rather broadcast yourself, post that key's address for the gate's allowlist.
+3. Nothing else is needed from G1–G4. The hosted gateway is ours on Railway; cancel the Fly app if it still exists.
+
+**WAITING ON:**
+- Mohikshit: 1 → 2 → 3, then 4.
+- Gantavya: 1 → 2.
+- Suparno's Claude: gate route and client commands for the bounty board once both land.
+- Suparno: the demo rework and rehearsal; keep the sync worker running.
 
 ---
 
