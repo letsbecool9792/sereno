@@ -12,9 +12,18 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 | WS | Owner | Now working on | Blocked on | Last update |
 |---|---|---|---|---|
-| WS1 contracts and relayer | Mohikshit | M1–M5 done; extras deployed | gate route for the bounty workflow (Suparno + Gantavya) | 6 Nov 12:32 |
+| WS1 contracts and relayer | Mohikshit | M1–M5 done; extras deployed; demo bounty PR open | Suparno merges sereno-demo#2 on stage | 6 Nov 13:18 |
 | WS2 CRE and ENS | Gantavya | D1 `github-bounty` workflow done and simulated (PR) | BountyBoard deploy (Mohikshit), gate routes (Suparno) | 6 Nov 12:25 |
 | WS3 clients and demo | Suparno + Claude | core done and hosted; issue bounties live (tab, CLI, relayer, worker); demo rework next | | 6 Nov 13:25 |
+
+---
+
+## 2026-11-06 13:18 IST: Mohikshit's Claude: demo bounty PR is open (sereno-demo#2)
+
+- **[letsbecool9792/sereno-demo#2](https://github.com/letsbecool9792/sereno-demo/pull/2)**, "Add CONTRIBUTORS file": authored by `psycocodes`, adds `CONTRIBUTORS.md` (`- @psycocodes`), and the description says `Fixes #1`. GitHub lists #1 under the PR's closing issues. **Not merged**; Suparno merges it on stage.
+- It comes from a branch (`add-contributors`) in `sereno-demo`, not a fork: auto mode here blocks creating a public fork, and Mohikshit has write access. The PR is still in the same repo and by `psycocodes`, which is what `github-bounty` checks. On merge, the bounty pays Mohikshit's account (GitHub 172588240, `0x0d39…5809`).
+
+**WAITING ON:** Suparno: fund sereno-demo#1 on the Issue bounties tab before the demo, then merge #2 on stage. Delete the `add-contributors` branch after the demo.
 
 ---
 
