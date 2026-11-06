@@ -79,17 +79,21 @@ const need = (v: string | true | undefined, what: string) => (typeof v === "stri
 if (!CORE) die("contracts not deployed (run `bun run sync`)");
 const core = CORE!;
 
-/// A GitHub user and their SSH keys. Without GITHUB_TOKEN, GitHub allows 60 requests an hour per IP, so ask our gateway
-/// first (it has a token and caches), and GitHub directly only with a token or when the gateway is unreachable.
-async function profile(login: string): Promise<{ user: GithubUser; keys: string[] }> {
-  if (!TOKEN) {
-    const res = await fetch(`${GATEWAY}/lookup/${encodeURIComponent(login)}`).catch(() => null);
-    if (res?.status === 404) die(`no GitHub user "${login}"`);
-    if (res?.ok) {
-      const p = (await res.json()) as { login: string; id: string; name: string | null; avatarUrl: string; keys: string[] };
-      return { user: { login: p.login, id: BigInt(p.id), name: p.name, avatarUrl: p.avatarUrl }, keys: p.keys };
-    }
+/// A GitHub user and their SSH keys, from our gateway first (it has a token and caches, and it knows which usernames
+/// recently changed owner), and from GitHub directly only when the gateway is unreachable. Paying a username that is
+/// quarantined after a change of owner stops here; your own account (`own`) only gets a warning.
+async function profile(login: string, own = false): Promise<{ user: GithubUser; keys: string[] }> {
+  type P = { login: string; id: string; name: string | null; avatarUrl: string; keys: string[] };
+  const fromJson = (p: P) => ({ user: { login: p.login, id: BigInt(p.id), name: p.name, avatarUrl: p.avatarUrl }, keys: p.keys });
+  const res = await fetch(`${GATEWAY}/lookup/${encodeURIComponent(login)}`).catch(() => null);
+  if (res?.status === 404) die(`no GitHub user "${login}"`);
+  if (res?.status === 409) {
+    const b = (await res.json()) as { message: string; profile: P };
+    if (!own) die(`not paying: ${b.message}`);
+    console.error(`note: ${b.message}`);
+    return fromJson(b.profile);
   }
+  if (res?.ok) return fromJson((await res.json()) as P);
   const user = await githubUser(login, TOKEN);
   return { user, keys: await githubKeys(user.id, TOKEN) };
 }
@@ -198,7 +202,7 @@ function showText(what: string, text: string) {
 }
 
 async function cmdAccount(login: string, c: ChainConfig) {
-  const { user: u, keys } = await profile(login);
+  const { user: u, keys } = await profile(login, true);
   const account = await accountOf(c, u.id);
   const pub = client(c);
   const code = await pub.getCode({ address: account });
@@ -219,7 +223,7 @@ async function cmdAccount(login: string, c: ChainConfig) {
 
 async function cmdSend(pos: string[], opts: Record<string, string | true>, c: ChainConfig, asCommit: boolean) {
   const [amountStr, toStr] = [need(pos[1], "<amount>"), need(pos[2], "<to>")];
-  const { user: me, keys: myKeys } = await profile(need(opts.as, "--as <your GitHub user>"));
+  const { user: me, keys: myKeys } = await profile(need(opts.as, "--as <your GitHub user>"), true);
   const key = typeof opts.key === "string" ? opts.key : findKey(myKeys, me.login);
   const to = await recipient(c, toStr);
   const amount = parseUnits(amountStr, DECIMALS);
@@ -325,7 +329,7 @@ async function cmdBounty(ref: string, c: ChainConfig, settle: boolean) {
 
 async function cmdClaim(opts: Record<string, string | true>) {
   if (!ENS_DEPLOYMENT) die("ENS not set up");
-  const { user: me, keys: myKeys } = await profile(need(opts.as, "--as <your GitHub user>"));
+  const { user: me, keys: myKeys } = await profile(need(opts.as, "--as <your GitHub user>"), true);
   const key = typeof opts.key === "string" ? opts.key : findKey(myKeys, me.login, true);
   const label = me.login.toLowerCase();
   const pub = client(CHAINS.sepolia);

@@ -6,17 +6,27 @@ export const PAY_CHAINS: ChainKey[] = ["base-sepolia", "arbitrum-sepolia"];
 export const GATEWAY = import.meta.env.VITE_GATEWAY_URL ?? HOSTED_GATEWAY_URL;
 export const RELAYER = import.meta.env.VITE_RELAYER_URL ?? HOSTED_RELAYER_URL;
 
-/// Profile and SSH keys through our gateway (token + cache); straight from GitHub if the gateway is unreachable.
-export async function fetchProfile(login: string): Promise<{ user: GithubUser; keys: string[] }> {
+/// A username that recently changed owner: the gateway won't resolve it for 15 days (gateway/src/moves.ts).
+export type Moved = { fromId: string; fromLogin: string | null; since: number; until: number };
+
+type ProfileJson = { login: string; id: string; name: string | null; avatarUrl: string; keys: string[] };
+const fromJson = (p: ProfileJson) => ({ user: { login: p.login, id: BigInt(p.id), name: p.name, avatarUrl: p.avatarUrl }, keys: p.keys });
+
+/// Profile and SSH keys through our gateway (token + cache); straight from GitHub if the gateway is unreachable. A
+/// username in quarantine throws with `moved` set when paying it, and never falls back to GitHub, which would hide the
+/// warning; `own` (the user's own account: spending, checking it) gets the profile anyway.
+export async function fetchProfile(login: string, own = false): Promise<{ user: GithubUser; keys: string[] }> {
   try {
     const res = await fetch(`${GATEWAY}/lookup/${encodeURIComponent(login)}`);
     if (res.status === 404) throw Object.assign(new Error("not found"), { notFound: true });
-    if (res.ok) {
-      const p = (await res.json()) as { login: string; id: string; name: string | null; avatarUrl: string; keys: string[] };
-      return { user: { login: p.login, id: BigInt(p.id), name: p.name, avatarUrl: p.avatarUrl }, keys: p.keys };
+    if (res.status === 409) {
+      const b = (await res.json()) as { message: string; moved: Moved; profile: ProfileJson };
+      if (own) return fromJson(b.profile);
+      throw Object.assign(new Error(b.message), { moved: b.moved });
     }
+    if (res.ok) return fromJson((await res.json()) as ProfileJson);
   } catch (e) {
-    if ((e as { notFound?: boolean }).notFound) throw e;
+    if ((e as { notFound?: boolean }).notFound || (e as { moved?: Moved }).moved) throw e;
   }
   const user = await githubUser(login);
   return { user, keys: await githubKeys(user.id).catch(() => []) };

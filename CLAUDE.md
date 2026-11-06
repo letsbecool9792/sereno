@@ -151,6 +151,13 @@ Every line ends with `\n`, including the last; there is no other whitespace. The
 - EIP-3668 CCIP-read: `GET /{sender}/{data}.json`, plus `POST` with `{sender, data}`.
 - Answers `addr(node)`, `addr(node, coinType)` for every EVM coin type (60, or `0x80000000 | chainId`; the account address is the same everywhere), and `text(node, "url")`.
 - Response signature, ENS offchain-resolver scheme: `keccak256(abi.encodePacked(hex"1900", resolver, uint64 expires, keccak256(request), keccak256(result)))`, signed by the gateway key that the resolver trusts.
+- **A username that changed owner fails loudly for 15 days** (`gateway/src/moves.ts`): `addr` answers **409** with a message saying when it changed and who had it ("the previous owner is now @bob"), instead of resolving to the new owner.
+  - **How the gateway knows:**
+    - it saw the login with another ID before (kept in `CACHE_FILE`);
+    - the Sepolia KeyOracle still maps the login to another ID;
+    - `NameRegistrar.quarantineOf(label)` reports a released claimed name.
+  - **`GET /lookup/<login>`** answers 409 with `{message, moved, profile}`. Clients refuse to **pay** that name, but your **own** account (the Spend tab's "you", `ak --as`, `ak account`) still uses `profile`.
+  - **No fallback:** clients don't fall back to GitHub on a 409.
 
 ### 5.4 Shared TS package (`packages/shared`)
 
@@ -255,7 +262,7 @@ packages/shared/  intent builder, ABIs, addresses, chain config
 | Ed25519Verifier | `0xb02e08fC377DF33E66640B738eAE1BB13505E9fB` | Base Sepolia, Arbitrum Sepolia (not Sepolia) |
 | OffchainResolver for `sereno.eth` (wildcard; gateway signer `0xb693…4a41`; URL `https://sereno-production.up.railway.app/{sender}/{data}.json`) | `0xd7695337e225d34f4583862923c6b979fcf319c4` | Sepolia (ENS) |
 | UserRegistry (subregistry of `sereno.eth`) | `0x4BE80595522f0E143b2D34392EA031e29e3652ba` | Sepolia (ENS) |
-| NameRegistrar (6 Nov redeploy with text records; the first one `0x8163…47c5` has its roles revoked; the stale-name `release` needs another redeploy, see the log's 15:55 entry) | `0x55e81868098759409757a341c0818e0b203b3845` | Sepolia (ENS) |
+| NameRegistrar (6 Nov redeploy with text records; the first one `0x8163…47c5` has its roles revoked; the rename quarantine (PR #24) needs another redeploy, see the log's 17:05 entry) | `0x55e81868098759409757a341c0818e0b203b3845` | Sepolia (ENS) |
 
 **ENS parent name: `sereno.eth`** (registered 6 Nov on Sepolia ENSv2, owned by the deployer; `packages/ops/src/ens-register.ts`, then `PARENT_NAME=sereno.eth bun src/ens-setup.ts`). The earlier temporary setup under `authorizedkeys.eth` is in `contracts/deployments/ens.authorizedkeys.json`. Sepolia deploys: `sh script/deploy-sepolia.sh` (node gas estimates, explicit fees, no Ed25519).
 
@@ -364,7 +371,12 @@ Redeploy (idempotent): `DEPLOYER_KEY=$(cat .secrets/deployer.key) forge script s
 - Registering a claimed name with a permissionless registrar contract (anyone submits an SSH signature from a listed key → the registrar registers `<user>` to `factory.addressOf(id)`) needs a trusted username-to-ID source; the CRE oracle can provide it.
 - **Renames: stale names.** A claimed name doesn't follow a GitHub rename by itself.
   - **The rule:** `NameRegistrar.holderOf(label)` calls a name *stale* when its holder isn't `factory.addressOf(oracle.idOfLoginHash(keccak256(label)))`. That happens when the holder renamed (the oracle drops the old login) or someone else now has the login.
-  - **Releasing:** anyone can `release(label)` a stale name, and `claim` releases one automatically. The name then falls back to the wildcard gateway, which follows GitHub live. No storage is involved, so this also covers names claimed before the change.
+  - **Releasing:** anyone can `release(label)` a stale name. The rule reads only the registry and the oracle, so it also covers names claimed before the change.
+  - **Quarantine:** a released name is quarantined for **15 days** (`QUARANTINE`).
+    - It resolves to nobody: the gateway answers 409 (§5.3).
+    - `claim` by anyone but the previous holder reverts `Quarantined(until)`.
+    - A stale name that hasn't been released yet reverts `StaleNotReleased`.
+    - `quarantineOf(label)` returns `(until, previousHolder, previousGithubId)`. The registrar records `claimedBy[labelHash]` at claim time, so it can say who had the name.
   - **Needs:** the registrar's root `UNREGISTER` role (`1 << 12`), and `unregister(anyId)` / `getOwner(anyId)` accept the labelhash.
   - **One resolver proxy per claim:** the salt is `keccak256(githubId, claimCount)`, so a renamed user can claim their new login with fresh records.
 

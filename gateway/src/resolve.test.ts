@@ -9,8 +9,9 @@ const resolver = "0x8ea21d6c3dc1983a1fcf2d8cf40dd9134b4e1d69";
 const parent = "sereno.eth";
 const account = "0xA22f7e55C2eF953D16607636c9ba48D60e78E402";
 const lookups: Lookups = {
-  githubId: async (login) => (login === "letsbecool9792" ? 99113360n : null),
+  githubId: async (login) => (login === "letsbecool9792" ? 99113360n : login === "alice" ? 2n : null),
   accountOf: async () => account,
+  moved: async (login) => (login === "alice" ? "alice.sereno.eth changed owner on 2026-11-06" : null),
 };
 const abi = parseAbi([
   "function resolve(bytes name, bytes data) view returns (bytes)",
@@ -59,5 +60,17 @@ describe("gateway", () => {
     await expect(handle(resolver, request("a.b.sereno.eth", inner), { resolver, parent, signer, lookups })).rejects.toThrow("not a <user>");
     await expect(handle(resolver, request("x.other.eth", inner), { resolver, parent, signer, lookups })).rejects.toThrow("not a <user>");
     await expect(handle(account, request("x.sereno.eth", inner), { resolver, parent, signer, lookups })).rejects.toThrow("unknown resolver");
+  });
+
+  test("a name that changed owner fails loudly instead of resolving to the new owner", async () => {
+    const name = "alice.sereno.eth";
+    for (const inner of [
+      encodeFunctionData({ abi, functionName: "addr", args: [namehash(name)] }),
+      encodeFunctionData({ abi, functionName: "addr", args: [namehash(name), 0x80000000n | 84532n] }),
+    ]) {
+      const err = await handle(resolver, request(name, inner), { resolver, parent, signer, lookups }).catch((e) => e);
+      expect(err.status).toBe(409);
+      expect(err.message).toContain("changed owner");
+    }
   });
 });

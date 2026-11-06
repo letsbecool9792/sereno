@@ -20,7 +20,7 @@ import {
   type ChainKey,
   type GithubUser,
 } from "@sereno/shared";
-import { clientFor, fetchProfile, PAY_CHAINS, short, useWallets } from "./lib";
+import { clientFor, fetchProfile, PAY_CHAINS, short, useWallets, type Moved } from "./lib";
 import { Bounties } from "./Bounties";
 import { HoloCard } from "./HoloCard";
 import { Lantern } from "./Lantern";
@@ -46,6 +46,7 @@ function Pay() {
   const [amount, setAmount] = useState("1");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [moved, setMoved] = useState<{ name: string; message: string; fromLogin: string | null } | null>(null);
   const [paid, setPaid] = useState<string | null>(null);
   const chain = CHAINS[chainKey];
   const wallets = useWallets();
@@ -68,6 +69,7 @@ function Pay() {
     if (!who || !CORE || !ENS_DEPLOYMENT) return;
     setBusy(`Looking up ${who} on GitHub…`);
     setError(null);
+    setMoved(null);
     setPaid(null);
     setLookup(null);
     try {
@@ -102,7 +104,9 @@ function Pay() {
         keys,
       });
     } catch (err) {
-      setError((err as Error).message.includes("not found") ? `No GitHub user "${who}". Check the spelling.` : (err as Error).message);
+      const mv = (err as { moved?: Moved }).moved;
+      if (mv) setMoved({ name: `${who.toLowerCase()}.${ENS_DEPLOYMENT.parentName}`, message: (err as Error).message, fromLogin: mv.fromLogin });
+      else setError((err as Error).message.includes("not found") ? `No GitHub user "${who}". Check the spelling.` : (err as Error).message);
     } finally {
       setBusy(null);
     }
@@ -178,7 +182,7 @@ function Pay() {
     <>
       <form onSubmit={find} className="search">
         <span className="at">github.com/</span>
-        <input value={login} onChange={(e) => setLogin(e.target.value)} placeholder="username" autoFocus spellCheck={false} aria-label="GitHub username" />
+        <input value={login} onChange={(e) => setLogin(e.target.value)} placeholder="username or name.sereno.eth" autoFocus spellCheck={false} aria-label="GitHub username or sereno.eth name" />
         <select aria-label="Chain" value={chainKey} onChange={(e) => { const k = e.target.value as ChainKey; setChainKey(k); if (lookup) void find(undefined, k, lookup.user.login); }}>
           {PAY_CHAINS.map((k) => (
             <option key={k} value={k}>{CHAINS[k].chain.name}</option>
@@ -189,8 +193,19 @@ function Pay() {
 
       {busy && !lookup && <p className="busy"><span className="spin" aria-hidden="true" />{busy}</p>}
       {error && !lookup && <p className="error">{error}</p>}
+      {moved && (
+        <div className="error moved" role="alert">
+          <strong>Not paying: {moved.name} changed owner.</strong>
+          <p>{moved.message}</p>
+          {moved.fromLogin && (
+            <button type="button" className="secondary" onClick={() => { setLogin(moved.fromLogin!); void find(undefined, chainKey, moved.fromLogin!); }}>
+              Look up @{moved.fromLogin} instead
+            </button>
+          )}
+        </div>
+      )}
 
-      {!lookup && !busy && !error && (
+      {!lookup && !busy && !error && !moved && (
         <div className="empty">
           <Lantern size={56} />
           <p>Type a GitHub username to see their card. Money can arrive before they've ever heard of Sereno.</p>
@@ -279,9 +294,11 @@ function Pay() {
   );
 }
 
-/// "octocat", "@octocat" or "https://github.com/octocat" → "octocat".
+/// "octocat", "@octocat", "https://github.com/octocat" or "octocat.sereno.eth" → "octocat".
 function cleanLogin(s: string): string {
-  return s.trim().replace(/^https?:\/\/(www\.)?github\.com\//i, "").replace(/^@/, "").split(/[/?#]/)[0]!;
+  const login = s.trim().replace(/^https?:\/\/(www\.)?github\.com\//i, "").replace(/^@/, "").split(/[/?#]/)[0]!;
+  const suffix = ENS_DEPLOYMENT ? `.${ENS_DEPLOYMENT.parentName}` : null;
+  return suffix && login.toLowerCase().endsWith(suffix) ? login.slice(0, -suffix.length) : login;
 }
 
 type Page = "pay" | "spend" | "bounties";
