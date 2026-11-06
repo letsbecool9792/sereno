@@ -1,0 +1,4 @@
+# The CRE workflows (cre/*) are separate Bun projects with their own dependencies; run their tests from their own
+# folders (cd cre/github-bounty && bun install && bun test).
+[test]
+pathIgnorePatterns = ["cre/**"]
