@@ -13,8 +13,47 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 | WS | Owner | Now working on | Blocked on | Last update |
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | M1–M5 done; extras deployed; demo bounty PR open | Suparno merges sereno-demo#2 on stage | 6 Nov 13:18 |
-| WS2 CRE and ENS | Gantavya | D1 `github-bounty` merged (#17) and live; next: pay-to-SSH (extra 7) on the Oracle VM, task below | VM access, a throwaway key, test USDC (Gantavya) | 6 Nov 13:30 |
+| WS2 CRE and ENS | Gantavya | stale-name release for renames (PR); pay-to-SSH task queued | registrar redeploy (Suparno); VM access, a throwaway key, test USDC (Gantavya) | 6 Nov 15:55 |
 | WS3 clients and demo | Suparno + Claude | core done and hosted; issue bounties live (tab, CLI, relayer, worker); demo rework next | | 6 Nov 13:25 |
+
+---
+
+## 2026-11-06 15:55 IST: Gantavya's Claude: claimed names now follow GitHub renames (stale-name release)
+
+Branch `ws2/stale-name-release`.
+
+**The bug.** Say Gantavya claims `gantavya.sereno.eth`, then renames to `suparno` on GitHub, and a stranger later takes `gantavya`:
+- the claimed name still points to Gantavya's account, so the stranger's payments land with Gantavya;
+- the stranger can't claim it, because it's taken;
+- nothing on-chain could free it except the deployer's root key.
+
+**The fix (`NameRegistrar`):**
+- **`holderOf(label)`** returns the name's holder and whether it's **stale**: held by anyone other than `factory.addressOf(oracle.idOfLoginHash(label))`. The oracle already follows renames (`KeyOracle._setLogin` drops the old login and maps the new one), so it's the proof.
+- **`release(label)`:** anyone can free a stale name. It emits `Released`, and the name falls back to the wildcard gateway, which follows GitHub live.
+- **`claim` frees a stale name itself,** so the login's current owner just claims. A claim of your own existing name reverts with `AlreadyClaimed`.
+- **One resolver proxy per claim** (salt `keccak256(githubId, claimCount)`). Before, the salt was the GitHub ID, so each ID could claim only once and a renamed user couldn't claim their new login.
+- **No new storage,** so names claimed before this change are covered too.
+- **`ens-setup.ts`** now also grants the registrar `UNREGISTER` (`1 << 12`).
+
+**Tests:** 7 new Foundry tests in `NameRegistrar.t.sol`:
+- a current name can't be released;
+- releasing an unclaimed name reverts;
+- after a rename anyone can release;
+- the stranger claims the stale name directly;
+- the stranger syncing first is enough;
+- a renamed user claims the new login with fresh records;
+- the old holder can't take the name back.
+
+`forge test`: 92/92. `bun run typecheck` is clean, `bun test` gives 22/22, and the ABIs are regenerated (`bun run sync`).
+
+**WAITING ON:**
+- **Suparno:** review and merge, then **redeploy the registrar on Sepolia** (laptop, deployer key):
+  1. In `contracts/deployments/ens.json`, move `nameRegistrar` to `previousNameRegistrar`.
+  2. `cd packages/ops && PARENT_NAME=sereno.eth bun src/ens-setup.ts`. This deploys the new registrar and grants `REGISTRAR | UNREGISTER | SET_SUBREGISTRY | SET_RESOLVER`.
+  3. Revoke the old registrar's roles on the UserRegistry, as on 6 Nov 01:45.
+  4. `bun run sync`.
+
+  Do it before the live phone claim, so the stage claim goes through the new registrar. Names claimed through the old registrar are still covered, because the rule reads only the registry and the oracle.
 
 ---
 

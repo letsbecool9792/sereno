@@ -23,6 +23,11 @@ interface IENSv2Registry {
         uint256 roleBitmap,
         uint64 expiry
     ) external returns (uint256 tokenId);
+    /// Requires ROLE_UNREGISTER on the name or on the registry root. `anyId` may be the labelhash. Afterwards the label
+    /// is expired, so it can be registered again.
+    function unregister(uint256 anyId) external;
+    /// The name's owner, or address(0) if it is unregistered, reserved or expired. `anyId` may be the labelhash.
+    function getOwner(uint256 anyId) external view returns (address);
 }
 
 interface IPermissionedResolver {
@@ -33,6 +38,8 @@ interface IPermissionedResolver {
 }
 
 library RegistryRoles {
+    uint256 internal constant REGISTRAR = 1 << 0;
+    uint256 internal constant UNREGISTER = 1 << 12;
     uint256 internal constant SET_SUBREGISTRY = 1 << 20;
     uint256 internal constant SET_RESOLVER = 1 << 24;
     uint256 internal constant CAN_TRANSFER_ADMIN = (1 << 28) << 128;
