@@ -33,6 +33,7 @@ const USAGE = `ak: pay and spend with the SSH key already on your GitHub profile
   ak send <amount> <to> --as <github-user> --key <ssh key> [--chain ...] [--fee 0.02]
   ak commit-pay <amount> <to> --as <github-user> --key <ssh key> [--repo .] [--push] [--relay]
   ak claim --as <github-user> --key <ssh key>
+  ak sync <github-user>          have the Chainlink key oracle copy the user's GitHub SSH keys on-chain
 
 <to> is a 0x address or a GitHub username. Amounts are in USDC. --key is your SSH private key file
 (for example ~/.ssh/id_ed25519; a .pub file works when the key is in ssh-agent).
@@ -141,7 +142,7 @@ async function cmdAccount(login: string, c: ChainConfig) {
   for (const line of await githubKeys(u.id, TOKEN)) {
     const since = await pub.readContract({ address: core.KeyOracle, abi: keyOracleAbi, functionName: "firstSeen", args: [u.id, keyHash(line)] });
     const [type, , comment] = line.split(" ");
-    console.log(`  ${type} ${comment ?? ""} -> ${since > 0n ? `listed since ${new Date(Number(since) * 1000).toISOString()}` : "not yet (run the CRE workflow)"}`);
+    console.log(`  ${type} ${comment ?? ""} -> ${since > 0n ? `listed since ${new Date(Number(since) * 1000).toISOString()}` : `not yet (ak sync ${u.login})`}`);
   }
 }
 
@@ -204,6 +205,19 @@ async function cmdSend(pos: string[], opts: Record<string, string | true>, c: Ch
   }
 }
 
+async function cmdSync(login: string) {
+  const r = await post("/sync", { login });
+  console.log(`key sync for ${r.login} (GitHub ${r.githubId}) ${r.state}`);
+  for (let i = 0, last = ""; i < 120; i++) {
+    const s = (await (await fetch(`${RELAYER}/sync/status/${r.githubId}`)).json()) as Record<string, string>;
+    if (s.state !== last) console.log(`  ${(last = s.state!)}${s.detail ? `: ${s.detail}` : ""}`);
+    if (s.state === "done") return;
+    if (s.state === "failed") die("key sync failed");
+    await new Promise((res) => setTimeout(res, 5000));
+  }
+  die("key sync still pending; check later with `ak account`");
+}
+
 async function cmdClaim(opts: Record<string, string | true>) {
   if (!ENS_DEPLOYMENT) die("ENS not set up");
   const me = await githubUser(need(opts.as, "--as <your GitHub user>"), TOKEN);
@@ -234,6 +248,9 @@ switch (pos[0]) {
     break;
   case "claim":
     await cmdClaim(opts);
+    break;
+  case "sync":
+    await cmdSync(need(pos[1], "<github-user>"));
     break;
   default:
     console.log(USAGE);

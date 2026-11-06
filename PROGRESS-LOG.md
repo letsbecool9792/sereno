@@ -14,7 +14,23 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | M3+M4 contracts done (PR); M1/M2 on Linux | ETH for relayer `0xd599…80d5` | 6 Nov 01:07 |
 | WS2 CRE and ENS | Gantavya | G1–G4 code done (4 branches); G1 deploy, G2/G3 live runs | Fly account verification, `cre login` | 6 Nov 00:20 |
-| WS3 clients and demo | Suparno + Claude | Spend page; `sereno-ak` npm package ready; demo prep | npm publish, Vercel deploy (Suparno) | 6 Nov 10:35 |
+| WS3 clients and demo | Suparno + Claude | Spend page, on-demand key sync; `sereno-ak` npm package ready | Railway SYNC_WORKER_TOKEN + redeploy, npm 2FA, Vercel (Suparno) | 6 Nov 11:15 |
+
+---
+
+## 2026-11-06 11:15 IST: Suparno's Claude (laptop): on-demand key sync, so anyone's keys can reach the chain
+
+- **Problem:** the CRE cron only syncs the GitHub IDs listed in `cre/github-keys/config.*.json`, so a judge trying their own account could receive money but never spend it.
+- **Relayer** (`relayer/src/sync.ts`): `POST /sync {login}` (anyone; 60 s cooldown per user), `GET /sync/status/<githubId>`, and worker-only `GET /sync/next` and `POST /sync/done`, authorized by `SYNC_WORKER_TOKEN`. `/health` shows `keySync` and `syncWorkerAge`.
+- **Worker** (`packages/ops/src/sync-worker.ts`, on the laptop: it needs the `cre` login and the broadcaster key). It polls the queue and runs the CRE HTTP trigger with `--broadcast` on base, sepolia and arbitrum, then checks every GitHub key is listed on that chain's oracle before reporting done.
+- **Clients:** the Spend page shows each key's on-chain status and a **"Sync my keys from GitHub"** button that waits for the result; also `ak sync <user>`.
+- **Tested** against a local relayer on :8799: queue → worker → CRE broadcast on Base Sepolia → oracle read back. That took 17 s, then `done`. The bad-username and missing-token paths are refused.
+- **Production CRE** would make the worker unnecessary: the deployed workflow's HTTP trigger takes these requests directly. That needs `cre account access` (deploy access); a `CRE_API_KEY` for running headless on Railway needs the same approval.
+
+**WAITING ON:** Suparno:
+1. Set the Railway relayer variable `SYNC_WORKER_TOKEN` = contents of `.secrets/sync-worker.token`, then redeploy the relayer.
+2. Keep `bun packages/ops/src/sync-worker.ts` running on the laptop during judging.
+3. Enable npm 2FA and publish.
 
 ---
 

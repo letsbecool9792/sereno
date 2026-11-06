@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { getAddress, type Hex } from "viem";
 import { githubGet, parseCommitObject, parseIntent } from "@sereno/shared";
 import { commitFromGithub, makeRelayer, RelayError } from "./relay";
+import { makeSyncQueue } from "./sync";
 
 const secret = (n: string) => {
   const p = join(import.meta.dir, "../../.secrets", `${n}.key`);
@@ -17,7 +18,9 @@ if (!key) throw new Error("set RELAYER_KEY");
 const relayer = makeRelayer(key.startsWith("0x") ? key : (`0x${key}` as Hex));
 const token = process.env.GITHUB_TOKEN;
 
-const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type" };
+const sync = makeSyncQueue(process.env.SYNC_WORKER_TOKEN || undefined, token);
+
+const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type, Authorization" };
 const json = (body: unknown, status = 200) =>
   Response.json(JSON.parse(JSON.stringify(body, (_, v) => (typeof v === "bigint" ? v.toString() : v))), { status, headers: cors });
 const log = (msg: string) => console.log(`${new Date().toISOString()} ${msg}`);
@@ -25,10 +28,22 @@ const log = (msg: string) => console.log(`${new Date().toISOString()} ${msg}`);
 async function route(req: Request): Promise<Response> {
   const url = new URL(req.url);
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
-  if (url.pathname === "/health") return json({ ok: true, relayer: relayer.address, watching: watched });
-  if (req.method !== "POST") return json({ message: "not found" }, 404);
-  const body = (await req.json()) as Record<string, string>;
+  if (url.pathname === "/health") return json({ ok: true, relayer: relayer.address, watching: watched, keySync: sync.enabled, syncWorkerAge: sync.workerAge() });
   try {
+    if (req.method === "GET" && url.pathname.startsWith("/sync/status/")) return json(sync.status(url.pathname.slice("/sync/status/".length)));
+    if (req.method === "GET" && url.pathname === "/sync/next") return json(sync.next(req));
+    if (req.method !== "POST") return json({ message: "not found" }, 404);
+    const body = (await req.json()) as Record<string, string>;
+    if (url.pathname === "/sync") {
+      const r = await sync.request(body.login!);
+      log(`sync requested for ${r.login} (${r.githubId}): ${r.state}`);
+      return json(r);
+    }
+    if (url.pathname === "/sync/done") {
+      const r = sync.done(req, body as { githubId?: string; ok?: boolean; detail?: string });
+      log(`sync ${r.login} (${r.githubId}): ${r.state}${r.detail ? ` ${r.detail}` : ""}`);
+      return json(r);
+    }
     if (url.pathname === "/intent") {
       const r = await relayer.intent({
         chainId: Number(body.chainId),

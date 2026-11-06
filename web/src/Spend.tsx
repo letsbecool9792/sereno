@@ -12,7 +12,7 @@ import {
   type ChainKey,
   type GithubUser,
 } from "@sereno/shared";
-import { clientFor, fetchProfile, PAY_CHAINS, parseCommitLink, relay, short } from "./lib";
+import { clientFor, fetchProfile, PAY_CHAINS, parseCommitLink, relay, RELAYER, short } from "./lib";
 
 interface Prepared {
   chainKey: ChainKey;
@@ -63,9 +63,35 @@ export function Spend() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [paid, setPaid] = useState<Result>(null);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
-  async function prepare(e: React.FormEvent) {
-    e.preventDefault();
+  /// Asks the relayer to have the Chainlink key oracle sync this user's GitHub keys, then waits for it.
+  async function syncKeys() {
+    if (!prep) return;
+    setError(null);
+    setSyncMsg("Asking for a key sync…");
+    try {
+      const r = (await relay("/sync", { login: prep.user.login })) as unknown as { githubId: string; workerAge: number | null };
+      if (r.workerAge === null || r.workerAge > 60) setSyncMsg("Queued. The sync worker looks offline right now, so this may take a while.");
+      for (let i = 0; i < 120; i++) {
+        const s = (await (await fetch(`${RELAYER}/sync/status/${r.githubId}`)).json()) as { state: string; detail?: string };
+        if (s.state === "done") {
+          setSyncMsg(null);
+          return void prepare();
+        }
+        if (s.state === "failed") throw new Error(`Key sync failed: ${s.detail ?? "unknown error"}`);
+        setSyncMsg(s.state === "running" ? "The Chainlink workflow is reading your GitHub keys and writing them on-chain (about a minute per chain)…" : r.workerAge === null || r.workerAge > 60 ? "Queued; waiting for the sync worker…" : "Queued…");
+        await new Promise((res) => setTimeout(res, 5000));
+      }
+      throw new Error("Key sync is taking too long; try again later.");
+    } catch (err) {
+      setSyncMsg(null);
+      setError((err as Error).message);
+    }
+  }
+
+  async function prepare(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!CORE) return;
     setBusy("Building the payment text…");
     setError(null);
@@ -197,12 +223,27 @@ export function Spend() {
             {CHAINS[prep.chainKey].chain.name} · balance {formatUnits(prep.balance, 6)} USDC · nonce {prep.nonce.toString()} · to {prep.toLabel}
           </div>
           {prep.balance < needed && <p className="error">The account holds {formatUnits(prep.balance, 6)} USDC; this needs {formatUnits(needed, 6)} (amount plus fee).</p>}
-          {!listed && (
+          {prep.keys.length === 0 ? (
             <p className="error">
-              None of {prep.user.login}'s GitHub keys is listed on-chain yet{prep.keys.length === 0 ? " (the profile has no SSH keys)" : ""}. The Chainlink key oracle has to
-              see the key before it can spend.
+              {prep.user.login} has no SSH keys on GitHub. Add one at github.com/settings/keys (an Authentication or Signing key; any type), then prepare again.
             </p>
+          ) : (
+            prep.keys.some((x) => !x.listed) && (
+              <div className={listed ? "note" : "error"}>
+                {listed
+                  ? `${prep.keys.filter((x) => !x.listed).length} of ${prep.user.login}'s GitHub keys isn't on-chain yet.`
+                  : `None of ${prep.user.login}'s GitHub keys is on-chain yet, so they can't spend.`}{" "}
+                The Chainlink key oracle copies the keys from GitHub to the chain.{" "}
+                <button type="button" className="small" onClick={syncKeys} disabled={!!syncMsg}>Sync my keys from GitHub</button>
+                {syncMsg && <div className="busy">{syncMsg}</div>}
+              </div>
+            )
           )}
+          <div className="muted keys">
+            {prep.keys.map((x, i) => (
+              <span key={i}><code>{x.type}</code> {x.listed ? <span className="tag ok">on-chain</span> : <span className="tag">not synced</span>} </span>
+            ))}
+          </div>
 
           <h3>1. Save the text you're signing</h3>
           <div className="cmd">
