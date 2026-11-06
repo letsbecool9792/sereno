@@ -1,5 +1,5 @@
 // Popup helpers: messages to the background worker, formatting, and the small visual pieces (the mark, icons).
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { CHAINS, type ChainKey } from "@sereno/shared";
 import type { Profile, Settings } from "../store";
 
@@ -37,18 +37,42 @@ export const ago = (ms?: number) => {
 export const openTab = (url: string) => chrome.tabs.create({ url });
 export const copy = (t: string) => navigator.clipboard.writeText(t);
 
-/// sereno's mark: a lantern whose flame is a keyhole (same shape as web/src/Lantern.tsx).
-export function Lantern({ size = 24, className = "" }: { size?: number; className?: string }) {
+/// sereno's mark (web/DESIGN.md, "The logo"): an electric-blue card behind a frosted lime wallet, the GitHub mark in
+/// the pocket. A copy of web/src/Mark.tsx; change both together.
+const POCKET =
+  "M32 44H46.5C49.6 44 50.9 46 52 48.3C53.8 52 56.6 54.5 60 54.5C63.4 54.5 66.2 52 68 48.3C69.1 46 70.4 44 73.5 44H88C96.3 44 102 49.7 102 58V90C102 98.3 96.3 104 88 104H32C23.7 104 18 98.3 18 90V58C18 49.7 23.7 44 32 44Z";
+const GITHUB =
+  "M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2Z";
+export function Mark({ size = 30 }: { size?: number }) {
+  const id = useId().replace(/:/g, "");
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" className={`lantern ${className}`} aria-hidden="true">
-      <path className="lantern-line" d="M13.4 6.2a2.6 2.6 0 0 1 5.2 0" />
-      <path className="lantern-line" d="M10.5 9.2h11l-1.6-3h-7.8z" />
-      <path className="lantern-line" d="M10 9.2h12v13.3a3.5 3.5 0 0 1-3.5 3.5h-5a3.5 3.5 0 0 1-3.5-3.5z" />
-      <path className="lantern-line" d="M12.5 28.5h7" />
-      <path className="flame" d="M16 12.8a2.4 2.4 0 0 1 1.2 4.48L17.8 21.5h-3.6l.6-4.22A2.4 2.4 0 0 1 16 12.8z" />
+    <svg width={size} height={size} viewBox="10 14 100 100" className="mark" aria-hidden="true">
+      <defs>
+        <clipPath id={`p${id}`}><path d={POCKET} /></clipPath>
+        <filter id={`b${id}`} x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="7" /></filter>
+        <linearGradient id={`e${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff" stopOpacity=".75" />
+          <stop offset="1" stopColor="#fff" stopOpacity=".15" />
+        </linearGradient>
+      </defs>
+      <rect x="34" y="27" width="58" height="40" rx="9" fill="#2b59ff" transform="rotate(10 63 47)" />
+      <path d={POCKET} fill="#e0f98e" />
+      <g clipPath={`url(#p${id})`}>
+        <rect x="34" y="27" width="58" height="40" rx="9" fill="#2b59ff" transform="rotate(10 63 47)" filter={`url(#b${id})`} opacity=".95" />
+      </g>
+      <path d={POCKET} fill="none" stroke={`url(#e${id})`} strokeWidth="1.2" />
+      <path transform="translate(45 61) scale(1.25)" fill="#0a1030" d={GITHUB} />
     </svg>
   );
 }
+
+/// M5: the check that draws itself on a finished payment or claim.
+export const DoneCheck = () => (
+  <svg className="done-check" viewBox="0 0 64 64" aria-hidden="true">
+    <circle cx="32" cy="32" r="30" />
+    <path d="m20 33 8 8 16-17" />
+  </svg>
+);
 
 const paths: Record<string, ReactNode> = {
   home: <path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z" />,
@@ -140,6 +164,15 @@ export function PasswordInput({ value, onChange, autoFocus, placeholder }: { val
   );
 }
 
+/// FB1: an error right under the button that caused it, scrolled into view and announced.
 export function Err({ e }: { e: string | null }) {
-  return e ? <div className="notice err">{e}</div> : null;
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (e) ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [e]);
+  return (
+    <div ref={ref} role="alert" aria-live="assertive" className="fb" hidden={!e}>
+      {e && <div className="notice err">{e}</div>}
+    </div>
+  );
 }

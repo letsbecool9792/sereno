@@ -81,7 +81,7 @@ export function Settings({ state, refresh }: { state: State; refresh: () => void
             </button>
           )}
         </div>
-        {claim.state === "claiming" && <div className="status amber"><Spinner /> Signing with this browser key and registering on Sepolia (about 30 s)…</div>}
+        {claim.state === "claiming" && <div className="status busy"><Spinner /> Signing with this browser key and registering on Sepolia (about 30 s)…</div>}
         {claim.state === "claimed" ? (
           <p className="small ok">
             A real ENSv2 name owned by your account.{" "}

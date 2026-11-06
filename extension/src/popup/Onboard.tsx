@@ -1,7 +1,7 @@
 // First run: make the browser key behind a password, put it on the GitHub profile as a signing key, and have the
 // Chainlink oracle copy it on-chain. Also the lock screen.
 import { useEffect, useState } from "react";
-import { call, chainName, copyToast, Err, Icon, Lantern, openTab, PasswordInput, Spinner, Steps, toast, type State } from "./lib";
+import { call, chainName, copyToast, Err, Icon, Mark, openTab, PasswordInput, Spinner, Steps, toast, type State } from "./lib";
 
 /// "Badges on GitHub pages": reachable before setup and while locked (it needs no key).
 export function BadgesToggle() {
@@ -43,12 +43,12 @@ export function Lock({ onDone }: { onDone: () => void }) {
   return (
     <main>
       <form className="center" onSubmit={go}>
-        <Lantern size={64} className="hero-mark" />
+        <Mark size={72} />
         <h2>Welcome back</h2>
         <p className="muted">Unlock to pay. Balances and history work while locked.</p>
         <PasswordInput autoFocus placeholder="Password" value={pw} onChange={(v) => { setPw(v); setErr(null); }} />
-        <Err e={err} />
         <button className="block" disabled={busy || !pw}>{busy ? <><Spinner /> Unlocking…</> : "Unlock"}</button>
+        <Err e={err} />
       </form>
       {!forget ? (
         <button className="ghost" onClick={() => setForget(true)}>Forgot it? Start over with a new key</button>
@@ -56,7 +56,7 @@ export function Lock({ onDone }: { onDone: () => void }) {
         <div className="card stack">
           <p className="small">This deletes the key in this browser and makes you a new one. Your money stays in your account (it belongs to your GitHub ID). You'll add the new key to GitHub and sync it; delete the old one at github.com/settings/keys.</p>
           <div className="row">
-            <button className="secondary grow" onClick={() => setForget(false)}>Cancel</button>
+            <button className="ghost grow" onClick={() => setForget(false)}>Cancel</button>
             <button className="danger grow" onClick={async () => { await call("forgetKey"); toast("Old key removed. Make a new one"); onDone(); }}>Start over</button>
           </div>
         </div>
@@ -86,7 +86,7 @@ function Welcome({ state, next }: { state: State; next: () => void }) {
   return (
     <main>
       <div className="center">
-        <Lantern size={76} className="hero-mark" />
+        <Mark size={88} />
         <h1 style={{ fontSize: 28 }}>Your GitHub is the wallet</h1>
         <p className="muted">Get paid by username. Spend with a key this browser keeps for you.</p>
       </div>
@@ -142,8 +142,8 @@ function Password({ next }: { next: () => void }) {
             </li>
           ))}
         </ul>
-        <Err e={err} />
         <button className="block" disabled={busy || !ready}>{busy ? <><Spinner /> Making the key…</> : "Create key"}</button>
+        <Err e={err} />
       </form>
     </main>
   );
@@ -185,8 +185,8 @@ function Connect({ state, next }: { state: State; next: () => void }) {
       {!manual ? (
         <form className="stack" onSubmit={useLogin}>
           <label>Your GitHub username<input autoFocus placeholder="octocat" value={login} onChange={(e) => setLogin(e.target.value.trim())} /></label>
-          <Err e={err} />
           <button className="block" disabled={busy || !login}>{busy ? <><Spinner /> Looking up…</> : "Continue"}</button>
+          <Err e={err} />
         </form>
       ) : (
         <div className="stack">
@@ -196,7 +196,7 @@ function Connect({ state, next }: { state: State; next: () => void }) {
             <button className="secondary grow" onClick={() => copyToast(state.publicKey ?? "", "Key copied")}><Icon name="copy" /> Copy key</button>
             <button className="grow" onClick={() => { openTab("https://github.com/settings/ssh/new"); setManual("waiting"); }}>Open GitHub <Icon name="ext" /></button>
           </div>
-          {manual === "waiting" && <div className="status amber"><Spinner /> Watching your GitHub profile for the key (it can take a minute)…</div>}
+          {manual === "waiting" && <div className="status busy"><Spinner /> Watching your GitHub profile for the key (it can take a minute)…</div>}
           {manual === "added" && <button className="ghost" onClick={() => setManual("waiting")}>I've added it</button>}
         </div>
       )}
@@ -273,7 +273,7 @@ export function Sync({ state, next, compact }: { state: State; next: () => void;
       {!compact && <p className="muted small">Chainlink's oracle copies @{state.profile?.login}'s GitHub keys to each chain.</p>}
 
       {onGithub === false && !all && (
-        <div className="notice amber stack" style={{ gap: 8 }}>
+        <div className="notice todo stack" style={{ gap: 8 }}>
           <span>This browser key isn't on your GitHub profile yet, so a sync can't copy it. Add it as a <strong>Signing Key</strong>, then sync.</span>
           <div className="row">
             <button className="secondary sm grow" onClick={() => copyToast(state.publicKey ?? "", "Key copied")}><Icon name="copy" /> Copy key</button>
@@ -286,7 +286,7 @@ export function Sync({ state, next, compact }: { state: State; next: () => void;
       <Steps items={chains.map((c) => ({ label: c.key === "sepolia" ? "Sepolia (names)" : chainName(c.key), state: c.done ? "done" : active ? "now" : "todo" }))} />
 
       {active && (
-        <div className="status amber">
+        <div className="status busy" aria-live="polite">
           <Spinner />
           <span className="grow">
             {requesting ? "Asking the relayer…" : job === "queued" ? "Queued: waiting for the sync worker…" : "Chainlink is copying your keys on-chain (about 20 s per chain)…"}
@@ -295,19 +295,19 @@ export function Sync({ state, next, compact }: { state: State; next: () => void;
         </div>
       )}
       {job === "queued" && (info?.job?.workerAge === null || (info?.job?.workerAge ?? 0) > 120) && (
-        <div className="notice amber">The sync worker hasn't checked in for a while. The job runs when it's back.</div>
+        <div className="notice todo">The sync worker hasn't checked in for a while. The job runs when it's back.</div>
       )}
       {finished && job === "failed" && <div className="notice err">The sync failed: {info?.job?.detail ?? "unknown error"}. Try again.</div>}
       {finished && job === "done" && !all && (
         <div className="notice">{onGithub === false ? "The sync ran, but this key wasn't on your GitHub profile yet. Add it (above), then sync again." : "The sync ran; some chains don't show the key yet. Try again in a minute."}</div>
       )}
       {all && <div className="status" style={{ color: "var(--ok)" }}><Icon name="check" /> This key can pay on every chain.</div>}
-      <Err e={err} />
       {!all && (
         <button className={compact ? "secondary block" : "block"} onClick={go} disabled={active}>
           {active ? <><Spinner /> Syncing…</> : finished ? "Sync again" : "Sync my keys"}
         </button>
       )}
+      <Err e={err} />
     </Wrap>
   );
 }

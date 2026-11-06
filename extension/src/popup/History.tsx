@@ -46,7 +46,7 @@ export function History() {
           const incoming = r.kind !== "sent";
           return (
             <div key={r.id} className="item">
-              <div className={`dot ${r.kind === "bounty" ? "gold" : incoming ? "in" : "out"}`}>
+              <div className={`dot ${r.kind === "bounty" ? "lime" : incoming ? "in" : "out"}`}>
                 <Icon name={r.kind === "bounty" ? "gift" : incoming ? "in" : "out"} size={14} />
               </div>
               <div className="grow" style={{ minWidth: 0 }}>

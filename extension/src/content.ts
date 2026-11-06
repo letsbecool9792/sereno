@@ -78,7 +78,7 @@ async function profile(b: HTMLElement, login: string, badges: boolean) {
     slot.append(
       chip(name + (claimed ? " · claimed" : ""), { href: payLink(login), tone: claimed ? "ok" : undefined, title: claimed ? "A real ENSv2 name owned by the account" : "Resolves through sereno's wildcard resolver" }),
       chip(`${usdc(total)} USDC`, {
-        tone: total > 0n ? "gold" : undefined,
+        tone: total > 0n ? "strong" : undefined,
         href: `${CHAINS["base-sepolia"].explorer}/address/${acct.address}`,
         title: `${acct.address}: ${acct.balances.map((x) => `${usdc(x.units)} on ${CHAINS[x.key].chain.name}`).join(", ")}`,
       }),
@@ -97,7 +97,7 @@ async function issue(b: HTMLElement, repo: string, n: number, badges: boolean) {
       slot.append(chip(`Bounty won by ${who ? `@${who}` : `GitHub #${settled.winner}`}`, { tone: "ok", href: bountyLink(repo, n), title: `Settled on ${CHAINS[settled.key].chain.name}` }));
     }
     for (const x of found.filter((y) => y.pot > 0n)) {
-      slot.append(chip(`${usdc(x.pot)} USDC · ${chainName(x.key)}`, { tone: "gold", href: bountyLink(repo, n), title: x.winner ? "Settled; waiting to be paid out" : "Paid to the author of the merged PR that closes this issue" }));
+      slot.append(chip(`${usdc(x.pot)} USDC · ${chainName(x.key)}`, { tone: "strong", href: bountyLink(repo, n), title: x.winner ? "Settled; waiting to be paid out" : "Paid to the author of the merged PR that closes this issue" }));
       if (x.winner > 0n)
         slot.append(
           button("Pay out", (btn) =>
@@ -135,7 +135,7 @@ async function pull(b: HTMLElement, repo: string, badges: boolean) {
       for (const n of [...linked].slice(0, 5)) {
         for (const x of (await bounties(repo, n)).filter((y) => y.winner === 0n && y.pot > 0n)) {
           any = true;
-          slot.append(chip(`Merging pays #${n}'s ${usdc(x.pot)} USDC bounty to @${author}`, { tone: "gold", href: bountyLink(repo, n), title: `On ${CHAINS[x.key].chain.name}, automatically after the merge` }));
+          slot.append(chip(`Merging pays #${n}'s ${usdc(x.pot)} USDC bounty to @${author}`, { tone: "strong", href: bountyLink(repo, n), title: `On ${CHAINS[x.key].chain.name}, automatically after the merge` }));
         }
       }
       if (!any) slot.append(chip("No open bounty on the linked issues"));
@@ -151,7 +151,7 @@ async function commit(b: HTMLElement, repo: string, sha: string, badges: boolean
   const p = parsePayment(patch) ?? parsePayment(document.querySelector("main")?.textContent ?? "");
   if (!p) return !!author;
   const c = Object.values(CHAINS).find((x) => x.chain.id === p.chainId);
-  b.append(chip(`Payment commit · ${usdc(p.amount)} USDC${c ? ` · ${c.chain.name}` : ""}`, { tone: "gold", title: `To ${p.to}, signed by GitHub #${p.githubId}'s SSH key; relayer fee ${usdc(p.fee)}` }));
+  b.append(chip(`Payment commit · ${usdc(p.amount)} USDC${c ? ` · ${c.chain.name}` : ""}`, { tone: "strong", title: `To ${p.to}, signed by GitHub #${p.githubId}'s SSH key; relayer fee ${usdc(p.fee)}` }));
   const relayBtn = () =>
     button("Relay this payment", (btn) =>
       busy(btn, "Relaying…", async () => {
@@ -213,7 +213,7 @@ async function keysPage(b: HTMLElement, badges: boolean) {
       const tag = !base
         ? chip("not synced", { tone: "bad" })
         : Date.now() < coolUntil
-          ? chip(`cooling down until ${new Date(coolUntil).toLocaleString()}`, { tone: "gold", title: "Up to 50 USDC per payment until then" })
+          ? chip(`cooling down until ${new Date(coolUntil).toLocaleString()}`, { tone: "warn", title: "Up to 50 USDC per payment until then" })
           : chip(`on-chain since ${new Date(Number(base) * 1000).toLocaleDateString()}`, { tone: "ok" });
       tag.classList.add("sereno-keytag");
       if (el) {

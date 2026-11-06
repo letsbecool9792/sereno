@@ -14,9 +14,42 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | frontend reform v2 (`ws3/redesign`, web half); see 7 Nov 01:15 entry | Suparno takes the extension half | 7 Nov 01:25 |
 | WS2 CRE and ENS | Gantavya | frontend redesign PR (`ws3/frontend-redesign`); pay-to-SSH task queued | Suparno reviews the redesign PR; VM access, a throwaway key, test USDC (Gantavya) | 6 Nov 21:25 |
-| WS3 clients and demo | Suparno + Claude | demo bug fixes; frontend redesign handed to Gantavya (19:30 entry) | Gantavya's redesign PR | 6 Nov 19:30 |
+| WS3 clients and demo | Suparno + Claude | extension half of reform v2 (PR #30) | Suparno merges #30 | 7 Nov 01:35 |
 
 ---
+
+## 2026-11-07 01:35 IST: Suparno's Claude: extension half of frontend reform v2
+
+**Branch:** `ws3/extension-redesign` (PR #30), rebased onto `main` after #29 merged.
+
+**Popup (`extension/src/popup/*`):**
+- The v2 tokens in `popup.css`: night ground, blue `#2b59ff` for actions, lime for names, `@login` and eyebrows.
+- Fonts: Geist and Geist Mono (`@fontsource-variable/geist`, `geist-mono` 5.3.0) replace Bricolage, DM Sans and JetBrains Mono.
+- Buttons: the primary is chunky blue with a 3px edge that lifts on hover and sinks on press; `.secondary` is the lime tint; `.ghost` is a quiet outline (Back and Cancel now use it).
+- The mark (a copy of `web/src/Mark.tsx`) replaces the lantern in the header, Welcome and Lock.
+- **FB1:** every form's error now sits under the button that caused it, scrolls into view and is announced (`Err` in `lib.tsx`).
+- **FB3 + M5:** Send's success panel has a check that draws itself, "Sent 5 USDC", the recipient in lime, the network, and "View receipt".
+- The developer card has the 1.5px lime-to-blue edge (`.card.edge`, was `.card.brass`). Progress lines are blue (`.status.busy`); things for you to do are neutral (`.notice.todo`).
+
+**GitHub buttons (`extension/src/ui.ts`, `content.ts`):**
+- Inter, then GitHub's font stack; 28px high, radius 6.
+- One solid-blue primary per bar with the 14px mark (the mark now shows only on primaries). Every other button is GitHub's default button.
+- Info chips are muted outlines with a lime dot (`strong` for amounts and bounties); status chips use GitHub's success, attention (key cooling down) and danger colors.
+- The floating bar uses GitHub's overlay colors, so it matches light and dark.
+- The badge color for automations is blue.
+
+**Manifest:** version 0.3.0; description now ends "Not affiliated with GitHub." The icons are Mohikshit's PNGs from #29.
+
+**Tested:**
+- `bun run typecheck`, `bun run build` and `bun test` (14 pass) in `extension/`.
+- `grep -ri "f2b35b\|brass\|DM Sans" extension/src` is empty.
+- Popup screenshots (Welcome, Lock, Home, Review, Sent, an error under Review), taken in headless Chrome against a stubbed background.
+- GitHub screenshots with the built extension in headless Edge: a profile in light and dark, and a PR page in light. The buttons sit well in both themes.
+- **Not checked:** the issue page bar didn't appear in headless Edge (it may be timing; the placement code didn't change), and neither did commit, repo or settings/keys pages. Check those in a real browser.
+
+**WAITING ON:**
+- Suparno: merge #30. Load `extension/dist` unpacked and check issue, commit and settings/keys pages in light and dark.
+- After both merge: refresh DEMO.md and README screenshots, and re-record footage showing the old amber look.
 
 ## 2026-11-07 01:15 IST: Mohikshit's Claude: frontend reform v2 (design language + logo); TASK for Suparno: the extension half
 

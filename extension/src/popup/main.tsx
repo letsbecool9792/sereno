@@ -1,13 +1,12 @@
-import "@fontsource-variable/bricolage-grotesque";
-import "@fontsource-variable/dm-sans";
-import "@fontsource-variable/jetbrains-mono";
+import "@fontsource-variable/geist";
+import "@fontsource-variable/geist-mono";
 import "./popup.css";
 import { useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Auto } from "./Auto";
 import { History } from "./History";
 import { Home } from "./Home";
-import { call, Icon, Lantern, toast, Toasts, type State } from "./lib";
+import { call, Icon, Mark, toast, Toasts, type State } from "./lib";
 import { Lock, Onboard } from "./Onboard";
 import { Send } from "./Send";
 import { Settings } from "./Settings";
@@ -71,7 +70,7 @@ function App() {
   return (
     <div className="app">
       <header className="top">
-        <Lantern size={22} />
+        <Mark size={24} />
         <span className="wordmark">sereno</span>
         {state.profile && (
           <span className="who">

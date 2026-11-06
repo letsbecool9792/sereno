@@ -40,7 +40,7 @@ export function Home({ state, go }: { state: State; go: (route: string) => void 
 
   return (
     <main>
-      <div className="card brass">
+      <div className="card edge">
         <div className="between">
           <span className="name">{name}</span>
           <button className="ghost sm" title="Copy the account address" onClick={() => o && copyToast(o.address, "Address copied")}>
@@ -54,11 +54,11 @@ export function Home({ state, go }: { state: State; go: (route: string) => void 
           ))}
         </div>
       </div>
-      <Err e={err} />
       <div className="row">
         <button className="grow" onClick={() => go("send")}><Icon name="send" /> Send</button>
         <button className="secondary grow" onClick={() => openTab(`${state.payUrl}/?user=${encodeURIComponent(p.login)}#pay`)}>Top up</button>
       </div>
+      <Err e={err} />
 
       {waiting.length > 0 && (
         <div className="card">

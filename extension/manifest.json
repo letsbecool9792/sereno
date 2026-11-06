@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "sereno for GitHub",
   "short_name": "sereno",
-  "version": "0.2.0",
-  "description": "Your GitHub account is the wallet: pay by username, fund bounties that pay on merge, tip authors, and spend with a key this browser keeps.",
+  "version": "0.3.0",
+  "description": "Pay GitHub developers by username, fund bounties that pay on merge, spend with a browser key. Not affiliated with GitHub.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvLEokZH62px82DYYacQBDFaNNlvnKLm/6nVqx+q0Y9lPRwku3h0ksJs++Ho3YvF2+ui3rx9ViUEyLv4V33kQ4GPHMJGQz98OQzQUhH8DRVVmwNm9ZHwcj/pmK1NcpnohkEevvcnIF684O1+niTTUv+NjgFwh6t+2s5B4n2wlanOg5hLLtsBfpcTVPAWBhnDHewtUN/CVk2H11kCKo50jlhQDYI/4Rk8Y5ijMKMejpGVHJLBC1Sh+29W9zOmA4utedamDju7gjekOPBZj6WIRbCAHouQL9wONXORbPxoX8EhLGKEYh2Nar3YGYhLOlKGcdvjMpIRFwqj+/6rCV6AjhQIDAQAB",
   "icons": {
     "16": "icons/16.png",
