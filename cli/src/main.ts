@@ -6,7 +6,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createPublicClient, erc20Abi, formatUnits, getAddress, http, isAddress, parseUnits, type Address, type Hex } from "viem";
+import { createPublicClient, erc20Abi, formatUnits, getAddress, isAddress, parseUnits, type Address, type Hex } from "viem";
 import {
   accountFactoryAbi,
   bountyBoardAbi,
@@ -25,6 +25,7 @@ import {
   parseCommitObject,
   SIGNING_NAMESPACE,
   sshAccountAbi,
+  transportFor,
   type ChainConfig,
   type GithubUser,
   HOSTED_GATEWAY_URL,
@@ -99,7 +100,7 @@ async function profile(login: string, own = false): Promise<{ user: GithubUser; 
 }
 const userOf = async (login: string) => (await profile(login)).user;
 
-const client = (c: ChainConfig) => createPublicClient({ chain: c.chain, transport: http(c.rpc, { retryCount: 3 }) });
+const client = (c: ChainConfig) => createPublicClient({ chain: c.chain, transport: transportFor(c) });
 
 async function accountOf(c: ChainConfig, githubId: bigint): Promise<Address> {
   return client(c).readContract({ address: core.AccountFactory, abi: accountFactoryAbi, functionName: "addressOf", args: [githubId] });

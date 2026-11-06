@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { createPublicClient, createWalletClient, custom, http, type Address, type EIP1193Provider } from "viem";
-import { CHAINS, githubKeys, githubUser, HOSTED_GATEWAY_URL, HOSTED_RELAYER_URL, type ChainKey, type GithubUser } from "@sereno/shared";
+import { createPublicClient, createWalletClient, custom, type Address, type EIP1193Provider } from "viem";
+import { CHAINS, githubKeys, transportFor, githubUser, HOSTED_GATEWAY_URL, HOSTED_RELAYER_URL, type ChainKey, type GithubUser } from "@sereno/shared";
 
 export const PAY_CHAINS: ChainKey[] = ["base-sepolia", "arbitrum-sepolia"];
 export const GATEWAY = import.meta.env.VITE_GATEWAY_URL ?? HOSTED_GATEWAY_URL;
@@ -16,8 +16,9 @@ const fromJson = (p: ProfileJson) => ({ user: { login: p.login, id: BigInt(p.id)
 /// username in quarantine throws with `moved` set when paying it, and never falls back to GitHub, which would hide the
 /// warning; `own` (the user's own account: spending, checking it) gets the profile anyway.
 export async function fetchProfile(login: string, own = false): Promise<{ user: GithubUser; keys: string[] }> {
+  let gatewayError: string;
   try {
-    const res = await fetch(`${GATEWAY}/lookup/${encodeURIComponent(login)}`);
+    const res = await fetch(`${GATEWAY}/lookup/${encodeURIComponent(login)}`, { signal: AbortSignal.timeout(15_000) });
     if (res.status === 404) throw Object.assign(new Error("not found"), { notFound: true });
     if (res.status === 409) {
       const b = (await res.json()) as { message: string; moved: Moved; profile: ProfileJson };
@@ -25,14 +26,24 @@ export async function fetchProfile(login: string, own = false): Promise<{ user: 
       throw Object.assign(new Error(b.message), { moved: b.moved });
     }
     if (res.ok) return fromJson((await res.json()) as ProfileJson);
+    gatewayError = ((await res.json().catch(() => null)) as { message?: string } | null)?.message ?? `answered ${res.status}`;
   } catch (e) {
     if ((e as { notFound?: boolean }).notFound || (e as { moved?: Moved }).moved) throw e;
+    gatewayError = (e as Error).name === "TimeoutError" ? "timed out" : "unreachable";
   }
-  const user = await githubUser(login);
-  return { user, keys: await githubKeys(user.id).catch(() => []) };
+  // Straight from GitHub (no token: 60 requests an hour per IP, which a shared Wi-Fi uses up fast).
+  try {
+    const user = await githubUser(login);
+    return { user, keys: await githubKeys(user.id).catch(() => []) };
+  } catch (e) {
+    if ((e as { notFound?: boolean }).notFound) throw e;
+    const m = (e as Error).message;
+    const github = /\b(403|429)\b/.test(m) ? "GitHub's hourly limit for this network is used up" : `GitHub didn't answer (${m})`;
+    throw new Error(`Couldn't look up ${login}: the Sereno gateway ${gatewayError}, and ${github}. Try again in a moment.`);
+  }
 }
 
-export const clientFor = (key: ChainKey) => createPublicClient({ chain: CHAINS[key].chain, transport: http(CHAINS[key].rpc) });
+export const clientFor = (key: ChainKey) => createPublicClient({ chain: CHAINS[key].chain, transport: transportFor(CHAINS[key]) });
 
 export const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 

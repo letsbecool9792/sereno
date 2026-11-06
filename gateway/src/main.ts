@@ -6,7 +6,7 @@
 //   across restarts)
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { createPublicClient, http, keccak256, toBytes, type Address, type Hex } from "viem";
+import { createPublicClient, keccak256, toBytes, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import {
   accountFactoryAbi,
@@ -19,6 +19,7 @@ import {
   githubUser,
   keyOracleAbi,
   nameRegistrarAbi,
+  transportFor,
 } from "@sereno/shared";
 import { MoveLog, movedMessage, QUARANTINE_MS, type Move } from "./moves";
 import { GatewayError, handle, type Lookups } from "./resolve";
@@ -33,12 +34,14 @@ const signer = privateKeyToAccount(key);
 if (signer.address !== ens.gatewaySigner) console.warn(`warning: ${signer.address} is not the resolver's signer ${ens.gatewaySigner}`);
 
 const chain = CHAINS[DEFAULT_CHAIN];
-const pub = createPublicClient({ chain: chain.chain, transport: http(chain.rpc, { retryCount: 2 }) });
+const pub = createPublicClient({ chain: chain.chain, transport: transportFor(chain) });
 // The registrar and the oracle it trusts live on Sepolia: on-chain hints that a login changed owner.
-const sepolia = createPublicClient({ chain: CHAINS.sepolia.chain, transport: http(CHAINS.sepolia.rpc, { retryCount: 1 }) });
+const sepolia = createPublicClient({ chain: CHAINS.sepolia.chain, transport: transportFor(CHAINS.sepolia) });
 const ids = new Map<string, { id: bigint | null; at: number }>();
 const accounts = new Map<bigint, Address>();
 const moves = new MoveLog();
+/// /lookup answers (profile + keys), kept on disk too so a restart during a GitHub outage still answers known names.
+const profiles = new Map<string, { at: number; body: Profile }>();
 
 // Username -> ID cache on disk, so a restart doesn't refetch everyone and a GitHub outage still answers known names.
 const cacheFile = process.env.CACHE_FILE;
@@ -46,6 +49,7 @@ type CacheJson = {
   ids: Record<string, { id: string | null; at: number }>;
   accounts: Record<string, Address>;
   moves?: Record<string, { fromId: string; at: number }>;
+  profiles?: Record<string, { at: number; body: Profile }>;
 };
 if (cacheFile && existsSync(cacheFile)) {
   try {
@@ -53,6 +57,7 @@ if (cacheFile && existsSync(cacheFile)) {
     for (const [login, v] of Object.entries(c.ids ?? {})) ids.set(login, { id: v.id === null ? null : BigInt(v.id), at: v.at });
     for (const [id, a] of Object.entries(c.accounts ?? {})) accounts.set(BigInt(id), a);
     for (const [login, v] of Object.entries(c.moves ?? {})) moves.entries.set(login, { fromId: BigInt(v.fromId), at: v.at });
+    for (const [login, v] of Object.entries(c.profiles ?? {})) profiles.set(login, v);
     console.log(`cache: ${ids.size} logins, ${accounts.size} accounts, ${moves.entries.size} changes of owner from ${cacheFile}`);
   } catch (e) {
     console.warn(`cache: ignoring unreadable ${cacheFile}: ${(e as Error).message}`);
@@ -63,7 +68,7 @@ function save() {
   if (!cacheFile || saveTimer) return;
   saveTimer = setTimeout(() => {
     saveTimer = undefined;
-    const c: CacheJson = { ids: {}, accounts: {}, moves: {} };
+    const c: CacheJson = { ids: {}, accounts: {}, moves: {}, profiles: Object.fromEntries(profiles) };
     for (const [login, v] of ids) c.ids[login] = { id: v.id === null ? null : v.id.toString(), at: v.at };
     for (const [id, a] of accounts) c.accounts[id.toString()] = a;
     for (const [login, v] of moves.entries) c.moves![login] = { fromId: v.fromId.toString(), at: v.at };
@@ -96,10 +101,12 @@ async function moveOf(login: string, id: bigint): Promise<Move | null> {
       sepolia
         .readContract({ address: ens.nameRegistrar, abi: nameRegistrarAbi, functionName: "quarantineOf", args: [login] })
         .catch(() => null), // registrars before the quarantine don't have it
-      lookups.accountOf(id),
+      lookups.accountOf(id).catch(() => null),
     ]);
+    // An RPC that didn't answer: check again on the next request; the moves already recorded still apply below.
+    if (account === null) checkedAt.delete(login);
     let changed = oracleId !== 0n && oracleId !== id && moves.note(login, oracleId, now);
-    if (q && q[0] > 0n && q[1].toLowerCase() !== account.toLowerCase()) {
+    if (q && account && q[0] > 0n && q[1].toLowerCase() !== account.toLowerCase()) {
       changed = moves.note(login, q[2], Number(q[0]) * 1000 - QUARANTINE_MS) || changed;
     }
     if (changed) save();
@@ -157,16 +164,27 @@ const lookups: Lookups = {
 /// A login in quarantine throws with `moved` and `profile` set: /lookup answers 409, so paying refuses by default,
 /// while the account's own owner (spending, checking a balance) can still use the profile.
 type Profile = { login: string; id: string; name: string | null; avatarUrl: string; keys: string[] };
-const profiles = new Map<string, { at: number; body: Profile }>();
 async function profile(login: string): Promise<Profile> {
   let hit = profiles.get(login);
   if (!hit || Date.now() - hit.at >= 60_000) {
-    const u = await githubUser(login, process.env.GITHUB_TOKEN);
-    sawOwner(login, ids.get(login), u.id);
-    ids.set(login, { id: u.id, at: Date.now() });
-    save();
-    hit = { at: Date.now(), body: { login: u.login, id: u.id.toString(), name: u.name, avatarUrl: u.avatarUrl, keys: await githubKeys(u.id, process.env.GITHUB_TOKEN) } };
-    profiles.set(login, hit);
+    try {
+      const u = await githubUser(login, process.env.GITHUB_TOKEN);
+      const keys = await githubKeys(u.id, process.env.GITHUB_TOKEN);
+      sawOwner(login, ids.get(login), u.id);
+      ids.set(login, { id: u.id, at: Date.now() });
+      save();
+      hit = { at: Date.now(), body: { login: u.login, id: u.id.toString(), name: u.name, avatarUrl: u.avatarUrl, keys } };
+      profiles.set(login, hit);
+      save();
+    } catch (e) {
+      if ((e as { notFound?: boolean }).notFound) {
+        profiles.delete(login);
+        throw e;
+      }
+      // GitHub timed out or rate-limited us: the last answer we had beats an error (keys change rarely).
+      if (!hit) throw new Error(`GitHub didn't answer for ${login} (${(e as Error).message}); try again`);
+      console.warn(`lookup ${login}: GitHub failed (${(e as Error).message}); serving the profile from ${new Date(hit.at).toISOString()}`);
+    }
   }
   const m = await moveOf(login, BigInt(hit.body.id));
   if (m) {

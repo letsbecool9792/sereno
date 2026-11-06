@@ -1,4 +1,4 @@
-import type { Address, Chain } from "viem";
+import { type Address, type Chain, fallback, type HttpTransportConfig, http } from "viem";
 import { arbitrumSepolia, baseSepolia, sepolia } from "viem/chains";
 
 export type ChainKey = "base-sepolia" | "arbitrum-sepolia" | "sepolia";
@@ -7,6 +7,8 @@ export interface ChainConfig {
   key: ChainKey;
   chain: Chain;
   rpc: string;
+  /// Other public RPCs, tried in order when `rpc` fails (public RPCs rate-limit and time out). See `transportFor`.
+  fallbackRpcs: string[];
   usdc: Address;
   explorer: string;
   /// ENSIP-11 coin type for addresses on this chain (60 = the ENS chain itself).
@@ -21,6 +23,7 @@ export const CHAINS: Record<ChainKey, ChainConfig> = {
     key: "base-sepolia",
     chain: baseSepolia,
     rpc: "https://sepolia.base.org",
+    fallbackRpcs: ["https://base-sepolia-rpc.publicnode.com", "https://base-sepolia.drpc.org"],
     usdc: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     explorer: "https://sepolia.basescan.org",
     coinType: 0x80000000n | 84532n,
@@ -31,6 +34,7 @@ export const CHAINS: Record<ChainKey, ChainConfig> = {
     key: "arbitrum-sepolia",
     chain: arbitrumSepolia,
     rpc: "https://sepolia-rollup.arbitrum.io/rpc",
+    fallbackRpcs: ["https://arbitrum-sepolia-rpc.publicnode.com", "https://arbitrum-sepolia.drpc.org"],
     usdc: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
     explorer: "https://sepolia.arbiscan.io",
     coinType: 0x80000000n | 421614n,
@@ -41,6 +45,7 @@ export const CHAINS: Record<ChainKey, ChainConfig> = {
     key: "sepolia",
     chain: sepolia,
     rpc: "https://ethereum-sepolia-rpc.publicnode.com",
+    fallbackRpcs: ["https://sepolia.gateway.tenderly.co", "https://0xrpc.io/sep"],
     usdc: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
     explorer: "https://sepolia.etherscan.io",
     coinType: 60n,
@@ -48,6 +53,11 @@ export const CHAINS: Record<ChainKey, ChainConfig> = {
     creForwarder: "0x15fC6ae953E024d975e77382eEeC56A9101f9F88",
   },
 };
+
+/// viem transport for a chain: its main RPC, then each fallback when a request fails (all allow browser CORS).
+export function transportFor(c: ChainConfig, opts: HttpTransportConfig = {}) {
+  return fallback([c.rpc, ...c.fallbackRpcs].map((url) => http(url, { retryCount: 1, timeout: 10_000, ...opts })));
+}
 
 /// Where payments happen by default, and where ENS lives.
 export const DEFAULT_CHAIN: ChainKey = "base-sepolia";

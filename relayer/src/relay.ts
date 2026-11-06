@@ -5,7 +5,6 @@ import {
   ContractFunctionRevertedError,
   createPublicClient,
   createWalletClient,
-  http,
   keccak256,
   toBytes,
   type Address,
@@ -26,6 +25,7 @@ import {
   nameRegistrarAbi,
   parseIntent,
   sshAccountAbi,
+  transportFor,
   unarmor,
   type ChainConfig,
   type SignedCommit,
@@ -70,7 +70,7 @@ export function makeRelayer(key: Hex) {
   const clientsFor = (c: ChainConfig) => {
     let x = clients.get(c.chain.id);
     if (!x) {
-      const transport = http(c.rpc, { retryCount: 3 });
+      const transport = transportFor(c, { retryCount: 2 });
       x = { pub: createPublicClient({ chain: c.chain, transport }), wallet: createWalletClient({ account: signer, chain: c.chain, transport }) };
       clients.set(c.chain.id, x);
     }
