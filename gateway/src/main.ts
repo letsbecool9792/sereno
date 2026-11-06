@@ -195,6 +195,24 @@ async function profile(login: string): Promise<Profile> {
   return hit.body;
 }
 
+/// GitHub reads for the pay page and the extension, through our token and a short cache: browsers share GitHub's
+/// 60-requests-an-hour limit per IP (a whole Wi-Fi network), which runs out fast. A GitHub failure serves the last
+/// answer when there is one.
+const ghCache = new Map<string, { at: number; body: unknown }>();
+async function cachedGithub<T>(path: string, ttlMs: number, shape: (raw: any) => T): Promise<T> {
+  const hit = ghCache.get(path);
+  if (hit && Date.now() - hit.at < ttlMs) return hit.body as T;
+  try {
+    const body = shape(await githubGet(path, process.env.GITHUB_TOKEN));
+    ghCache.set(path, { at: Date.now(), body });
+    if (ghCache.size > 5000) ghCache.delete(ghCache.keys().next().value!);
+    return body;
+  } catch (e) {
+    if (hit && !(e as { notFound?: boolean }).notFound) return hit.body as T;
+    throw e;
+  }
+}
+
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type" };
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: cors });
 
@@ -210,6 +228,26 @@ const server = Bun.serve({
       } catch (e) {
         const { moved, profile: body } = e as { moved?: unknown; profile?: Profile };
         if (moved) return json({ message: (e as Error).message, moved, profile: body }, 409);
+        return json({ message: (e as Error).message }, (e as { notFound?: boolean }).notFound ? 404 : 502);
+      }
+    }
+    // GET /issue/<owner>/<repo>/<n> → {title, state, html_url, pull_request}   (the bounty tab)
+    const issue = /^\/issue\/([A-Za-z0-9-]{1,39})\/([A-Za-z0-9._-]{1,100})\/([1-9][0-9]{0,9})$/.exec(url.pathname);
+    if (issue) {
+      try {
+        return json(
+          await cachedGithub(`/repos/${issue[1]}/${issue[2]}/issues/${issue[3]}`, 30_000, (i) => ({ title: i.title, state: i.state, html_url: i.html_url, pull_request: !!i.pull_request })),
+        );
+      } catch (e) {
+        return json({ message: (e as Error).message }, (e as { notFound?: boolean }).notFound ? 404 : 502);
+      }
+    }
+    // GET /user/<numeric id> → {login}   (a bounty winner's or a counterparty's current username)
+    const user = /^\/user\/([1-9][0-9]{0,15})$/.exec(url.pathname);
+    if (user) {
+      try {
+        return json(await cachedGithub(`/user/${user[1]}`, 600_000, (u) => ({ login: u.login })));
+      } catch (e) {
         return json({ message: (e as Error).message }, (e as { notFound?: boolean }).notFound ? 404 : 502);
       }
     }

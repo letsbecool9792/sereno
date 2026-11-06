@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { erc20Abi, formatUnits, parseUnits, type Address, type Hex } from "viem";
 import { accountFactoryAbi, bountyBoardAbi, CHAINS, CORE, EXTRAS, type ChainKey } from "@sereno/shared";
-import { clientFor, connectWallet, PAY_CHAINS, RELAYER, relay, short, useWallets } from "./lib";
+import { clientFor, connectWallet, GATEWAY, PAY_CHAINS, RELAYER, relay, short, useWallets } from "./lib";
 import { gsap, useMotion } from "./motion";
 import { Icon, PageHead } from "./ui";
 
@@ -62,9 +62,12 @@ export function Bounties() {
     setBusy("Looking up the issue…");
     setError(null);
     try {
-      const res = await fetch(`https://api.github.com/repos/${q.repo}/issues/${q.issue}`, { headers: { Accept: "application/vnd.github+json" } });
+      // Through our gateway (GitHub token + cache); GitHub directly only if the gateway is down. A browser alone shares
+      // GitHub's 60-an-hour limit with everyone on its network.
+      let res = await fetch(`${GATEWAY}/issue/${q.repo}/${q.issue}`).catch(() => null);
+      if (!res || (res.status !== 200 && res.status !== 404)) res = await fetch(`https://api.github.com/repos/${q.repo}/issues/${q.issue}`, { headers: { Accept: "application/vnd.github+json" } });
       if (res.status === 404) throw new Error(`No issue ${q.repo}#${q.issue} on GitHub`);
-      if (!res.ok) throw new Error(`GitHub answered ${res.status}${res.status === 403 ? " (rate limit; try again in a while)" : ""}`);
+      if (!res.ok) throw new Error(`Couldn't read ${q.repo}#${q.issue} from GitHub (${res.status}). Try again in a moment.`);
       const gh = (await res.json()) as { title: string; state: string; html_url: string; pull_request?: unknown };
       if (gh.pull_request) throw new Error(`${q.repo}#${q.issue} is a pull request; bounties go on issues`);
       const pub = clientFor(key);
@@ -77,7 +80,7 @@ export function Bounties() {
       let winnerAccount: Address | null = null;
       if (winner !== 0n) {
         winnerAccount = await pub.readContract({ address: CORE.AccountFactory, abi: accountFactoryAbi, functionName: "addressOf", args: [winner] });
-        winnerLogin = await fetch(`https://api.github.com/user/${winner}`).then((r) => (r.ok ? r.json() : null)).then((u) => (u as { login?: string } | null)?.login ?? null).catch(() => null);
+        winnerLogin = await fetch(`${GATEWAY}/user/${winner}`).then((r) => (r.ok ? r.json() : null)).then((u) => (u as { login?: string } | null)?.login ?? null).catch(() => null);
       }
       const i: Info = { chainKey: key, ...q, title: gh.title, state: gh.state, url: gh.html_url, repoHash, winner, winnerLogin, winnerAccount, pot };
       setInfo(i);

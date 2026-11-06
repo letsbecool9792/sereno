@@ -47,7 +47,9 @@ const logins = new Map<string, string | null>();
 /// A GitHub ID's current login (cached; GitHub's unauthenticated limit is 60 an hour).
 export async function loginOfId(id: string): Promise<string | null> {
   if (!logins.has(id)) {
-    const res = await fetch(`https://api.github.com/user/${encodeURIComponent(id)}`, { headers: { Accept: "application/vnd.github+json" } }).catch(() => null);
+    // Through the gateway (token + cache); GitHub's anonymous limit is shared by the whole network.
+    let res = await fetch(`${HOSTED_GATEWAY_URL}/user/${encodeURIComponent(id)}`).catch(() => null);
+    if (!res || (!res.ok && res.status !== 404)) res = await fetch(`https://api.github.com/user/${encodeURIComponent(id)}`, { headers: { Accept: "application/vnd.github+json" } }).catch(() => null);
     logins.set(id, res?.ok ? ((await res.json()) as { login: string }).login : null);
   }
   return logins.get(id) ?? null;

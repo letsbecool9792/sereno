@@ -158,6 +158,7 @@ Every line ends with `\n`, including the last; there is no other whitespace. The
     - `NameRegistrar.quarantineOf(label)` reports a released claimed name.
   - **`GET /lookup/<login>`** answers 409 with `{message, moved, profile}`. Clients refuse to **pay** that name, but your **own** account (the Spend tab's "you", `ak --as`, `ak account`) still uses `profile`.
   - **No fallback:** clients don't fall back to GitHub on a 409.
+- **GitHub reads for browsers:** `GET /issue/<owner>/<repo>/<n>` → `{title, state, html_url, pull_request}` (30 s cache) and `GET /user/<id>` → `{login}` (10 min cache), both with our token. A browser alone shares GitHub's 60-an-hour anonymous limit with its whole network. The bounty tab and the extension use them, and go to GitHub directly only when the gateway doesn't answer.
 
 ### 5.4 Shared TS package (`packages/shared`)
 
