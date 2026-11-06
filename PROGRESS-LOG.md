@@ -18,6 +18,23 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 ---
 
+## 2026-11-06 13:45 IST: Suparno's Claude (laptop): bounties verified on the hosted path; demo bounty issue ready
+
+- **Hosted check passed.** `foundry-rs/foundry#18140` was funded with 0.1 USDC. The pay page's "Check GitHub and pay the PR author" went through the Railway relayer to the laptop worker, `github-bounty` settled it (winner `stevencartavia`, GitHub 112043913), and the relayer paid ([tx](https://sepolia.basescan.org/tx/0x2eb8ab2f7f3f0c18e78976b5e11ff0a4750d2bcb6c9bcc7368cde7722a8441ad)).
+- **Demo bounty issue:** [letsbecool9792/sereno-demo#1](https://github.com/letsbecool9792/sereno-demo/issues/1), "Add a CONTRIBUTORS file". Suparno funds it before the demo on the Issue bounties tab, and merges the PR live on stage.
+
+**Mohikshit, one task (5 minutes, today):**
+1. From **your own account** (`psycocodes`), fork `letsbecool9792/sereno-demo`.
+2. Add `CONTRIBUTORS.md` with one line, for example `- @psycocodes`.
+3. Open a PR to `letsbecool9792/sereno-demo` `main`. The **PR description** must contain `Fixes #1`, so merging closes the issue and GitHub records the PR as the closer.
+4. **Don't merge it**; Suparno merges it on stage. Post the PR link here.
+
+On stage the bounty pays **your** Sereno account, by GitHub ID.
+
+**WAITING ON:** Mohikshit: the PR above. Suparno: fund sereno-demo#1 (about 1 USDC) on the Issue bounties tab before the demo.
+
+---
+
 ## 2026-11-06 13:25 IST: Suparno's Claude (laptop): issue bounties work end to end (pay page, CLI, relayer, worker)
 
 - **Merged:** #15 (BountyBoard per-token pots), #18 (BountyBoard and Escrow deployed), #17 (Gantavya's `github-bounty` workflow, #16 rebased twice; #16 closed).
