@@ -293,7 +293,10 @@ function Pay() {
                 </div>
                 <label className="amount">
                   <span className="sr-only">Amount in USDC</span>
-                  <input type="number" min="0" step="0.01" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ width: `${Math.max(1, amount.length) + 0.2}ch` }} />
+                  {/* The input is exactly as wide as its digits: a hidden copy of the value sizes the grid cell it sits in. */}
+                  <span className="autosize" data-value={amount || "0"}>
+                    <input type="number" min="0" step="0.01" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
+                  </span>
                   <span>USDC</span>
                 </label>
                 <div className="quick" role="group" aria-label="Quick amounts">

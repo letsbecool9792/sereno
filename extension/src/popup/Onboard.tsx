@@ -1,7 +1,7 @@
 // First run: make the browser key behind a password, put it on the GitHub profile as a signing key, and have the
 // Chainlink oracle copy it on-chain. Also the lock screen.
 import { useEffect, useState } from "react";
-import { call, chainName, copy, Err, Icon, Lantern, openTab, Steps, type State } from "./lib";
+import { call, chainName, copy, Err, Icon, Lantern, openTab, PasswordInput, Steps, type State } from "./lib";
 
 /// "Badges on GitHub pages": reachable before setup and while locked (it needs no key).
 export function BadgesToggle() {
@@ -21,10 +21,19 @@ export function BadgesToggle() {
   );
 }
 
-export function Lock({ onDone }: { onDone: () => void }) {
+export function Lock({ state, onDone }: { state: State; onDone: () => void }) {
   const [pw, setPw] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [waitUntil, setWaitUntil] = useState(state.waitUntil);
+  const [now, setNow] = useState(Date.now());
+  const [forget, setForget] = useState(false);
+  useEffect(() => {
+    if (waitUntil <= Date.now()) return;
+    const t = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(t);
+  }, [waitUntil]);
+  const wait = Math.max(0, Math.ceil((waitUntil - now) / 1000));
   async function go(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -34,6 +43,9 @@ export function Lock({ onDone }: { onDone: () => void }) {
       onDone();
     } catch (x) {
       setErr((x as Error).message);
+      const s = await call<State>("state").catch(() => null);
+      if (s?.waitUntil) setWaitUntil(s.waitUntil);
+      setNow(Date.now());
     } finally {
       setBusy(false);
     }
@@ -44,10 +56,21 @@ export function Lock({ onDone }: { onDone: () => void }) {
         <Lantern size={64} className="hero-mark" />
         <h2>Welcome back</h2>
         <p className="muted">Unlock to pay. Balances and history work while locked.</p>
-        <input type="password" autoFocus placeholder="Password" value={pw} onChange={(e) => setPw(e.target.value)} />
-        <Err e={err} />
-        <button className="block" disabled={busy || !pw}>{busy ? "Unlocking…" : "Unlock"}</button>
+        <PasswordInput autoFocus placeholder="Password" value={pw} onChange={setPw} />
+        {wait > 0 ? <div className="notice amber">Too many wrong tries. Try again in {wait} s.</div> : <Err e={err} />}
+        <button className="block" disabled={busy || !pw || wait > 0}>{busy ? "Unlocking…" : wait > 0 ? `Wait ${wait} s` : "Unlock"}</button>
       </form>
+      {!forget ? (
+        <button className="ghost" onClick={() => setForget(true)}>Forgot it? Start over with a new key</button>
+      ) : (
+        <div className="card stack">
+          <p className="small">This removes the key from this browser. Your money stays in your account (it belongs to your GitHub ID). Make a new key, and delete the old one at github.com/settings/keys.</p>
+          <div className="row">
+            <button className="secondary grow" onClick={() => setForget(false)}>Cancel</button>
+            <button className="danger grow" onClick={async () => { await call("forgetKey"); onDone(); }}>Start over</button>
+          </div>
+        </div>
+      )}
       <BadgesToggle />
     </main>
   );
@@ -92,12 +115,17 @@ function Welcome({ state, next }: { state: State; next: () => void }) {
 function Password({ next }: { next: () => void }) {
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
+  const [rules, setRules] = useState<{ label: string; ok: boolean }[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const strength = pw.length >= 16 ? 3 : pw.length >= 12 ? 2 : pw.length >= 10 ? 1 : 0;
+  useEffect(() => {
+    call<{ label: string; ok: boolean }[]>("passwordRules", { password: pw }).then(setRules, () => {});
+  }, [pw]);
+  const all = [...rules, { label: "Both entries match", ok: pw.length > 0 && pw === pw2 }];
+  const ready = all.length > 1 && all.every((r) => r.ok);
   async function go(e: React.FormEvent) {
     e.preventDefault();
-    if (pw !== pw2) return setErr("The passwords don't match");
+    if (!ready) return;
     setBusy(true);
     setErr(null);
     try {
@@ -114,15 +142,18 @@ function Password({ next }: { next: () => void }) {
         <span className="eyebrow">Step 1 of 3</span>
         <h2>Set a password</h2>
         <p className="muted small">It encrypts the key on this computer. Forgot it? Make a new key; your money stays put.</p>
-        <label>Password<input type="password" autoFocus value={pw} onChange={(e) => setPw(e.target.value)} /></label>
-        <div className="row">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="grow" style={{ height: 4, borderRadius: 4, background: i < strength ? (strength >= 2 ? "var(--ok)" : "var(--amber)") : "var(--surface-3)" }} />
+        <label>Password<PasswordInput autoFocus value={pw} onChange={setPw} /></label>
+        <label>Again<PasswordInput value={pw2} onChange={setPw2} /></label>
+        <ul className="rules">
+          {all.map((r) => (
+            <li key={r.label} className={r.ok ? "ok" : ""}>
+              <span className="tick">{r.ok && <Icon name="check" size={11} />}</span>
+              {r.label}
+            </li>
           ))}
-        </div>
-        <label>Again<input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></label>
+        </ul>
         <Err e={err} />
-        <button className="block" disabled={busy || pw.length < 10}>{busy ? "Making the key…" : "Create key"}</button>
+        <button className="block" disabled={busy || !ready}>{busy ? "Making the key…" : "Create key"}</button>
       </form>
     </main>
   );

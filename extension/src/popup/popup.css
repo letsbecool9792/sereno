@@ -33,11 +33,11 @@
   color-scheme: dark;
 }
 *, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; background: var(--ground); color: var(--ink); overflow-x: hidden; }
-/* Chrome caps popups at 600px high: stay under it so no scrollbar narrows the content. */
+/* Fixed frame: header and tabs stay put, only <main> scrolls. Chrome caps popups at 600px high. */
+html, body { margin: 0; background: var(--ground); color: var(--ink); overflow: hidden; }
 html:not(:has(body.window)) { width: 380px; }
-body { width: 100%; min-height: 560px; font: 400 14px/1.5 var(--font-ui); -webkit-font-smoothing: antialiased; }
-body.window { width: auto; min-height: 100vh; }
+body { width: 100%; height: 580px; font: 400 14px/1.5 var(--font-ui); -webkit-font-smoothing: antialiased; }
+body.window { width: auto; height: 100vh; }
 body::after { content: ""; position: fixed; inset: 0; pointer-events: none; background: var(--noise); opacity: 0.05; mix-blend-mode: overlay; z-index: 50; }
 ::selection { background: rgb(242 179 91 / 0.3); }
 :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 6px; }
@@ -57,9 +57,9 @@ code, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
 .flame { fill: var(--l-flame); filter: drop-shadow(0 0 2.5px var(--l-glow)); animation: breathe 4s ease-in-out infinite; transform-origin: 16px 17px; }
 @keyframes breathe { 50% { opacity: 0.78; } }
 
-.app { min-height: 560px; display: flex; flex-direction: column; }
-body.window .app { min-height: 100vh; }
-.top { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+#root { height: 100%; }
+.app { height: 100%; display: flex; flex-direction: column; }
+.top { flex: none; display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .wordmark { font: 600 18px/1 var(--font-display); letter-spacing: -0.04em; }
 .top .who { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
 .avatar { width: 26px; height: 26px; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--brass); }
@@ -67,7 +67,7 @@ body.window .app { min-height: 100vh; }
 .icon-btn { min-height: 32px !important; width: 32px; padding: 0 !important; background: transparent !important; border: 1px solid var(--line-strong) !important; color: var(--muted) !important; box-shadow: none !important; }
 .icon-btn:hover { color: var(--ink) !important; background: var(--surface-2) !important; translate: none !important; }
 
-main { flex: 1; padding: 16px; display: grid; gap: 14px; align-content: start; animation: rise 0.45s var(--ease); }
+main { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px; display: grid; gap: 14px; align-content: start; animation: rise 0.45s var(--ease); }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
 
 button {
@@ -133,7 +133,7 @@ button.chip.on { border-color: var(--amber); color: var(--amber); }
 .signed { margin: 0; padding: 12px; max-height: 180px; overflow: auto; background: var(--ground); border: 1px solid var(--line-strong); border-radius: var(--r-sm); font: 11.5px/1.55 var(--font-mono); white-space: pre-wrap; word-break: break-all; color: var(--ink); }
 .pubkey { font: 11px/1.5 var(--font-mono); word-break: break-all; color: var(--muted); background: var(--ground); border: 1px dashed var(--line-strong); border-radius: var(--r-sm); padding: 10px; }
 
-.tabs { display: flex; border-top: 1px solid var(--line); background: var(--surface); position: sticky; bottom: 0; z-index: 5; }
+.tabs { flex: none; display: flex; border-top: 1px solid var(--line); background: var(--surface); z-index: 5; }
 .tabs button { flex: 1; flex-direction: column; gap: 3px; min-height: 54px; border-radius: 0; background: transparent; color: var(--faint); font-size: 11px; font-weight: 600; box-shadow: none; }
 .tabs button:hover:not(:disabled) { background: transparent; color: var(--ink); box-shadow: none; translate: none; }
 .tabs button.on { color: var(--amber); }
@@ -171,3 +171,15 @@ button.chip.on { border-color: var(--amber); color: var(--amber); }
 details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 hr { border: 0; border-top: 1px solid var(--line); margin: 2px 0; width: 100%; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* Password field with a show/hide eye */
+.pw { position: relative; display: block; width: 100%; justify-self: stretch; }
+.pw input { padding-right: 44px; }
+.pw-eye { position: absolute; right: 4px; top: 50%; translate: 0 -50%; min-height: 34px !important; width: 36px; padding: 0 !important; background: transparent !important; color: var(--muted) !important; box-shadow: none !important; border: 0 !important; }
+.pw-eye:hover { color: var(--ink) !important; translate: 0 -50% !important; }
+/* Password rules, ticked as they're met */
+.rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rules li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); transition: color 0.2s var(--ease); }
+.rules .tick { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 1.5px solid var(--line-strong); display: grid; place-items: center; transition: background 0.2s, border-color 0.2s; }
+.rules li.ok { color: var(--ink); }
+.rules li.ok .tick { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); }

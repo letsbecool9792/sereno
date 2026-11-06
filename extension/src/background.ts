@@ -10,7 +10,7 @@ import { csv, scan } from "./history";
 import { nativeInfo, nativeSign } from "./native";
 import { blobHash, unb64 } from "./sshsig";
 import { getProfile, getRules, getSettings, getWallets, setProfile, setRules, setSettings, setWallets, type Rule, type Settings } from "./store";
-import { autoLock, checkPassword, createVault, isUnlocked, lock, passwordProblem, touch, unlock, vaultFile, wipe } from "./vault";
+import { autoLock, checkPassword, createVault, isUnlocked, lock, passwordProblem, passwordRules, touch, unlock, unlockWaitUntil, vaultFile, wipe } from "./vault";
 import { claimEscrow, claimName, prepare, requestSync, resolvePayee, send, syncStatus, type Prepared } from "./wallet";
 
 // ---- JSON-RPC for the content script (public RPCs, with fallbacks) ----
@@ -108,10 +108,19 @@ async function handle(m: Msg): Promise<unknown> {
         keyHash: vault ? blobHash(unb64(vault.blob)) : null,
         extensionId: chrome.runtime.id,
         payUrl: HOSTED_PAY_URL,
+        waitUntil: await unlockWaitUntil(),
       };
     }
     case "passwordProblem":
       return passwordProblem(String(m.password ?? ""));
+    case "passwordRules":
+      return passwordRules(String(m.password ?? ""));
+    case "forgetKey":
+      // Forgot the password: drop this browser's encrypted key and start over. Nothing is lost (the money belongs to the
+      // GitHub ID); the old key should be deleted on GitHub too.
+      await wipe();
+      await setProfile(null);
+      return true;
     case "create":
       return (await createVault(String(m.password))).publicKey;
     case "unlock":

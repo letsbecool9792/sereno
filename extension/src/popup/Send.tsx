@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ChainKey } from "@sereno/shared";
 import type { Prepared } from "../wallet";
-import { call, chainName, Err, Icon, openTab, short, usdc, type State } from "./lib";
+import { call, chainName, Err, Icon, openTab, PasswordInput, short, usdc, type State } from "./lib";
 
 /// Send → Review (the exact signed text) → Sent. `initial` comes from a GitHub button (#send?to=octocat&amount=5).
 export function Send({ state, initial, done }: { state: State; initial: URLSearchParams; done: () => void }) {
@@ -85,7 +85,7 @@ export function Send({ state, initial, done }: { state: State; initial: URLSearc
           </div>
         )}
         {prep.needsPassword && signWith === "browser" && !prep.blockers.length && (
-          <label>Over {state.settings.confirmAbove} USDC: password again<input type="password" value={pw} onChange={(e) => setPw(e.target.value)} /></label>
+          <label>Over {state.settings.confirmAbove} USDC: password again<PasswordInput value={pw} onChange={setPw} /></label>
         )}
         <Err e={err} />
         <div className="row">

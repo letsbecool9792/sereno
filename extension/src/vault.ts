@@ -32,10 +32,17 @@ async function wrapKey(password: string, salt: Uint8Array, iterations: number): 
   return crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt: salt as BufferSource, iterations }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
 }
 
+/// The rules a new password must meet (the popup ticks them off as you type).
+export function passwordRules(p: string): { label: string; ok: boolean }[] {
+  return [
+    { label: `At least ${MIN_PASSWORD} characters`, ok: p.length >= MIN_PASSWORD },
+    { label: "A letter and a number or symbol", ok: /[a-z]/i.test(p) && /[^a-z]/i.test(p) },
+    { label: "Not the same character over and over", ok: p.length > 0 && !/^(.)\1+$/.test(p) },
+  ];
+}
+
 export function passwordProblem(p: string): string | null {
-  if (p.length < MIN_PASSWORD) return `Use at least ${MIN_PASSWORD} characters`;
-  if (/^(.)\1+$/.test(p)) return "Too repetitive";
-  return null;
+  return passwordRules(p).find((r) => !r.ok)?.label ?? null;
 }
 
 /// Makes the browser key, encrypts it straight into the vault, and leaves the vault unlocked.
@@ -78,7 +85,9 @@ export async function unlock(password: string): Promise<void> {
     await local.set({ unlockFails: 0, unlockWaitUntil: 0 });
   } catch {
     const fails = unlockFails + 1;
-    const wait = fails >= 5 ? Math.min(600, 2 ** (fails - 4)) * 1000 : 0;
+    // From the 5th wrong try on: 5 s, 10 s, ... capped at 30 s. Enough to slow guessing in the popup; the PBKDF2 cost
+    // and the password rules are what protect a copied profile.
+    const wait = fails >= 5 ? Math.min(30, 5 * (fails - 4)) * 1000 : 0;
     await local.set({ unlockFails: fails, unlockWaitUntil: Date.now() + wait });
     throw new Error(fails >= 5 ? `Wrong password. Next try in ${wait / 1000} s` : "Wrong password");
   }
@@ -95,6 +104,12 @@ export async function checkPassword(password: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/// When the next unlock attempt is allowed (0 = now).
+export async function unlockWaitUntil(): Promise<number> {
+  const { unlockWaitUntil: w = 0 } = (await local.get("unlockWaitUntil")) as { unlockWaitUntil?: number };
+  return w > Date.now() ? w : 0;
 }
 
 export async function lock(): Promise<void> {

@@ -87,7 +87,7 @@ function App() {
       {!state.hasVault || (state.unlocked && !state.profile) ? (
         <Onboard state={state} onDone={refresh} />
       ) : !state.unlocked ? (
-        <Lock onDone={refresh} />
+        <Lock state={state} onDone={refresh} />
       ) : route.path === "send" ? (
         <Send state={state} initial={route.query} done={() => go("home")} />
       ) : route.path === "history" ? (

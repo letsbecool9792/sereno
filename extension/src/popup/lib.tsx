@@ -1,5 +1,5 @@
 // Popup helpers: messages to the background worker, formatting, and the small visual pieces (the mark, icons).
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { CHAINS, type ChainKey } from "@sereno/shared";
 import type { Profile, Settings } from "../store";
 
@@ -18,6 +18,7 @@ export interface State {
   keyHash: string | null;
   extensionId: string;
   payUrl: string;
+  waitUntil: number;
 }
 
 export const usdc = (units: string | bigint, digits = 2) => {
@@ -67,6 +68,8 @@ const paths: Record<string, ReactNode> = {
   key: <><circle cx="8" cy="15" r="4" /><path d="m11 12 9-9M17 6l3 3M15 8l2 2" /></>,
   wallet: <><rect x="3" y="6" width="18" height="14" rx="3" /><path d="M16 13h2M3 10h18" /></>,
   x: <path d="M6 6l12 12M18 6 6 18" />,
+  eye: <><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="3" /></>,
+  eyeOff: <><path d="M10.6 6A9.7 9.7 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.6 3.4M6.4 6.9C3.9 8.6 2.5 12 2.5 12S6 18.5 12 18.5c1.6 0 3-.5 4.3-1.2" /><path d="M3 3l18 18M9.9 10a3 3 0 0 0 4.2 4.2" /></>,
 };
 export function Icon({ name, size = 16 }: { name: keyof typeof paths | string; size?: number }) {
   return (
@@ -86,6 +89,19 @@ export function Steps({ items }: { items: { label: string; state: "done" | "now"
         </div>
       ))}
     </div>
+  );
+}
+
+/// A password field with a show/hide toggle.
+export function PasswordInput({ value, onChange, autoFocus, placeholder }: { value: string; onChange: (v: string) => void; autoFocus?: boolean; placeholder?: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="pw">
+      <input type={show ? "text" : "password"} autoFocus={autoFocus} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} spellCheck={false} />
+      <button type="button" className="pw-eye" onClick={() => setShow((s) => !s)} aria-label={show ? "Hide password" : "Show password"} title={show ? "Hide" : "Show"}>
+        <Icon name={show ? "eyeOff" : "eye"} size={16} />
+      </button>
+    </span>
   );
 }
 

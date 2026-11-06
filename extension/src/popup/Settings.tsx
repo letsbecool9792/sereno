@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ENS_DEPLOYMENT } from "@sereno/shared";
-import { call, copy, Err, Icon, openTab, type State } from "./lib";
+import { call, copy, Err, Icon, openTab, PasswordInput, type State } from "./lib";
 
 export function Settings({ state, refresh }: { state: State; refresh: () => void }) {
   const [native, setNative] = useState<{ connected: boolean; key?: string; fingerprint?: string; error?: string } | null>(null);
@@ -97,7 +97,7 @@ export function Settings({ state, refresh }: { state: State; refresh: () => void
         </div>
         <p className="small muted">Lost this computer? Delete "Sereno browser key" at github.com/settings/keys; the next sync stops it.</p>
       </div>
-      <label>Password<input type="password" value={pw} onChange={(e) => setPw(e.target.value)} /></label>
+      <label>Password<PasswordInput value={pw} onChange={setPw} /></label>
       <Err e={err} />
       <p className="small faint">Open source (MIT). No analytics. Testnet: Base and Arbitrum Sepolia.</p>
     </main>

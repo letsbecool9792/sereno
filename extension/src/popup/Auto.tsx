@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ChainKey } from "@sereno/shared";
 import type { LinkedWallet, Rule } from "../store";
-import { call, chainName, Err, Icon, openTab, short, type State } from "./lib";
+import { call, chainName, Err, Icon, openTab, PasswordInput, short, type State } from "./lib";
 
 type ShownRule = Rule & { summary: string };
 
@@ -93,7 +93,7 @@ export function Auto({ state, refresh }: { state: State; refresh: () => void }) 
           </div>
         ))}
       </div>
-      <label>Password (to turn things on or raise limits)<input type="password" value={pw} onChange={(e) => setPw(e.target.value)} /></label>
+      <label>Password (to turn things on or raise limits)<PasswordInput value={pw} onChange={setPw} /></label>
       <Err e={err} />
     </main>
   );
@@ -164,7 +164,7 @@ function RuleForm({ kind, wallets, done }: { kind: "sweep" | "recurring"; wallet
             </div>
           </>
         )}
-        <label>Password<input type="password" value={pw} onChange={(e) => setPw(e.target.value)} /></label>
+        <label>Password<PasswordInput value={pw} onChange={setPw} /></label>
         <Err e={err} />
         <div className="row">
           <button type="button" className="secondary" onClick={done}>Cancel</button>

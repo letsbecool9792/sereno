@@ -394,7 +394,11 @@ dl { margin: 0; }
 .paybox-top { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
 .label { color: var(--muted); font-size: 0.875rem; font-weight: 500; }
 .amount { display: flex; align-items: baseline; gap: var(--s-2); color: var(--ink); }
-.amount input { font-variant-numeric: tabular-nums; text-align: right; width: auto; min-width: 1ch; max-width: 9ch; min-height: 0; padding: 0; background: transparent; border: 0; border-radius: 0; font: 600 clamp(3rem, 6vw, 4rem)/1 var(--font-display); letter-spacing: -0.04em; box-shadow: none; }
+/* The big font lives on the wrapper so "ch" is measured in it (10 digits max); input and sizer inherit it. */
+.amount .autosize { display: inline-grid; max-width: 10ch; font: 600 clamp(3rem, 6vw, 4rem)/1 var(--font-display); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.amount .autosize::after, .amount input { grid-area: 1 / 1; font: inherit; letter-spacing: inherit; font-variant-numeric: inherit; }
+.amount .autosize::after { content: attr(data-value); padding-right: 2px; visibility: hidden; white-space: pre; overflow: hidden; }
+.amount input { width: 1ch; min-width: 100%; min-height: 0; padding: 0; text-align: left; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
 .amount input:focus { box-shadow: none; }
 .amount > span:last-child { color: var(--muted); font: 600 1.25rem var(--font-display); }
 .quick { display: flex; flex-wrap: wrap; gap: var(--s-2); }
