@@ -32,6 +32,8 @@ import {
   HOSTED_RELAYER_URL,
 } from "@sereno/shared";
 
+import { connect, nativeHost } from "./native";
+
 const USAGE = `ak: pay and spend with the SSH key already on your GitHub profile.
 
   ak account <github-user> [--chain base-sepolia|arbitrum-sepolia]
@@ -39,6 +41,7 @@ const USAGE = `ak: pay and spend with the SSH key already on your GitHub profile
   ak commit-pay <amount> <to> --as <github-user> [--key <ssh key>] [--repo .] [--push] [--relay]
   ak claim --as <github-user> [--key <ssh key>]
   ak sync <github-user>          have the Chainlink key oracle copy the user's GitHub SSH keys on-chain
+  ak connect                     let the Sereno browser extension sign with your own SSH key (native helper)
   ak bounty <issue> [--chain ...] [--settle]
                                  an issue bounty (fund it on the pay page); --settle has the Chainlink
                                  workflow check for a merged PR that closed it and pays its author
@@ -370,6 +373,13 @@ switch (pos[0]) {
     break;
   case "sync":
     await cmdSync(need(pos[1], "<github-user>"));
+    break;
+  case "connect":
+    for (const l of connect(process.argv[1]!)) console.log(l);
+    break;
+  case "native-host":
+    // Started by the browser (Chrome passes the caller's origin as an argument); stdout is the protocol.
+    await nativeHost();
     break;
   default:
     console.log(USAGE);

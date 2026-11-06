@@ -115,6 +115,11 @@ async function route(req: Request): Promise<Response> {
       log(`commit ${body.sha ?? "(raw)"} -> ${r.url}`);
       return json({ ...r, githubVerified });
     }
+    if (url.pathname === "/escrow/claim") {
+      const r = await relayer.escrowClaim({ chainId: Number(body.chainId), id: BigInt(body.id!), signature: body.signature! });
+      log(`escrow claim ${body.id} on ${r.chain} -> ${r.url}`);
+      return json(r);
+    }
     if (url.pathname === "/claim") {
       const r = await relayer.claim({ label: body.label!, githubId: BigInt(body.githubId!), signature: body.signature! });
       log(`claim ${body.label} -> ${r.url}`);

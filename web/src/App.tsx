@@ -22,6 +22,7 @@ import {
 } from "@sereno/shared";
 import { clientFor, fetchProfile, PAY_CHAINS, short, useWallets, type Moved } from "./lib";
 import { Boot, BOOT_REVEAL } from "./Boot";
+import { LinkWallet } from "./LinkWallet";
 import { Bounties } from "./Bounties";
 import { HoloCard } from "./HoloCard";
 import { Landing } from "./Landing";
@@ -374,17 +375,18 @@ function cleanLogin(s: string): string {
   return suffix && login.toLowerCase().endsWith(suffix) ? login.slice(0, -suffix.length) : login;
 }
 
-type Page = "home" | "pay" | "spend" | "bounties";
+type Page = "home" | "pay" | "spend" | "bounties" | "link-wallet";
 // `?user=` and `#pay` open Pay; `#spend` and `#bounties` keep the links the README and the log already use.
 const pageFromLocation = (): Page => {
   const h = window.location.hash;
   if (h === "#spend") return "spend";
   if (h === "#bounties") return "bounties";
+  if (h === "#link-wallet") return "link-wallet";
   if (h === "#pay" || new URLSearchParams(window.location.search).has("user")) return "pay";
   return "home";
 };
 
-const NAV: [Exclude<Page, "home">, string][] = [
+const NAV: [Exclude<Page, "home" | "link-wallet">, string][] = [
   ["pay", "Pay"],
   ["spend", "Spend"],
   ["bounties", "Bounties"],
@@ -457,7 +459,7 @@ export function App() {
 
       <main id="content" className={page === "home" ? "main main-home" : "main"}>
         <div key={page} ref={view}>
-          {page === "home" ? <Landing onPay={payUser} go={go} introDelay={introDelay} /> : page === "spend" ? <Spend /> : page === "bounties" ? <Bounties /> : <Pay />}
+          {page === "home" ? <Landing onPay={payUser} go={go} introDelay={introDelay} /> : page === "spend" ? <Spend /> : page === "bounties" ? <Bounties /> : page === "link-wallet" ? <LinkWallet /> : <Pay />}
         </div>
       </main>
 

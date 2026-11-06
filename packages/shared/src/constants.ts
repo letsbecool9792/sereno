@@ -13,5 +13,8 @@ export const NEW_KEY_DELAY_SECONDS = 72 * 3600;
 export const HOSTED_GATEWAY_URL = "https://sereno-production.up.railway.app";
 /// The pay page (web/); the browser extension and the CLI link to it. Deep links: `?user=<login>[&amount=5]` (pay),
 /// `?issue=<owner>/<repo>/issues/<n>#bounties` (fund a bounty).
+/// The browser extension's fixed ID (its manifest carries the matching public key), so the native helper and the
+/// pay page's wallet link can name it.
+export const EXTENSION_ID = "fnffhlmjmpnglceomjiigjdfhildhpdl";
 export const HOSTED_PAY_URL = "https://sereno-eth.vercel.app";
 export const HOSTED_RELAYER_URL = "https://happy-curiosity-production-7074.up.railway.app";
