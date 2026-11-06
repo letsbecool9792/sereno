@@ -80,6 +80,37 @@ You should see:
 
 `<friend>`'s balance goes up, and yours goes down by the amount plus the 0.02 USDC relayer fee.
 
+**If it doesn't work:**
+
+- **`ak: no key in …/.ssh matches an SSH key on <you>'s GitHub profile`.** Your key isn't in `~/.ssh`, or isn't on your GitHub profile.
+  - If the key is somewhere else, either pass it with `--key "<path to your private key>"`, or copy the private key and its `.pub` into `.ssh`.
+
+    PowerShell:
+    ```powershell
+    New-Item -ItemType Directory -Force "$HOME\.ssh" | Out-Null
+    Copy-Item "<path to your private key>", "<path to your private key>.pub" "$HOME\.ssh\"
+    ```
+    bash or zsh (`ssh-keygen` refuses a private key that other users can read):
+    ```sh
+    mkdir -p ~/.ssh && cp "<path to your private key>" "<path to your private key>.pub" ~/.ssh/
+    chmod 600 ~/.ssh/<file name>
+    ```
+  - **No `.pub` next to the private key?** Make it with `ssh-keygen -y -f "<private key>"`, saving the output as `<private key>.pub`. In PowerShell, use `| Out-File -Encoding ascii "<private key>.pub"` rather than `>`, which writes UTF-16.
+  - **Not on GitHub yet?** Paste the `.pub` contents at github.com/settings/keys, then run `npx sereno-ak sync <you>`.
+- **The key lives only in ssh-agent** (1Password, KeePassXC, a hardware agent). Pass the public key instead: `--key "<path to the key>.pub"`. `ssh-keygen` then asks the agent to sign.
+- **`ak: no SSH key file at …`.** The `--key` path is wrong. On Windows, write `"$HOME\..."` rather than `~`.
+- **`couldn't run ssh-keygen`.** OpenSSH isn't installed or isn't on PATH.
+  - Windows: Settings → Optional features → OpenSSH Client, or use Git for Windows' copy: `$env:AK_SSH_KEYGEN = "C:\Program Files\Git\usr\bin\ssh-keygen.exe"`.
+  - Linux: install `openssh-client`.
+- **`retrying without -O hashalg=sha256`.** Your OpenSSH is older than 8.9 (Windows 10's built-in 8.1, Ubuntu 20.04). The payment still works, with SHA-512 and more gas. A name claim (step 6) needs OpenSSH 8.9+.
+- **`relayer refused: KeyNotOnProfile`.** The key you signed with isn't on-chain for your GitHub ID:
+  - it was added after the last sync: run `npx sereno-ak sync <you>`;
+  - or it's on another GitHub account than `--as`.
+- **`relayer refused: NewKeyCoolingDown`.** The key first appeared on-chain less than 72 hours ago, and the payment is over 50 USDC. Send 50 or less, or wait.
+- **`relayer refused: TransferFailed`.** The account holds less than the amount plus the 0.02 USDC fee. `npx sereno-ak account <you>` shows the balance.
+- **The sync stays `queued`.** Key syncs run on our worker while the Chainlink workflow is in simulation, and the worker is offline. The request waits in the queue; try again later.
+- **ssh-keygen asks for a passphrase.** That's your key's own passphrase. With a security key or phone, it asks for a touch or a QR scan instead.
+
 **No terminal:** the **Spend your balance** tab does the same in the browser:
 1. Prepare the payment and download `intent.txt`.
 2. Run the one `ssh-keygen` command it shows.

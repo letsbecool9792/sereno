@@ -149,8 +149,17 @@ function sshSign(text: string, key: string): string {
   try {
     const f = join(dir, "message.txt");
     writeFileSync(f, text);
-    const r = spawnSync(SSH_KEYGEN, ["-Y", "sign", "-n", SIGNING_NAMESPACE, "-O", "hashalg=sha256", "-f", keyFile(key), f], { stdio: ["inherit", "inherit", "inherit"] });
-    if (r.error) die(`couldn't run ${SSH_KEYGEN}: ${r.error.message}`);
+    const file = keyFile(key);
+    const sign = (extra: string[]) =>
+      spawnSync(SSH_KEYGEN, ["-Y", "sign", "-n", SIGNING_NAMESPACE, ...extra, "-f", file, f], { stdio: ["inherit", "inherit", "inherit"] });
+    let r = sign(["-O", "hashalg=sha256"]);
+    if (r.error) die(`couldn't run ${SSH_KEYGEN} (${r.error.message}). Install OpenSSH, or set AK_SSH_KEYGEN to an ssh-keygen`);
+    if (r.status !== 0 && !existsSync(`${f}.sig`)) {
+      // OpenSSH before 8.9 (Windows 10's built-in 8.1, Ubuntu 20.04) has no -O hashalg; its default SHA-512 also
+      // verifies on Base and Arbitrum (it costs more gas; Sepolia name claims need SHA-256).
+      console.log("retrying without -O hashalg=sha256 (older OpenSSH)");
+      r = sign([]);
+    }
     if (r.status !== 0) die("ssh-keygen didn't sign (see its message above)");
     return readFileSync(`${f}.sig`, "utf8");
   } finally {
