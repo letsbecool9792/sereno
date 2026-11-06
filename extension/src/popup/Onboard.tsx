@@ -229,7 +229,11 @@ export function Sync({ state, next, compact }: { state: State; next: () => void;
         }))}
       />
       {info?.job?.state === "failed" && <div className="notice err">{info.job.detail ?? "The sync failed"}</div>}
-      {running && info?.job?.workerAge == null && <div className="notice amber">Queued. The sync worker isn't online right now.</div>}
+      {/* Only when the relayer says the worker hasn't asked for jobs in 2 minutes (null = never) and the job still waits.
+          "running" means a worker already took it. */}
+      {info?.job?.state === "queued" && (info.job.workerAge === null || (info.job.workerAge ?? 0) > 120) && (
+        <div className="notice amber">Queued. The sync worker hasn't checked in for a while; it runs when it's back.</div>
+      )}
       <Err e={err} />
       {!all && <button className={compact ? "secondary block" : "block"} onClick={go} disabled={running}>{running ? "Syncing…" : "Sync my keys"}</button>}
     </Wrap>

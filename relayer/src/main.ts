@@ -60,7 +60,7 @@ async function route(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (url.pathname === "/health") return json({ ok: true, relayer: relayer.address, watching: watched, keySync: sync.enabled, syncWorkerAge: sync.workerAge(), bounties: bountyWatch.watching() });
   try {
-    if (req.method === "GET" && url.pathname.startsWith("/sync/status/")) return json(sync.status(url.pathname.slice("/sync/status/".length)));
+    if (req.method === "GET" && url.pathname.startsWith("/sync/status/")) return json({ ...sync.status(url.pathname.slice("/sync/status/".length)), workerAge: sync.workerAge() });
     if (req.method === "GET" && url.pathname === "/sync/next") return json(sync.next(req));
     if (req.method === "GET" && url.pathname === "/bounty/status") {
       const q = bountyArgs(url.searchParams.get("chainId"), url.searchParams.get("repo"), url.searchParams.get("issue"));
