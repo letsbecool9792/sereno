@@ -48,7 +48,7 @@ function Pay() {
   const [login, setLogin] = useState("");
   const [chainKey, setChainKey] = useState<ChainKey>("base-sepolia");
   const [lookup, setLookup] = useState<Lookup | null>(null);
-  const [amount, setAmount] = useState("1");
+  const [amount, setAmount] = useState(() => cleanAmount(new URLSearchParams(window.location.search).get("amount")) ?? "1");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [moved, setMoved] = useState<{ name: string; message: string; fromLogin: string | null } | null>(null);
@@ -360,6 +360,11 @@ function Pay() {
       )}
     </div>
   );
+}
+
+/// A positive decimal amount from a deep link (`?amount=5`), or null.
+function cleanAmount(s: string | null): string | null {
+  return s && /^\d{1,9}(\.\d{1,6})?$/.test(s) && Number(s) > 0 ? s : null;
 }
 
 /// "octocat", "@octocat", "https://github.com/octocat" or "octocat.sereno.eth" → "octocat".

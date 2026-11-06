@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { erc20Abi, formatUnits, parseUnits, type Address, type Hex } from "viem";
 import { accountFactoryAbi, bountyBoardAbi, CHAINS, CORE, EXTRAS, type ChainKey } from "@sereno/shared";
 import { clientFor, connectWallet, PAY_CHAINS, RELAYER, relay, short, useWallets } from "./lib";
@@ -41,9 +41,19 @@ export function Bounties() {
   const board = EXTRAS ? ({ address: EXTRAS.BountyBoard, abi: bountyBoardAbi } as const) : null;
   const root = useRef<HTMLDivElement>(null);
 
-  async function load(e?: React.FormEvent, key = chainKey): Promise<Info | null> {
+  // ?issue=owner/repo/issues/12 deep link (the browser extension's "Fund a bounty"): prefill and look it up once.
+  useEffect(() => {
+    const i = new URLSearchParams(window.location.search).get("issue");
+    if (i && parseIssue(i)) {
+      setInput(i);
+      void load(undefined, chainKey, i);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function load(e?: React.FormEvent, key = chainKey, text = input): Promise<Info | null> {
     e?.preventDefault();
-    const q = parseIssue(input);
+    const q = parseIssue(text);
     if (!q) {
       setError("Enter an issue link like https://github.com/owner/repo/issues/12, or owner/repo#12");
       return null;

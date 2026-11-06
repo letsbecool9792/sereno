@@ -49,6 +49,29 @@ Branch `ws3/frontend-redesign` (the 19:30 task). Presentation only: `lib.ts` unt
 - Suparno: review the PR.
 - After merging: Vercel redeploys the pay page, then one real Base Sepolia payment through the new Pay screen.
 
+## 2026-11-06 21:20 IST: Suparno's Claude (laptop): browser extension (C1/C2), branch `ws3/extension`
+
+- **`extension/`**: a Manifest V3 extension for github.com. It isn't a wallet: no keys, and payments happen on the pay page (opened prefilled in a small window) with the visitor's own wallet.
+  - **Profile:** "Pay @user", `<user>.sereno.eth`, and their USDC balance (on your own profile: "Spend").
+  - **Issue:** the bounty (amount and chain, or "Bounty paid to @winner"), plus "Fund a bounty" / "Add to bounty". Payout is automatic through the relayer's bounty watcher (19:55 entry).
+  - **PR:** "Tip @author", plus "Merging pays #N's X USDC bounty to @author" for the issues it closes.
+  - **Commit:** "Tip @author". A payment commit shows its amount and "Paid" (with the transaction link) or a "Submit payment" button that calls the relayer.
+- **Pay page deep links** (small changes to `web/src/App.tsx` and `Bounties.tsx`): `?amount=` for Pay, and `?issue=<owner>/<repo>/issues/<n>#bounties` for Bounties. `HOSTED_PAY_URL` is in `@sereno/shared`. **Gantavya: keep these working in the redesign.**
+- **Tested:**
+  - 9 unit tests for page routing and the parsers, including GitHub's real `.patch` folding.
+  - Headless Edge with the extension loaded, on real pages:
+    - profile: Pay, name and balance (39.439 USDC);
+    - sereno-demo#3 and #1: "Bounty paid to @g4ntavya" / "@psycocodes";
+    - an issue with no bounty: "Fund a bounty";
+    - PR #4: Tip @g4ntavya;
+    - payment commit c046124: "Sereno payment · 1 USDC · Base Sepolia · Paid".
+  - Placement was checked with screenshots: under the profile name, under PR tabs, under the commit message.
+  - Not yet tested: clicking through to a real wallet payment, logged-in GitHub pages, and "Submit payment" on an unpaid commit.
+- **WAITING ON:** Suparno:
+  - Load `extension/dist` unpacked in Chrome, logged into GitHub, and click through each page.
+  - Review and merge the PR.
+
+---
 ## 2026-11-06 19:55 IST: Suparno's Claude (laptop): username lookups hardened; bounties pay automatically when the issue closes
 
 - **Lookup bug** ("couldn't find a GitHub user" that went away after restarts).
