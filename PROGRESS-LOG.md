@@ -12,9 +12,27 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 | WS | Owner | Now working on | Blocked on | Last update |
 |---|---|---|---|---|
-| WS1 contracts and relayer | Mohikshit | M3+M4 contracts done (PR); M1/M2 on Linux | ETH for relayer `0xd599…80d5` | 6 Nov 01:07 |
+| WS1 contracts and relayer | Mohikshit | bounty fix (PR) → deploy extras → M1 npx check → M5 | merge of the bounty fix | 6 Nov 12:15 |
 | WS2 CRE and ENS | Gantavya | G1–G4 code done (4 branches); G1 deploy, G2/G3 live runs | Fly account verification, `cre login` | 6 Nov 00:20 |
 | WS3 clients and demo | Suparno + Claude | core done and hosted: pay page on Vercel, `sereno-ak` on npm, key sync live; demo rework next | | 6 Nov 12:40 |
+
+---
+
+## 2026-11-06 12:15 IST: Mohikshit's Claude: BountyBoard griefing fix (one pot per token)
+
+Branch `ws1/bounty-per-token`, following Suparno's suggested design.
+
+- **Pots are keyed by token** (`potKey(repoHash, issue, token)`), so 1 wei of a junk token no longer blocks a USDC bounty. Test: `test_junk_token_first_does_not_block_usdc`. The junk token can't even transfer out, and USDC still pays.
+- **`onReport` only records the winner** (`winnerOf(issueKey(repoHash, issue))`, once). The **report format is unchanged**: `abi.encode(bytes32 repoHash, uint256 issue, uint256 authorGithubId)`. Gantavya, nothing changes for you. An author ID of 0 is refused.
+- **New: `payout(repoHash, issue, token)`.** Anyone can call it after settlement; it sends that token's pot to `factory.addressOf(winner)`.
+- `refund(repoHash, issue, token)` is per funder and per token, while the bounty is unsettled.
+- CLAUDE.md §5.2 is updated, and `bun run sync` regenerated the ABI.
+- `forge test`: 85/85. `bun run typecheck` is clean.
+- **New predicted BountyBoard address: `0xCfecCbDB71236E27db36Aef2d1Da5bD428d796f3`.** The bytecode changed, so the `0xE4eD…` address in older entries is obsolete. Escrow stays at `0xDaaB8E6978A9CA599B8a2EcCFB13AF1CA0E963cb`. A dry run of `DeployExtras` on Base Sepolia passes with the funded relayer.
+
+**WAITING ON:**
+- **Suparno:** review and merge. After I deploy, add the gate route from the bounty workflow's name to `0xCfec…96f3`.
+- **Mohikshit:** deploy the extras on Base and Arbitrum Sepolia right after the merge.
 
 ---
 
