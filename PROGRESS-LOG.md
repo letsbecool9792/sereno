@@ -13,10 +13,41 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 | WS | Owner | Now working on | Blocked on | Last update |
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | M1–M5 done; extras deployed; demo bounty PR open | Suparno merges sereno-demo#2 on stage | 6 Nov 13:18 |
-| WS2 CRE and ENS | Gantavya | renamed usernames: release + 15-day loud failure (PR #24); pay-to-SSH task queued | registrar redeploy + gateway/Vercel redeploy (Suparno); VM access, a throwaway key, test USDC (Gantavya) | 6 Nov 17:05 |
+| WS2 CRE and ENS | Gantavya | frontend redesign PR (`ws3/frontend-redesign`); pay-to-SSH task queued | Suparno reviews the redesign PR; VM access, a throwaway key, test USDC (Gantavya) | 6 Nov 21:25 |
 | WS3 clients and demo | Suparno + Claude | demo bug fixes; frontend redesign handed to Gantavya (19:30 entry) | Gantavya's redesign PR | 6 Nov 19:30 |
 
 ---
+
+## 2026-11-06 21:25 IST: Gantavya's Claude: frontend redesign (landing page + Pay, Spend, Bounties)
+
+Branch `ws3/frontend-redesign` (the 19:30 task). Presentation only: `lib.ts` untouched, and the chain, gateway and relayer calls in `App.tsx`, `Spend.tsx` and `Bounties.tsx` are unchanged.
+
+- **Landing page (`/`):**
+  - A boot intro on first visit, about 2.7 s, skipped under reduced motion: the lantern logo draws itself, "¡sereno! all is calm", then the page reveals.
+  - The hero: the headline, one username search that goes to Pay, and a live card for whatever you type. It sits over an ASCII horizon made of SSH key characters (React Bits Gradient ASCII).
+  - The statement, how it works (3 steps), the three features, an `npx sereno-ak` section (pick a command; a terminal types it and shows what happens), built on, a final search, and a proper footer.
+- **Look:**
+  - The name is lowercase, **sereno**.
+  - New mark: a lantern whose flame is a keyhole.
+  - Warm black and lantern amber, brass edges, grain.
+  - The card is brushed obsidian with a brass edge instead of rainbow foil.
+- **Spend:**
+  - One centered column, no side column.
+  - One key-file box (fingerprints in a collapsed helper).
+  - Step 2 opens with a from → to strip.
+  - Pasting a payment commit is step c of the git flow.
+  - The CLI command is one row at the bottom.
+- **Routes:** `#pay`, `#spend` and `#bounties` are unchanged, and `?user=<login>` still opens Pay. README step 2 now says to press Pay on the landing page.
+- **Stack:**
+  - GSAP 3.15 (SplitText, ScrollTrigger, DrawSVG, ScrambleText).
+  - Fonts self-hosted through fontsource; no trackers, no CDNs.
+  - Under `prefers-reduced-motion`, nothing moves.
+- **Licences:** the README's CROPS "O" line now says that the ASCII background (MIT + Commons Clause) and GSAP (Standard no-charge licence) aren't OSI licences. Both are decoration only.
+- **Tested:** `bun run typecheck` and `bun run build` pass. Checked in the browser at desktop and 375 px: no horizontal scroll, no console errors. A real Spend "prepare" (letsbecool9792 → octocat) renders the new strip. No payment was sent from the new UI yet.
+
+**WAITING ON:**
+- Suparno: review the PR.
+- After merging: Vercel redeploys the pay page, then one real Base Sepolia payment through the new Pay screen.
 
 ## 2026-11-06 19:55 IST: Suparno's Claude (laptop): username lookups hardened; bounties pay automatically when the issue closes
 

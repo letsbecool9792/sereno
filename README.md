@@ -45,7 +45,7 @@ Keep amounts small: a key that first appeared on-chain less than 72 hours ago ca
 ### 1. Your GitHub account is already a wallet
 
 1. Open `https://github.com/<you>.keys`. These are your public SSH keys, published by GitHub. (It lists only authentication keys; signing keys count too.)
-2. On [sereno-eth.vercel.app](https://sereno-eth.vercel.app), type `<you>` and press Find.
+2. On [sereno-eth.vercel.app](https://sereno-eth.vercel.app), type `<you>` in the search and press **Pay**. It opens the Pay page on your profile; nothing is paid until you press Pay there.
 
    You should see:
    - your account address, derived from your numeric GitHub ID;
@@ -293,7 +293,7 @@ Lead property: **S (secure).** Sereno exists so that developers can hold and spe
   - **The gateway:** anyone can run `gateway/`. The account address is also computable without it: `AccountFactory.addressOf(githubId)`.
   - **Key syncs and bounty settlement:** while the CRE workflows run in simulation, on-demand runs (new users' keys, bounty checks) go through a worker we run, so if it's down, new keys wait (keys already on-chain keep working, and anyone with CRE access can run `cre/` and the worker). Deploying the workflow to a CRE DON removes this; we've requested deploy access.
   - **Trade-off:** GitHub can remove a user's keys or account, and the oracle follows GitHub.
-- **O (open source).** MIT licensed, including the contracts, workflow, gateway, relayer, CLI and pay page. Everything builds and runs from this repo with Bun and Foundry (see *Run it*). Vendored third-party code keeps its own license (`contracts/lib/ed25519`, Apache-2.0).
+- **O (open source).** MIT licensed, including the contracts, workflow, gateway, relayer, CLI and pay page. Everything builds and runs from this repo with Bun and Foundry (see *Run it*). Vendored third-party code keeps its own license (`contracts/lib/ed25519`, Apache-2.0). Two front-end pieces aren't OSI open source: the landing page's ASCII background (`web/src/vendor/GradientASCII`, React Bits, MIT + Commons Clause) and the GSAP animation library (Standard no-charge licence). Both are decoration: removing them leaves every feature working.
 - **P (privacy).** A payment is public on-chain, like any transfer, and an account is linked to a GitHub ID by design.
   - **What each third party learns:**
     - **The gateway:** which names and usernames are looked up (the pay page and CLI look up profiles through it).
