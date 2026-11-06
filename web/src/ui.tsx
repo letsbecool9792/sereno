@@ -1,5 +1,5 @@
 // Small shared pieces: icons, the step tracker, skeleton placeholders and the copy button.
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 const svg = (path: ReactNode, size = 18) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -63,5 +63,26 @@ export function PageHead({ title, sub }: { title: string; sub?: string }) {
       <h1>{title}</h1>
       {sub && <p>{sub}</p>}
     </div>
+  );
+}
+
+/// While a wallet step has waited more than 12 s: where the request is. Wallet windows often open behind the browser or
+/// queue behind an earlier request.
+export function WalletHint({ busy }: { busy: string | null }) {
+  const [late, setLate] = useState(false);
+  useEffect(() => {
+    setLate(false);
+    if (!busy) return;
+    const t = setTimeout(() => setLate(true), 12_000);
+    return () => clearTimeout(t);
+  }, [busy]);
+  if (!busy || !late) return null;
+  const waitingOnChain = /waiting for the (transaction|approval)/i.test(busy);
+  return (
+    <p className="wallet-hint">
+      {waitingOnChain
+        ? "Still confirming on-chain. Testnets can take a minute; this page keeps checking."
+        : "Don't see it? Click your wallet's icon in the browser toolbar: the request is waiting there (it may have opened behind this window)."}
+    </p>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createPublicClient, createWalletClient, custom, type Address, type EIP1193Provider } from "viem";
+import { BaseError, ContractFunctionRevertedError, createPublicClient, createWalletClient, custom, type Address, type EIP1193Provider } from "viem";
 import { CHAINS, githubKeys, transportFor, githubUser, HOSTED_GATEWAY_URL, HOSTED_RELAYER_URL, type ChainKey, type GithubUser } from "@sereno/shared";
 
 export const PAY_CHAINS: ChainKey[] = ["base-sepolia", "arbitrum-sepolia"];
@@ -114,4 +114,30 @@ export async function connectWallet(w: WalletOption, key: ChainKey, onStep: (s: 
   const [from] = await wallet.requestAddresses();
   if (!from) throw new Error(`${w.name} returned no account`);
   return { wallet, from };
+}
+
+/// Plain words for the contract errors people can hit from the pay page.
+const REVERTS: Record<string, string> = {
+  TransferFailed: "The bounty board couldn't pull the USDC: the approval was used up or is too small, or the wallet holds less. Press Fund again; it asks for a new approval first.",
+  BadDeadline: "The refund deadline must be in the future.",
+  BadAmount: "Enter an amount above zero.",
+  AlreadySettled: "This issue is already settled, so it can't take more funding.",
+  NotSettled: "Nobody has won this bounty yet.",
+  NothingToPay: "Nothing is left to pay out.",
+  NothingToRefund: "You have nothing to refund on this issue.",
+  TooEarly: "Your refund opens after your deadline.",
+};
+
+/// A wallet or contract error as one readable sentence (viem puts the reason on a later line, so never just line 1).
+export function explain(err: unknown): string {
+  const msg = (err as Error)?.message ?? String(err);
+  if (/user rejected|user denied|rejected the request|denied transaction/i.test(msg)) return "The request was rejected in the wallet.";
+  if (err instanceof BaseError) {
+    const r = err.walk((e) => e instanceof ContractFunctionRevertedError) as ContractFunctionRevertedError | null;
+    const name = r?.data?.errorName ?? r?.reason;
+    if (name) return REVERTS[name] ?? (/exceeds balance/i.test(name) ? "This wallet doesn't hold enough USDC." : /exceeds allowance/i.test(name) ? REVERTS.TransferFailed! : `The contract refused: ${name}`);
+    if (/insufficient funds/i.test(msg)) return "This wallet needs a little ETH on this network to pay the gas.";
+    return err.shortMessage;
+  }
+  return msg.split("\n").find((l) => l.trim()) ?? "Something went wrong";
 }

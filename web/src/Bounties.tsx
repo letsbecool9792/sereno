@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { erc20Abi, formatUnits, parseUnits, type Address, type Hex } from "viem";
 import { accountFactoryAbi, bountyBoardAbi, CHAINS, CORE, EXTRAS, type ChainKey } from "@sereno/shared";
-import { clientFor, connectWallet, GATEWAY, PAY_CHAINS, RELAYER, relay, short, useWallets } from "./lib";
+import { clientFor, connectWallet, explain, GATEWAY, PAY_CHAINS, RELAYER, relay, short, useWallets } from "./lib";
 import { gsap, useMotion } from "./motion";
-import { Icon, PageHead } from "./ui";
+import { Icon, PageHead, WalletHint } from "./ui";
 
 /// "https://github.com/o/r/issues/12", "o/r#12" or "o/r/issues/12" → { repo, issue }.
 export function parseIssue(s: string): { repo: string; issue: string } | null {
@@ -103,13 +103,14 @@ export function Bounties() {
       const hash = await f(w);
       if (hash) {
         setBusy("Waiting for the transaction…");
-        await clientFor(chainKey).waitForTransactionReceipt({ hash });
+        await clientFor(chainKey).waitForTransactionReceipt({ hash, timeout: 180_000 });
         setDone({ text: what, url: `${chain.explorer}/tx/${hash}` });
       }
       await load(undefined, chainKey);
     } catch (err) {
-      const msg = (err as Error).message.split("\n")[0] ?? "failed";
-      setError(/rejected|denied/i.test(msg) ? "The request was rejected in the wallet." : msg);
+      setError(explain(err));
+      // Show the bounty as it is now (an earlier attempt may have gone through).
+      await load(undefined, chainKey).catch(() => {});
     } finally {
       setBusy(null);
     }
@@ -124,11 +125,21 @@ export function Bounties() {
         setBusy(`Approve ${amount} USDC for the bounty board in ${walletChoice!.name}…`);
         const h = await wallet.writeContract({ account: from, chain: chain.chain, address: chain.usdc, abi: erc20Abi, functionName: "approve", args: [board!.address, amt] });
         setBusy("Waiting for the approval…");
-        await pub.waitForTransactionReceipt({ hash: h });
+        await pub.waitForTransactionReceipt({ hash: h, timeout: 180_000 });
+        // Public RPCs are load-balanced: wait until the node we ask also sees the new allowance.
+        for (let i = 0; i < 10; i++) {
+          const a = await pub.readContract({ address: chain.usdc, abi: erc20Abi, functionName: "allowance", args: [from, board!.address] });
+          if (a >= amt) break;
+          await new Promise((r) => setTimeout(r, 1500));
+        }
       }
       const deadline = BigInt(Math.floor(Date.now() / 1000) + Math.max(1, Number(days) || 30) * 86_400);
+      const args = [info!.repo, BigInt(info!.issue), chain.usdc, amt, deadline] as const;
+      // Check it would succeed before asking the wallet, so a refusal shows its reason without a popup.
+      setBusy("Checking…");
+      await pub.simulateContract({ account: from, ...board!, functionName: "fund", args });
       setBusy(`Confirm the bounty in ${walletChoice!.name}…`);
-      return wallet.writeContract({ account: from, chain: chain.chain, ...board!, functionName: "fund", args: [info!.repo, BigInt(info!.issue), chain.usdc, amt, deadline] });
+      return wallet.writeContract({ account: from, chain: chain.chain, ...board!, functionName: "fund", args });
     });
 
   const refund = () =>
@@ -197,6 +208,7 @@ export function Bounties() {
       {!board && <p className="error">The bounty board isn't deployed yet.</p>}
 
       {busy && <p className="busy"><span className="spin" aria-hidden="true" />{busy}</p>}
+      <WalletHint busy={busy} />
       {error && <p className="error">{error}</p>}
       {done && (
         <p className="ok-msg">

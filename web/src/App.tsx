@@ -29,7 +29,7 @@ import { Landing } from "./Landing";
 import { Lantern } from "./Lantern";
 import { gsap, prefersReducedMotion, useMotion } from "./motion";
 import { Spend } from "./Spend";
-import { CopyButton, Icon, PageHead, Skeleton, Stepper } from "./ui";
+import { CopyButton, Icon, PageHead, Skeleton, Stepper, WalletHint } from "./ui";
 
 const ensClient = clientFor("sepolia");
 const REPO = "https://github.com/letsbecool9792/sereno";
@@ -324,6 +324,7 @@ function Pay() {
                   {busy ? <><span className="spin" aria-hidden="true" />{busy}</> : <>Pay @{lookup.user.login} {Icon.arrow(18)}</>}
                 </button>
                 {payStep >= 0 && <Stepper steps={["Connect", "Approve", "Confirm", "Sent"]} at={payStep} />}
+                <WalletHint busy={busy} />
                 {error && <p className="error">{error}</p>}
                 <p className="fine">Your wallet opens only when you press Pay.</p>
               </div>

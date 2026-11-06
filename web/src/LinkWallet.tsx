@@ -5,7 +5,7 @@ import { useState } from "react";
 import { isAddress } from "viem";
 import { EXTENSION_ID } from "@sereno/shared";
 import { connectWallet, useWallets } from "./lib";
-import { PageHead } from "./ui";
+import { PageHead, WalletHint } from "./ui";
 
 declare const chrome: { runtime?: { sendMessage: (id: string, msg: unknown, cb: (r: { result?: unknown; error?: string } | undefined) => void) => void; lastError?: { message?: string } } } | undefined;
 
@@ -76,6 +76,7 @@ export function LinkWallet() {
             )}
             {err && <p className="error">{err}</p>}
             <button onClick={link} disabled={!!busy}>{busy ?? `Link ${choice?.name ?? "a wallet"}`}</button>
+            <WalletHint busy={busy} />
           </>
         )}
       </section>

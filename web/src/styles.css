@@ -182,6 +182,7 @@ label, .field { display: grid; gap: var(--s-2); color: var(--muted); font-size: 
 
 /* Status */
 .busy { display: flex; align-items: center; gap: var(--s-3); color: var(--muted); }
+.wallet-hint { color: var(--amber); background: var(--amber-soft); border: 1px solid rgb(242 179 91 / 0.3); border-radius: var(--r-sm); padding: var(--s-3) var(--s-4); font-size: 0.9rem; }
 .error { color: var(--err); background: var(--err-soft); border: 1px solid rgb(255 139 128 / 0.2); border-radius: var(--r-sm); padding: var(--s-3) var(--s-4); font-size: 0.95rem; }
 .error.moved { display: grid; gap: var(--s-2); justify-items: start; padding: var(--s-4) var(--s-5); }
 .ok-msg { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); color: var(--ok); background: var(--ok-soft); border: 1px solid rgb(98 227 165 / 0.2); border-radius: var(--r-sm); padding: var(--s-3) var(--s-4); }
