@@ -12,13 +12,13 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 | WS | Owner | Now working on | Blocked on | Last update |
 |---|---|---|---|---|
-| WS1 contracts and relayer | Mohikshit | frontend reform v2 (`ws3/redesign`, web half); see 7 Nov 01:40 entry | Suparno takes the extension half | 7 Nov 01:40 |
+| WS1 contracts and relayer | Mohikshit | frontend reform v2 (`ws3/redesign`, web half); see 7 Nov 01:15 entry | Suparno takes the extension half | 7 Nov 01:25 |
 | WS2 CRE and ENS | Gantavya | frontend redesign PR (`ws3/frontend-redesign`); pay-to-SSH task queued | Suparno reviews the redesign PR; VM access, a throwaway key, test USDC (Gantavya) | 6 Nov 21:25 |
 | WS3 clients and demo | Suparno + Claude | demo bug fixes; frontend redesign handed to Gantavya (19:30 entry) | Gantavya's redesign PR | 6 Nov 19:30 |
 
 ---
 
-## 2026-11-07 01:40 IST: Mohikshit's Claude: frontend reform v2 (design language + logo); TASK for Suparno: the extension half
+## 2026-11-07 01:15 IST: Mohikshit's Claude: frontend reform v2 (design language + logo); TASK for Suparno: the extension half
 
 **Branch:** `ws3/redesign`.
 **New source of truth:** `web/DESIGN.md` v2. It replaces the amber "night watchman" language.
@@ -40,7 +40,17 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 - Spend and Bounties feedback now renders next to the action, with a success panel. The Bounties version keeps Suparno's `WalletHint` through `<Feedback wallet>`.
 - DESIGN.md v2.
 
-**Mohikshit does next (same branch):**
+**Update 01:25:** the web half is done and pushed:
+- tokens, Geist and buttons;
+- the mark, favicons and extension icons;
+- the boot animation;
+- the M1 dither hero (the vendored ASCII effect is removed, so the README's CROPS "O" line now lists only GSAP);
+- the check-draw in every `Done`;
+- the README "not affiliated with GitHub" line.
+
+Headless screenshots (landing, Pay, Spend, Bounties, the boot, Spend's error and step 2) show no console errors.
+
+**Mohikshit's half (all done above):**
 - tokens, fonts and buttons in `web/src/styles.css`;
 - `Mark.tsx` and the favicons;
 - the boot animation with the new mark;
