@@ -193,9 +193,10 @@ helper with a security key or the phone (§3.2).
 ## 4. Paying (requirement 2, manual)
 
 **Popup → Send:**
-1. To: a GitHub username, `<user>.sereno.eth`, or a `0x` address. A username is resolved through the gateway to
-   its numeric ID, and the address is computed locally with `factory.addressOf(id)` (the same on every chain).
-   The popup stores the **ID**, not the name, so a rename can't redirect a saved payee.
+1. To: a GitHub username, **any ENS name** (`alice.sereno.eth`, `alice.eth`, `pay.alice.eth`), or a `0x` address
+   (§4.1). A username is resolved through the gateway to its numeric ID, and the address is computed locally with
+   `factory.addressOf(id)` (the same on every chain). The popup stores the **ID**, not the name, so a rename can't
+   redirect a saved payee.
 2. Chain (Base Sepolia by default; Arbitrum Sepolia), token (USDC), amount, fee (0.02 USDC by default).
 3. **Pre-checks:** the balance must cover amount + fee; the key must be listed; if `amount > 50 USDC` and the key is
    newer than 72 h, show "available after <time>" instead of letting the contract revert.
@@ -208,6 +209,57 @@ helper with a security key or the phone (§3.2).
 **Pay from MetaMask instead:** the Send screen has a "Pay from another wallet" link. It opens
 `https://sereno-eth.vercel.app/?user=<login>` (already supported), where MetaMask, Phantom etc. connect as usual.
 The extension can't talk to MetaMask itself, because MetaMask only injects into web pages, not into extension pages.
+
+### 4.1 Paying an ENS name
+
+The pay page already does the hard part (`web/src/App.tsx`, the `lookup` effect). It resolves through ENSv2's
+Universal Resolver on Sepolia with the payment chain's ENSIP-11 coin type and ENS's batch gateway
+(`gatewayUrls: ["x-batch-gateway:true"]`, so CCIP-read names work). Then it compares the result with
+`factory.addressOf(id)` and refuses on a mismatch. **Move that lookup into `@sereno/shared`** so the pay page and
+the extension run the same code. Two kinds of names:
+
+**`<user>.sereno.eth`: always cross-checked.**
+1. Normalize the name (ENSIP-15, viem's `normalize`), then take the label and look up the GitHub user through the
+   gateway, which gives the numeric ID.
+2. Resolve the name with `getEnsAddress({ name, coinType: <chain's coin type> })`.
+3. Compute `factory.addressOf(id)` locally. **If the two differ, don't pay** (the pay page's existing "mismatch"
+   rule). This protects against a lying gateway and a stale claim.
+4. If `NameRegistrar.holderOf(label)` says the name is stale (its owner renamed on GitHub), show the existing "this
+   name moved" message and don't pay (PR #24 behaviour).
+5. Claimed or not: the name's resolver isn't our `OffchainResolver` (the pay page's `claimed` check).
+
+**Any other ENS name (`alice.eth`, `dao.alice.eth`, …):**
+1. Normalize the name. Show the normalized form and **warn on confusable or mixed-script labels** (ENSIP-15 flags
+   them).
+2. Resolve the address for the payment chain's coin type. If there's none, fall back to the default EVM address
+   (ENSIP-19, coin type `0x80000000`), then to coin type 60 with a warning: "this name only lists an Ethereum
+   address; it's assumed to be the same account on Base".
+3. Read the text records `com.github` (the ENSIP-5 key), `avatar` and `url`.
+4. **Work out what the address is:**
+   - It's someone's **Sereno account** if the address has code and its `githubId()` returns an ID with
+     `factory.addressOf(id) == address`, or if it isn't deployed but `com.github`'s user has that `addressOf`.
+     Show "@login's Sereno account ✓".
+   - Otherwise it's a **plain wallet** (an EOA or another contract): "a wallet, not a Sereno account". Paying it
+     works: the account's `execute` transfers ERC-20s to any address.
+5. If `com.github` names a GitHub user, show "says it belongs to @login" plus whether that user's profile links back
+   (§7.1). Without the link back, label it **unverified**.
+
+**Confirm screen for names:** the name as typed, the normalized name, the resolved address, how it was resolved
+(coin type, "via gateway (offchain)" or "onchain"), and the Sereno/wallet label from step 4. That's the same "show
+what you sign" rule as §4 step 4: the intent text contains the address, not the name.
+
+**Saved payees and recurring rules** that use a name store **both the name and the address resolved at setup**.
+Each run re-resolves the name. If the name now points somewhere else, the rule **pauses and asks** instead of
+following it. An expired, transferred or hijacked name can't redirect an automation. `sereno.eth` payees are stored
+by GitHub ID as before (§5.2).
+
+**Which ENS network:** the environment's. In the testnet build that's Sepolia ENS, where `sereno.eth` and our
+contracts live. Names on Sepolia **aren't the real-world names** (anyone can register `vitalik.eth` there), so the
+UI marks non-`sereno.eth` names "Sepolia ENS" and treats them as unverified unless §7.1's two-way link holds. A
+mainnet launch switches resolution to mainnet ENS.
+
+**Privacy:** name lookups go to the RPC, to ENS's batch gateway and, for `sereno.eth` names, to our gateway. They
+run on submit, not on every keystroke.
 
 ## 5. Automations (requirements 1 and 2)
 
@@ -328,7 +380,7 @@ page view.
 | Page | Button / badge | Core feature | What it does |
 |---|---|---|---|
 | Any profile `github.com/<user>` | **Pay @user** | A1, A4, C0 | Send screen with the payee filled in (from your Sereno account, or "from another wallet" to the pay page) |
-| | Badge: `<user>.sereno.eth` and "claimed" or not | A4, A4b | Resolves through the gateway (on click, or with badges on) |
+| | **ENS names under the avatar** (§7.1): `<user>.sereno.eth` always, plus the user's own names such as `alice.eth` when they're linked | A4, A4b | Clicking a name copies it or opens Pay with it. "claimed" or "verified" ticks appear on click, or at once with badges on |
 | | **Pay with refund** (in the Pay panel) | A10 | `Escrow.deposit` from a linked wallet via the pay page; refundable after the deadline |
 | Your own profile | **Sereno account**: balance on each chain, address, copy | A1, A11 | Reads `balanceOf` on Base and Arbitrum Sepolia |
 | | **Sync my keys** | A3 | `POST /sync`, then the status ticks per chain |
@@ -348,6 +400,55 @@ page view.
 | Repository page | **Pay by commit** (copy command) | B1, A9 | Shows `ak commit-pay <amount> <user> --push` for this repo, or runs it through the native helper (§3.2) |
 
 Not in the extension: the phone-as-key flow (A8) needs Win32-OpenSSH, so it goes through the native helper only.
+
+### 7.1 ENS names on GitHub profiles
+
+A small "ENS" block under the profile's avatar and bio, in the sidebar where GitHub shows the user's links:
+
+```
+◈ alice.sereno.eth   claimed ✓          [Pay]
+◈ alice.eth          verified ✓          [Pay]
+```
+
+**1. `<login>.sereno.eth`: always shown, with no network call.** Every GitHub user has it (the wildcard resolver,
+A4), so the content script just builds it from the login on the page. On click, or at once with badges on, it adds:
+- **claimed ✓** (a real ENSv2 subname owned by the account, A4b) or **unclaimed** (still resolves through the
+  wildcard),
+- the account's USDC balance, if the user turned on "show balances".
+
+On your **own** profile, an unclaimed name gets a **Claim** button (§7 table).
+
+**2. The user's own ENS names: shown only when the link goes both ways.** Anyone can write `vitalik.eth` in their
+bio, so a name counts only when:
+- **GitHub → ENS:** the profile mentions the name, in the bio, the website field or a social link (read from the
+  page; no network call), **and**
+- **ENS → GitHub:** the name's `com.github` text record (ENSIP-5) equals the login, case-insensitive.
+
+States: **verified ✓** (both directions); **unverified** in grey ("the profile mentions alice.eth, but alice.eth
+doesn't name this GitHub account"); and with neither, it isn't shown. A verified name's [Pay] pays whatever the name
+resolves to (§4.1); the Sereno/wallet label says which kind of address that is.
+
+**Linking your own ENS name (the extension's "Show my ENS name on GitHub" helper):**
+1. In the popup, type the name you own, for example `alice.eth`.
+2. The extension checks its `com.github` record. If it's missing, it opens the ENS app's record editor for that name
+   (`app.ens.domains/<name>`) and tells you to set `com.github` to your login. Setting a record is a normal wallet
+   transaction from the name's owner (MetaMask etc.). The Sereno account can't do it, because it has no generic
+   call.
+3. Optionally, it also suggests setting the name's address to your Sereno account, so paying `alice.eth` lands in
+   the same account as paying `alice.sereno.eth`.
+4. It opens `github.com/settings/profile` and tells you to add the name to the bio or as a social link (GitHub has
+   no API for us to write it for you).
+5. It re-checks both directions and shows the profile badge as it will look.
+
+**`sereno.eth` names need none of this.** A claimed name already has `com.github` set by `NameRegistrar` at claim
+time (it sets `url`, `avatar` and `com.github`), and the gateway answers the same records for unclaimed names.
+
+**Why not reverse resolution ("primary name")?** The Sereno account can't set its own reverse record (no generic
+call), and a wallet's primary name says nothing about which GitHub user it belongs to. The two-way text-record link
+is the check that actually ties a name to a GitHub account.
+
+**Caching and privacy:** results are cached per (login, name) for 10 minutes. Without badges on, nothing about the
+profile you're viewing leaves the browser until you click.
 
 ## 8. Extension layout and permissions
 
@@ -378,6 +479,10 @@ Permissions (keep them minimal; the store review reads them):
 | The user's own SSH key leaks through the extension | It can't: the extension never sees it. The helper returns signatures only, and its manifest admits our extension ID alone |
 | A malicious page triggers a payment | Content scripts only open the popup; signing needs a click in the extension's own UI. `externally_connectable` accepts only wallet links from the pay page, and those are verified by signature |
 | A rename redirects a saved payee | Payees and rules store the GitHub **ID** |
+| An ENS name is changed, expired or hijacked after a payee is saved | Rules store the address resolved at setup and pause if the name now resolves elsewhere (§4.1) |
+| A lookalike ENS name (`aIice.eth`) | ENSIP-15 normalization, a confusable/mixed-script warning, and the normalized name and address on the confirm screen |
+| Our gateway lies about `<user>.sereno.eth` | The result must equal `factory.addressOf(id)`, computed locally, or the payment is refused (the pay page already does this) |
+| A fake "my ENS name" claim on a profile | Shown as verified only if the name's `com.github` record names that GitHub login (§7.1) |
 | The relayer cheats | It can't: the signed text fixes recipient, amount and fee. It can only refuse; then the user self-submits (a "Submit myself" option with any wallet's gas, later) |
 | GitHub account takeover adds a key | The 72 h / 50 USDC rule on-chain. The keys screen shows the new key as "cooling down" so the user notices |
 | The OAuth token leaks | Its only scope is `write:ssh_signing_key`, and it is dropped right after use |
@@ -388,12 +493,14 @@ Permissions (keep them minimal; the store review reads them):
 The submission deadline is 09:00 Sat and the freeze is 04:00. This is post-hackathon work, except step 0.
 
 0. **Tonight, if there's time (about 1–2 h), slide otherwise:** the content script only. "Pay @user" on profiles
-   and "Tip author" on commits and PRs open `sereno-eth.vercel.app/?user=<login>`. It needs no keys and no
-   signing. It is extra C1/C2 as written in `CLAUDE.md`.
+   and "Tip author" on commits and PRs open `sereno-eth.vercel.app/?user=<login>`. The profile also shows
+   `<login>.sereno.eth` under the avatar (built from the login; no network call). It needs no keys and no signing.
+   It is extra C1/C2 as written in `CLAUDE.md`, and the ENS name on the profile is a nice beat for the ENS prize.
 1. **Browser key and vault** (§3.1, §3.5). Start with a forge test: sign an intent with WebCrypto P-256 in TS,
    verify it through `SshSigVerifier`, and check that it's accepted. Then the vault (password first, passkey
    second), lock and auto-lock, device flow, add the key, sync.
-2. **Popup Send and Confirm** (§4), then history (§6).
+2. **Popup Send and Confirm** (§4), with ENS names (§4.1, after moving the pay page's lookup into
+   `@sereno/shared`), then history (§6) and the profile ENS block (§7.1).
 3. **Wallet linking and automations** (§5), with the `#link-wallet` page on the pay site.
 4. **Native helper** (`ak connect`, §3.2) and the remaining GitHub buttons (§7).
 
