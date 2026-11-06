@@ -11,7 +11,10 @@ export const CORE: { Ed25519Verifier: Address; SshSigVerifier: Address; KeyOracl
 };
 
 /// BountyBoard and Escrow, same addresses on every chain they're deployed on. null until deployed.
-export const EXTRAS: { BountyBoard: Address; Escrow: Address } | null = null;
+export const EXTRAS: { BountyBoard: Address; Escrow: Address } | null = {
+  "BountyBoard": "0xCfecCbDB71236E27db36Aef2d1Da5bD428d796f3",
+  "Escrow": "0xDaaB8E6978A9CA599B8a2EcCFB13AF1CA0E963cb"
+};
 
 /// The CRE receiver in front of KeyOracle (and BountyBoard); same address on every chain. null until deployed.
 export const GATE: { ReportGate: Address } | null = {
