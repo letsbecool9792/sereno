@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { erc20Abi, formatUnits, getAddress, hexToString, isAddress, parseUnits, type Address } from "viem";
 import {
   accountFactoryAbi,
@@ -13,8 +13,8 @@ import {
   type GithubUser,
 } from "@sereno/shared";
 import { clientFor, fetchProfile, PAY_CHAINS, parseCommitLink, relay, RELAYER, short } from "./lib";
-import { gsap, useMotion } from "./motion";
-import { CopyButton, Icon, PageHead } from "./ui";
+import { gsap, prefersReducedMotion, useMotion } from "./motion";
+import { CopyButton, Done, Feedback, Icon, PageHead } from "./ui";
 
 interface Prepared {
   chainKey: ChainKey;
@@ -78,6 +78,16 @@ export function Spend() {
   const [error, setError] = useState<string | null>(null);
   const [paid, setPaid] = useState<Result>(null);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
+  // Editing the payment after preparing it makes the prepared text stale: start step 2 over.
+  useEffect(() => {
+    setPrep(null);
+    setPaid(null);
+    setSig("");
+  }, [me, to, amount, fee, chainKey]);
+  // Step 2 appears below the fold on most screens: bring it into view.
+  useEffect(() => {
+    if (prep) root.current?.querySelector(".spend-sign")?.scrollIntoView({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+  }, [prep?.text]);
   const root = useRef<HTMLDivElement>(null);
 
   /// Asks the relayer to have the Chainlink key oracle sync this user's GitHub keys, then waits for it.
@@ -258,6 +268,15 @@ export function Spend() {
           {prep && (
             <section className="card step-card spend-sign" aria-labelledby="sign-title">
               <div className="step-head"><span className="step-num">2</span><h2 id="sign-title">Sign and send</h2></div>
+              {paid ? (
+                <Done
+                  title={`Sent ${formatUnits(prep.amount, 6)} USDC`}
+                  sub={<>to {prep.toLabel} on {CHAINS[prep.chainKey].chain.name}{paid.note && <><br />{paid.note}</>}</>}
+                  url={paid.url}
+                  again={() => { setPaid(null); setPrep(null); setSig(""); setLink(""); }}
+                  againLabel="New payment"
+                />
+              ) : (<>
               <div className="fromto">
                 <img src={prep.user.avatarUrl} alt="" width={36} height={36} />
                 <div>
@@ -354,17 +373,12 @@ export function Spend() {
                   </form>
                 </>
               )}
+              <Feedback busy={busy} error={error} />
+              </>)}
             </section>
           )}
 
-          {busy && prep && <p className="busy"><span className="spin" aria-hidden="true" />{busy}</p>}
-          {error && <p className="error">{error}</p>}
-          {paid && (
-            <p className="ok-msg">
-              {Icon.check(16)} Paid. <a href={paid.url} target="_blank" rel="noreferrer">View receipt</a>
-              {paid.note && <span className="muted"> {paid.note}</span>}
-            </p>
-          )}
+          {!prep && <Feedback error={error} />}
         </div>
 
         <div className="terminal-row">

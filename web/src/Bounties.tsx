@@ -3,7 +3,7 @@ import { erc20Abi, formatUnits, parseUnits, type Address, type Hex } from "viem"
 import { accountFactoryAbi, bountyBoardAbi, CHAINS, CORE, EXTRAS, type ChainKey } from "@sereno/shared";
 import { clientFor, connectWallet, explain, GATEWAY, PAY_CHAINS, RELAYER, relay, short, useWallets } from "./lib";
 import { gsap, useMotion } from "./motion";
-import { Icon, PageHead, WalletHint } from "./ui";
+import { Feedback, Icon, PageHead } from "./ui";
 
 /// "https://github.com/o/r/issues/12", "o/r#12" or "o/r/issues/12" → { repo, issue }.
 export function parseIssue(s: string): { repo: string; issue: string } | null {
@@ -207,14 +207,7 @@ export function Bounties() {
       </form>
       {!board && <p className="error">The bounty board isn't deployed yet.</p>}
 
-      {busy && <p className="busy"><span className="spin" aria-hidden="true" />{busy}</p>}
-      <WalletHint busy={busy} />
-      {error && <p className="error">{error}</p>}
-      {done && (
-        <p className="ok-msg">
-          {Icon.check(16)} {done.text} {done.url && <a href={done.url} target="_blank" rel="noreferrer">View receipt</a>}
-        </p>
-      )}
+      {!info && <Feedback busy={busy} error={error} wallet />}
 
       {info && (
         <div className="split">
@@ -276,6 +269,13 @@ export function Bounties() {
                 <button type="button" className="secondary block" onClick={refund} disabled={!!busy}>Refund my contribution</button>
               )}
             </div>
+            <Feedback busy={busy} error={error} wallet>
+              {done && (
+                <p className="ok-msg">
+                  {Icon.check(16)} {done.text} {done.url && <a href={done.url} target="_blank" rel="noreferrer">View receipt</a>}
+                </p>
+              )}
+            </Feedback>
           </aside>
         </div>
       )}

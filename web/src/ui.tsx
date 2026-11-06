@@ -1,5 +1,6 @@
 // Small shared pieces: icons, the step tracker, skeleton placeholders and the copy button.
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { prefersReducedMotion } from "./motion";
 
 const svg = (path: ReactNode, size = 18) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -54,6 +55,43 @@ export function CopyButton({ text, label = "Copy" }: { text: string; label?: str
       {done ? Icon.check(14) : Icon.copy(14)}
       <span>{done ? "Copied" : label}</span>
     </button>
+  );
+}
+
+/// Progress, error and success for an action, rendered right after the button that fired it. It's always mounted so
+/// screen readers hear changes, and it scrolls itself into view so a click never seems to do nothing.
+/// `wallet`: the busy step waits on a browser wallet, so show WalletHint when it takes long.
+export function Feedback({ busy, error, wallet, children }: { busy?: string | null; error?: string | null; wallet?: boolean; children?: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const shown = !!(busy || error || children);
+  useEffect(() => {
+    if (shown) ref.current?.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+  }, [shown, busy, error]);
+  return (
+    <div ref={ref} className="feedback" aria-live="polite">
+      {busy && <p className="busy"><span className="spin" aria-hidden="true" />{busy}</p>}
+      {wallet && <WalletHint busy={busy ?? null} />}
+      {error && <p className="error" role="alert">{error}</p>}
+      {children}
+    </div>
+  );
+}
+
+/// The "it worked" panel: a check, what happened, and the receipt.
+export function Done({ title, sub, url, again, againLabel = "Send again" }: { title: string; sub?: ReactNode; url?: string; again?: () => void; againLabel?: string }) {
+  return (
+    <div className="done" role="status">
+      <span className="done-ring" aria-hidden="true" />
+      <span className="done-ck" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+      </span>
+      <strong>{title}</strong>
+      {sub && <span className="muted">{sub}</span>}
+      <div className="done-actions">
+        {url && <a className="button-link" href={url} target="_blank" rel="noreferrer">View receipt {Icon.external(15)}</a>}
+        {again && <button type="button" className="secondary" onClick={again}>{againLabel}</button>}
+      </div>
+    </div>
   );
 }
 
