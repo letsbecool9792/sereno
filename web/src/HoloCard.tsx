@@ -12,8 +12,9 @@ const CHECK_TEXT: Record<NameCheck, string> = {
 
 const still = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-/// The developer as a holographic card. The foil and sheen follow the pointer (CSS vars --mx/--my in 0..1), except
-/// under reduced motion. A failed name check turns the card itself into a refused card; `received` stamps it after a payment.
+/// The developer as a card: brushed obsidian with brass edges, a fine grain, and a warm sheen that follows the pointer
+/// like lantern light (CSS vars --mx/--my in 0..1; still under reduced motion). A failed name check turns it into a
+/// refused card; `received` stamps it after a payment.
 export function HoloCard({ user, name, claimed, check, received }: { user: GithubUser; name: string; claimed?: boolean; check?: NameCheck; received?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   function move(e: React.PointerEvent) {
@@ -30,11 +31,12 @@ export function HoloCard({ user, name, claimed, check, received }: { user: Githu
   const refused = check === "mismatch" || check === "unresolved";
   return (
     <div ref={ref} className={`holo${refused ? " refused" : ""}`} onPointerMove={move} onPointerLeave={leave}>
+      <span className="holo-mark" aria-hidden="true"><Lantern size={190} /></span>
       <div className="holo-top">
-        <span className="holo-brand"><Lantern size={22} />Sereno</span>
+        <span className="holo-brand"><Lantern size={20} />sereno</span>
         <span className="holo-id">No. {user.id.toString()}</span>
       </div>
-      <img className="holo-av" src={user.avatarUrl} alt="" width={88} height={88} />
+      <img className="holo-av" src={user.avatarUrl} alt="" width={84} height={84} />
       <div className="holo-name">@{user.login}</div>
       {user.name && <div className="holo-real">{user.name}</div>}
       <div className="holo-ens">

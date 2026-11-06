@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { erc20Abi, formatUnits, parseUnits, type Address, type Hex } from "viem";
 import { accountFactoryAbi, bountyBoardAbi, CHAINS, CORE, EXTRAS, type ChainKey } from "@sereno/shared";
 import { clientFor, connectWallet, PAY_CHAINS, RELAYER, relay, short, useWallets } from "./lib";
+import { gsap, useMotion } from "./motion";
+import { Icon, PageHead } from "./ui";
 
 /// "https://github.com/o/r/issues/12", "o/r#12" or "o/r/issues/12" → { repo, issue }.
 export function parseIssue(s: string): { repo: string; issue: string } | null {
@@ -37,6 +39,7 @@ export function Bounties() {
   const walletChoice = wallets.find((w) => w.name === walletName) ?? wallets.find((w) => /metamask/i.test(w.name)) ?? wallets[0];
   const chain = CHAINS[chainKey];
   const board = EXTRAS ? ({ address: EXTRAS.BountyBoard, abi: bountyBoardAbi } as const) : null;
+  const root = useRef<HTMLDivElement>(null);
 
   async function load(e?: React.FormEvent, key = chainKey): Promise<Info | null> {
     e?.preventDefault();
@@ -158,89 +161,99 @@ export function Bounties() {
     }
   }
 
+  useMotion(root, () => {
+    if (!info) return;
+    gsap.from(".bounty-issue", { y: 28, autoAlpha: 0, duration: 1 });
+    gsap.from(".bounty-actions > *", { y: 20, autoAlpha: 0, duration: 0.8, stagger: 0.08, delay: 0.12 });
+  }, [info?.repo, info?.issue, info?.chainKey]);
+
+  const settled = info ? info.winner !== 0n : false;
+
   return (
-    <>
-      <p className="lead">
-        Put USDC on any GitHub issue. When a merged pull request closes it, a Chainlink workflow confirms it on GitHub and the PR's author is paid into their
-        Sereno account, by GitHub ID. They don't need to have signed up or shared an address.
-      </p>
+    <div ref={root} className="bounties-page">
+      <PageHead title="Issue bounties" sub="Fund an issue. Whoever merges the fix gets paid." />
 
       <form onSubmit={(e) => void load(e)} className="search">
-        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="https://github.com/owner/repo/issues/12" spellCheck={false} />
-        <select value={chainKey} onChange={(e) => { const k = e.target.value as ChainKey; setChainKey(k); if (info) void load(undefined, k); }}>
+        <span className="at">{Icon.github(16)}</span>
+        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="owner/repo#12 or an issue link" spellCheck={false} aria-label="GitHub issue" autoComplete="off" />
+        <select aria-label="Network" value={chainKey} onChange={(e) => { const k = e.target.value as ChainKey; setChainKey(k); if (info) void load(undefined, k); }}>
           {PAY_CHAINS.map((k) => <option key={k} value={k}>{CHAINS[k].chain.name}</option>)}
         </select>
         <button disabled={!!busy || !input.trim() || !board}>Find</button>
       </form>
       {!board && <p className="error">The bounty board isn't deployed yet.</p>}
 
-      {busy && <p className="busy">{busy}</p>}
+      {busy && <p className="busy"><span className="spin" aria-hidden="true" />{busy}</p>}
       {error && <p className="error">{error}</p>}
       {done && (
         <p className="ok-msg">
-          {done.text} {done.url && <a href={done.url} target="_blank" rel="noreferrer">View transaction</a>}
+          {Icon.check(16)} {done.text} {done.url && <a href={done.url} target="_blank" rel="noreferrer">View receipt</a>}
         </p>
       )}
 
       {info && (
-        <section className="card">
-          <div className="login">
-            <a href={info.url} target="_blank" rel="noreferrer">{info.repo}#{info.issue}</a> {info.title}
-          </div>
-          <dl>
-            <dt>Issue</dt>
-            <dd>{info.state === "closed" ? <span className="tag ok">closed</span> : <span className="tag">open</span>}</dd>
-            <dt>Bounty on {chain.chain.name}</dt>
-            <dd>{formatUnits(info.pot, 6)} USDC {info.winner !== 0n && info.pot === 0n && <span className="muted">(paid out)</span>}</dd>
-            <dt>Winner</dt>
-            <dd>
-              {info.winner === 0n ? (
-                <span className="muted">not settled yet</span>
-              ) : (
-                <>
-                  {info.winnerLogin ? <a href={`https://github.com/${info.winnerLogin}`} target="_blank" rel="noreferrer">@{info.winnerLogin}</a> : `GitHub ${info.winner}`}{" "}
-                  <span className="muted">
-                    account <a href={`${chain.explorer}/address/${info.winnerAccount}`} target="_blank" rel="noreferrer">{short(info.winnerAccount!)}</a>
-                  </span>
-                </>
-              )}
-            </dd>
-          </dl>
-
-          {info.winner === 0n && (
-            <>
-              <h3>Fund it</h3>
-              <div className="pay">
-                {wallets.length > 1 && (
-                  <select value={walletChoice?.name} onChange={(e) => setWalletName(e.target.value)}>
-                    {wallets.map((w) => <option key={w.name}>{w.name}</option>)}
-                  </select>
-                )}
-                <input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
-                <span>USDC, refundable after</span>
-                <input type="number" min="1" step="1" value={days} onChange={(e) => setDays(e.target.value)} />
-                <span>days</span>
-                <button onClick={fund} disabled={!!busy || !(Number(amount) > 0)}>Fund bounty</button>
+        <div className="split">
+          <section className="card bounty-issue split-main" aria-label={`${info.repo}#${info.issue}`}>
+            <div className="issue-head">
+              <a className="issue-ref mono" href={info.url} target="_blank" rel="noreferrer">{info.repo}#{info.issue} {Icon.external(14)}</a>
+              {info.state === "closed" ? <span className="tag ok">closed</span> : <span className="tag">open</span>}
+            </div>
+            <h2 className="issue-title">{info.title}</h2>
+            <div className="pot">
+              <span className="label">Bounty on {chain.chain.name}</span>
+              <span className="pot-amount">{formatUnits(info.pot, 6)} <span>USDC</span></span>
+              {settled && info.pot === 0n && <span className="muted">Paid out</span>}
+            </div>
+            <dl className="summary">
+              <div>
+                <dt>Winner</dt>
+                <dd>
+                  {!settled ? (
+                    <span className="muted">Not settled yet</span>
+                  ) : (
+                    <>
+                      {info.winnerLogin ? <a href={`https://github.com/${info.winnerLogin}`} target="_blank" rel="noreferrer">@{info.winnerLogin}</a> : `GitHub ${info.winner}`}{" "}
+                      <a className="muted mono" href={`${chain.explorer}/address/${info.winnerAccount}`} target="_blank" rel="noreferrer">{short(info.winnerAccount!)}</a>
+                    </>
+                  )}
+                </dd>
               </div>
-              <p className="muted">Two wallet steps the first time: approve USDC, then fund. If nobody earns it by your deadline, take it back with Refund.</p>
-            </>
-          )}
+            </dl>
+          </section>
 
-          <h3>Settle</h3>
-          <div className="row">
-            <button onClick={settle} disabled={!!busy || (info.winner !== 0n && info.pot === 0n) || (info.winner === 0n && info.pot === 0n)}>
-              {info.winner !== 0n ? "Pay out" : "Check GitHub and pay the PR author"}
-            </button>
-            {info.winner === 0n && info.pot > 0n && (
-              <button type="button" className="secondary" onClick={refund} disabled={!!busy}>Refund my contribution</button>
+          <aside className="split-side bounty-actions">
+            {!settled && (
+              <div className="card">
+                <h2 className="h3">Fund it</h2>
+                <div className="row">
+                  <label>Amount (USDC)<input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
+                  <label>Refundable after (days)<input type="number" min="1" step="1" value={days} onChange={(e) => setDays(e.target.value)} /></label>
+                </div>
+                {wallets.length > 1 && (
+                  <label className="field">
+                    <span>Pay with</span>
+                    <select aria-label="Wallet" value={walletChoice?.name} onChange={(e) => setWalletName(e.target.value)}>
+                      {wallets.map((w) => <option key={w.name}>{w.name}</option>)}
+                    </select>
+                  </label>
+                )}
+                <button className="block" onClick={fund} disabled={!!busy || !(Number(amount) > 0)}>Fund bounty {Icon.arrow(16)}</button>
+                <p className="muted">First time: approve USDC, then fund. Take it back after your deadline if nobody earns it.</p>
+              </div>
             )}
-          </div>
-          <p className="muted">
-            Anyone can press it once the fixing PR is merged. The workflow pays only if the issue's latest close came from a merged PR in this repo, and pays
-            that PR's author.
-          </p>
-        </section>
+            <div className="card">
+              <h2 className="h3">Settle</h2>
+              <p className="muted">Once the fixing PR is merged, anyone can press this. Chainlink checks GitHub and pays the PR's author.</p>
+              <button className="block" onClick={settle} disabled={!!busy || (settled && info.pot === 0n) || (!settled && info.pot === 0n)}>
+                {settled ? "Pay out" : "Check GitHub and pay"} {Icon.arrow(16)}
+              </button>
+              {!settled && info.pot > 0n && (
+                <button type="button" className="secondary block" onClick={refund} disabled={!!busy}>Refund my contribution</button>
+              )}
+            </div>
+          </aside>
+        </div>
       )}
-    </>
+    </div>
   );
 }

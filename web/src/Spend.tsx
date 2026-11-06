@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { erc20Abi, formatUnits, getAddress, hexToString, isAddress, parseUnits, type Address } from "viem";
 import {
   accountFactoryAbi,
   buildIntent,
   CHAINS,
   CORE,
-  ENS_DEPLOYMENT,
   keyHash,
   keyOracleAbi,
   SIGNING_NAMESPACE,
@@ -14,7 +13,8 @@ import {
   type GithubUser,
 } from "@sereno/shared";
 import { clientFor, fetchProfile, PAY_CHAINS, parseCommitLink, relay, RELAYER, short } from "./lib";
-import { HoloCard } from "./HoloCard";
+import { gsap, useMotion } from "./motion";
+import { CopyButton, Icon, PageHead } from "./ui";
 
 interface Prepared {
   chainKey: ChainKey;
@@ -53,21 +53,12 @@ async function fingerprint(blobB64: string): Promise<string> {
   }
 }
 
-function Copy({ text }: { text: string }) {
-  const [done, setDone] = useState(false);
-  return (
-    <button type="button" className="small" onClick={() => void navigator.clipboard.writeText(text).then(() => { setDone(true); setTimeout(() => setDone(false), 1200); })}>
-      {done ? "Copied" : "Copy"}
-    </button>
-  );
-}
-
 function Cmd({ lines }: { lines: string[] }) {
   const text = lines.join("\n");
   return (
     <div className="cmd">
       <pre>{text}</pre>
-      <Copy text={text} />
+      <CopyButton text={text} />
     </div>
   );
 }
@@ -78,8 +69,7 @@ export function Spend() {
   const [amount, setAmount] = useState("1");
   const [fee, setFee] = useState("0.02");
   const [chainKey, setChainKey] = useState<ChainKey>("base-sepolia");
-  const [keyChoice, setKeyChoice] = useState<number | "other">(0);
-  const [otherPath, setOtherPath] = useState("");
+  const [keyFile, setKeyFile] = useState("~/.ssh/id_ed25519");
   const [mode, setMode] = useState<"sign" | "commit">("sign");
   const [prep, setPrep] = useState<Prepared | null>(null);
   const [sig, setSig] = useState("");
@@ -88,6 +78,7 @@ export function Spend() {
   const [error, setError] = useState<string | null>(null);
   const [paid, setPaid] = useState<Result>(null);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
+  const root = useRef<HTMLDivElement>(null);
 
   /// Asks the relayer to have the Chainlink key oracle sync this user's GitHub keys, then waits for it.
   async function syncKeys() {
@@ -164,9 +155,11 @@ export function Spend() {
         }),
       );
       setPrep({ chainKey, user, account, balance, nonce, to: toAddr, toLabel, amount: amt, fee: f, text, keys });
-      // Pre-pick the key most people sign with: one already on-chain that needs no touch or phone.
+      // Prefill the key file most people sign with: one already on-chain that needs no touch or phone. It only fills
+      // `-f` in the commands; the payment is the same whichever listed key signs.
       const best = keys.findIndex((x) => x.listed && !x.type.startsWith("sk-"));
-      setKeyChoice(best >= 0 ? best : Math.max(0, keys.findIndex((x) => x.listed)));
+      const guess = keys[best >= 0 ? best : Math.max(0, keys.findIndex((x) => x.listed))];
+      setKeyFile(`~/.ssh/${usualFile(guess?.type ?? "ssh-ed25519")}`);
     } catch (err) {
       setError((err as Error).message.includes("not found") ? "GitHub user not found" : (err as Error).message.split("\n")[0]!);
     } finally {
@@ -225,143 +218,164 @@ export function Spend() {
 
   // As a shell argument that works in PowerShell and bash alike: PowerShell doesn't expand `~` for programs and
   // Windows' ssh-keygen doesn't either, but both shells expand "$HOME" inside double quotes.
-  const keyPath =
-    keyChoice === "other" ? otherPath.trim() || "~/.ssh/id_ed25519" : `~/.ssh/${usualFile(prep?.keys[keyChoice]?.type ?? "ssh-ed25519")}`;
+  const keyPath = keyFile.trim() || "~/.ssh/id_ed25519";
   const k = `"${keyPath.replace(/^~(?=$|[\\/])/, "$HOME")}"`;
   const needed = prep ? prep.amount + prep.fee : 0n;
   const listed = prep?.keys.some((x) => x.listed);
 
+  useMotion(root, () => {
+    if (!prep) return;
+    gsap.from(".spend-sign", { y: 24, autoAlpha: 0, duration: 0.9 });
+    gsap.from(".fromto > *", { y: 12, autoAlpha: 0, duration: 0.7, stagger: 0.06, delay: 0.15 });
+  }, [prep?.text]);
+
   return (
-    <>
-      <p className="lead">
-        Spend from your account with the SSH key on your GitHub profile. You sign a short text with the <code>ssh-keygen</code> or <code>git</code> you already
-        have; nothing to install, and your key never touches this page.
-      </p>
+    <div ref={root} className="spend-page">
+      <PageHead title="Spend your balance" sub="Sign with the SSH key on your GitHub. Your key never leaves your machine." />
 
-      <form onSubmit={prepare} className="card form">
-        <label>Your GitHub username<input value={me} onChange={(e) => setMe(e.target.value)} placeholder="you" spellCheck={false} /></label>
-        <label>Pay to (GitHub username or 0x address)<input value={to} onChange={(e) => setTo(e.target.value)} placeholder="alice or 0x…" spellCheck={false} /></label>
-        <div className="row">
-          <label>Amount (USDC)<input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
-          <label>Relayer fee (USDC)<input type="number" min="0" step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} /></label>
-          <label>Chain
-            <select value={chainKey} onChange={(e) => setChainKey(e.target.value as ChainKey)}>
-              {PAY_CHAINS.map((c) => <option key={c} value={c}>{CHAINS[c].chain.name}</option>)}
-            </select>
-          </label>
-        </div>
-        <button disabled={!!busy || !me.trim() || !to.trim() || !(Number(amount) > 0)}>Prepare payment</button>
-      </form>
-
-      {prep && (
-        <HoloCard user={prep.user} name={`${prep.user.login.toLowerCase()}.${ENS_DEPLOYMENT?.parentName ?? "sereno.eth"}`} />
-      )}
-
-      {prep && (
-        <section className="card">
-          <div className="muted">
-            From {prep.user.login}'s account <a href={`${CHAINS[prep.chainKey].explorer}/address/${prep.account}`} target="_blank" rel="noreferrer">{short(prep.account)}</a> on{" "}
-            {CHAINS[prep.chainKey].chain.name} · balance {formatUnits(prep.balance, 6)} USDC · nonce {prep.nonce.toString()} · to {prep.toLabel}
-          </div>
-          {prep.balance < needed && <p className="error">The account holds {formatUnits(prep.balance, 6)} USDC; this needs {formatUnits(needed, 6)} (amount plus fee).</p>}
-          {prep.keys.length === 0 ? (
-            <p className="error">
-              {prep.user.login} has no SSH keys on GitHub. Add one at github.com/settings/keys (an Authentication or Signing key; any type), then prepare again.
-            </p>
-          ) : (
-            prep.keys.some((x) => !x.listed) && (
-              <div className={listed ? "note" : "error"}>
-                {listed
-                  ? `${prep.keys.filter((x) => !x.listed).length} of ${prep.user.login}'s GitHub keys isn't on-chain yet.`
-                  : `None of ${prep.user.login}'s GitHub keys is on-chain yet, so they can't spend.`}{" "}
-                The Chainlink key oracle copies the keys from GitHub to the chain.{" "}
-                <button type="button" className="small" onClick={syncKeys} disabled={!!syncMsg}>Sync my keys from GitHub</button>
-                {syncMsg && <div className="busy">{syncMsg}</div>}
-              </div>
-            )
-          )}
-          {prep.keys.length > 0 && (
-            <fieldset className="keypick">
-              <legend>Which key will you sign with?</legend>
-              {prep.keys.map((x, i) => (
-                <label key={i}>
-                  <input type="radio" name="key" checked={keyChoice === i} onChange={() => setKeyChoice(i)} />
-                  <code>~/.ssh/{usualFile(x.type)}</code> <span className="muted">{x.type}</span>{" "}
-                  {x.listed ? <span className="tag ok">on-chain</span> : <span className="tag">not synced</span>}
-                  <span className="muted fp">{x.fingerprint}</span>
-                </label>
-              ))}
-              <label>
-                <input type="radio" name="key" checked={keyChoice === "other"} onChange={() => setKeyChoice("other")} />
-                another file:{" "}
-                <input value={otherPath} onFocus={() => setKeyChoice("other")} onChange={(e) => setOtherPath(e.target.value)} placeholder="path to the private key" spellCheck={false} />
+      <div className="column">
+        <div className="column-inner">
+          <form onSubmit={prepare} className="card form step-card">
+            <div className="step-head"><span className="step-num">1</span><h2>Payment</h2></div>
+            <div className="row">
+              <label>Your GitHub username<input value={me} onChange={(e) => setMe(e.target.value)} placeholder="you" spellCheck={false} autoComplete="off" /></label>
+              <label>Pay to<input value={to} onChange={(e) => setTo(e.target.value)} placeholder="username or 0x address" spellCheck={false} autoComplete="off" /></label>
+            </div>
+            <div className="row">
+              <label>Amount (USDC)<input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
+              <label>Relayer fee (USDC)<input type="number" min="0" step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} /></label>
+              <label>Network
+                <select value={chainKey} onChange={(e) => setChainKey(e.target.value as ChainKey)}>
+                  {PAY_CHAINS.map((c) => <option key={c} value={c}>{CHAINS[c].chain.name}</option>)}
+                </select>
               </label>
-              <p className="muted">
-                These are the keys on your GitHub profile, with the file name <code>ssh-keygen</code> gives each type by default. If yours has another
-                name, check a file with <code>ssh-keygen -lf "$HOME/.ssh/&lt;name&gt;.pub"</code> and match the SHA256 fingerprint. Or skip this: the CLI
-                finds the key itself, <code>npx sereno-ak send &lt;amount&gt; &lt;to&gt; --as {prep.user.login}</code>.
-              </p>
-            </fieldset>
+            </div>
+            <button disabled={!!busy || !me.trim() || !to.trim() || !(Number(amount) > 0)}>
+              {busy && !prep ? <><span className="spin" aria-hidden="true" />{busy}</> : <>Prepare payment {Icon.arrow(16)}</>}
+            </button>
+          </form>
+
+          {prep && (
+            <section className="card step-card spend-sign" aria-labelledby="sign-title">
+              <div className="step-head"><span className="step-num">2</span><h2 id="sign-title">Sign and send</h2></div>
+              <div className="fromto">
+                <img src={prep.user.avatarUrl} alt="" width={36} height={36} />
+                <div>
+                  <strong>@{prep.user.login}</strong>
+                  <span className="muted">
+                    <a href={`${CHAINS[prep.chainKey].explorer}/address/${prep.account}`} target="_blank" rel="noreferrer">{short(prep.account)}</a> · {formatUnits(prep.balance, 6)} USDC on {CHAINS[prep.chainKey].chain.name}
+                  </span>
+                </div>
+                <span className="fromto-arrow" aria-hidden="true">{Icon.arrow(18)}</span>
+                <div>
+                  <strong>{formatUnits(prep.amount, 6)} USDC</strong>
+                  <span className="muted">to {prep.toLabel}</span>
+                </div>
+              </div>
+              {prep.balance < needed && <p className="error">The account holds {formatUnits(prep.balance, 6)} USDC; this needs {formatUnits(needed, 6)} (amount plus fee).</p>}
+              {prep.keys.length === 0 ? (
+                <p className="error">{prep.user.login} has no SSH keys on GitHub. Add one at github.com/settings/keys, then prepare again.</p>
+              ) : (
+                prep.keys.some((x) => !x.listed) && (
+                  <div className={listed ? "note" : "error"}>
+                    {listed
+                      ? `${prep.keys.filter((x) => !x.listed).length} of ${prep.user.login}'s GitHub keys isn't on-chain yet.`
+                      : `None of ${prep.user.login}'s GitHub keys is on-chain yet, so they can't spend.`}{" "}
+                    <button type="button" className="small" onClick={syncKeys} disabled={!!syncMsg}>Sync my keys from GitHub</button>
+                    {syncMsg && <div className="busy">{syncMsg}</div>}
+                  </div>
+                )
+              )}
+
+              <div className="substep">
+                <h3><span>a</span>Save the text you're signing</h3>
+                <div className="cmd stack">
+                  <pre className="intent">{prep.text}</pre>
+                  <button type="button" className="small secondary" onClick={download}>Download intent.txt</button>
+                </div>
+                <p className="muted">Download it rather than copying: the signature covers every byte. Run the next commands where it's saved.</p>
+              </div>
+
+              <label className="keyfile">
+                <span>Your key file</span>
+                <input value={keyFile} onChange={(e) => setKeyFile(e.target.value)} spellCheck={false} autoComplete="off" />
+              </label>
+              {prep.keys.length > 0 && (
+                <details className="details small-details">
+                  <summary>Which file is which?</summary>
+                  <p className="muted">
+                    Any key on your GitHub profile works; this only fills <code>-f</code> below. Match a file with <code>ssh-keygen -lf "$HOME/.ssh/&lt;name&gt;.pub"</code>:
+                  </p>
+                  <ul className="keylist">
+                    {prep.keys.map((x, i) => (
+                      <li key={i}>
+                        <code>{x.type}</code> {x.listed ? <span className="tag ok">on-chain</span> : <span className="tag">not synced</span>}
+                        <span className="muted fp">{x.fingerprint}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+
+              <div className="segmented wide" role="tablist" aria-label="How to sign">
+                <button type="button" role="tab" aria-selected={mode === "sign"} className={mode === "sign" ? "on" : ""} onClick={() => setMode("sign")}>Sign with ssh-keygen</button>
+                <button type="button" role="tab" aria-selected={mode === "commit"} className={mode === "commit" ? "on" : ""} onClick={() => setMode("commit")}>Pay with a git commit</button>
+              </div>
+
+              {mode === "sign" ? (
+                <>
+                  <div className="substep">
+                    <h3><span>b</span>Sign it</h3>
+                    <Cmd lines={[`ssh-keygen -Y sign -n ${SIGNING_NAMESPACE} -O hashalg=sha256 -f ${k} intent.txt`]} />
+                  </div>
+                  <div className="substep">
+                    <h3><span>c</span>Paste intent.txt.sig</h3>
+                    <textarea rows={6} value={sig} onChange={(e) => setSig(e.target.value)} placeholder="-----BEGIN SSH SIGNATURE-----" spellCheck={false} />
+                    <div className="row between">
+                      <label className="file">or pick the file <input type="file" accept=".sig" onChange={(e) => void e.target.files?.[0]?.text().then(setSig)} /></label>
+                      <button onClick={submitSignature} disabled={!!busy || !sig.includes("BEGIN SSH SIGNATURE")}>Send payment {Icon.arrow(16)}</button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="substep">
+                    <h3><span>b</span>Commit it in any public GitHub repo and push</h3>
+                    <Cmd lines={["git config gpg.format ssh", `git config user.signingkey ${k}`, "git commit -S --allow-empty --cleanup=verbatim -F intent.txt", "git push"]} />
+                    <p className="muted">The commit message is the payment. Add the key on GitHub as a Signing Key too, and GitHub shows it as Verified.</p>
+                  </div>
+                  <form onSubmit={submitCommit} className="substep">
+                    <h3><span>c</span>Paste the pushed commit's link</h3>
+                    <div className="row">
+                      <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://github.com/owner/repo/commit/…" spellCheck={false} aria-label="Commit link" />
+                      <button disabled={!!busy || !link.trim()}>Submit commit</button>
+                    </div>
+                    <p className="muted">Not needed with <code>npx sereno-ak commit-pay --push</code>, or for pushes to the watched demo repo: those are submitted for you.</p>
+                  </form>
+                </>
+              )}
+            </section>
           )}
 
-          <h3>1. Save the text you're signing</h3>
-          <div className="cmd">
-            <pre className="intent">{prep.text}</pre>
-            <button type="button" className="small" onClick={download}>Download intent.txt</button>
-          </div>
-          <p className="muted">Download it rather than copy-pasting: the signature covers every byte, including the final newline. Run the commands below where the file is saved.</p>
-
-          <div className="tabs">
-            <button type="button" className={mode === "sign" ? "on" : ""} onClick={() => setMode("sign")}>Sign with ssh-keygen</button>
-            <button type="button" className={mode === "commit" ? "on" : ""} onClick={() => setMode("commit")}>Pay with a git commit</button>
-          </div>
-
-          {mode === "sign" ? (
-            <>
-              <h3>2. Sign it</h3>
-              <Cmd lines={[`ssh-keygen -Y sign -n ${SIGNING_NAMESPACE} -O hashalg=sha256 -f ${k} intent.txt`]} />
-              <h3>3. Paste intent.txt.sig</h3>
-              <textarea rows={7} value={sig} onChange={(e) => setSig(e.target.value)} placeholder="-----BEGIN SSH SIGNATURE-----" spellCheck={false} />
-              <label className="file">or pick the file <input type="file" accept=".sig" onChange={(e) => void e.target.files?.[0]?.text().then(setSig)} /></label>
-              <button onClick={submitSignature} disabled={!!busy || !sig.includes("BEGIN SSH SIGNATURE")}>Send payment</button>
-            </>
-          ) : (
-            <>
-              <h3>2. Commit it in any public GitHub repo and push</h3>
-              <Cmd
-                lines={[
-                  "git config gpg.format ssh",
-                  `git config user.signingkey ${k}`,
-                  "git commit -S --allow-empty --cleanup=verbatim -F intent.txt",
-                  "git push",
-                ]}
-              />
-              <p className="muted">
-                The commit message is the payment. Add the key on GitHub as a <em>Signing Key</em> too and GitHub shows the commit as Verified. Then paste the commit's link
-                below.
-              </p>
-            </>
+          {busy && prep && <p className="busy"><span className="spin" aria-hidden="true" />{busy}</p>}
+          {error && <p className="error">{error}</p>}
+          {paid && (
+            <p className="ok-msg">
+              {Icon.check(16)} Paid. <a href={paid.url} target="_blank" rel="noreferrer">View receipt</a>
+              {paid.note && <span className="muted"> {paid.note}</span>}
+            </p>
           )}
-        </section>
-      )}
-
-      <form onSubmit={submitCommit} className="card form">
-        <h3>Paste a payment commit</h3>
-        <p className="muted">A pushed commit whose message is a Sereno payment. The relayer reads it from GitHub, the contract checks the signature, and the payment goes through.</p>
-        <div className="row">
-          <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://github.com/owner/repo/commit/…" spellCheck={false} />
-          <button disabled={!!busy || !link.trim()}>Submit commit</button>
         </div>
-      </form>
 
-      {busy && <p className="busy">{busy}</p>}
-      {error && <p className="error">{error}</p>}
-      {paid && (
-        <p className="ok-msg">
-          Paid. <a href={paid.url} target="_blank" rel="noreferrer">View transaction</a>
-          {paid.note && <span className="muted"> {paid.note}</span>}
-        </p>
-      )}
-    </>
+        <div className="terminal-row">
+          <span className="terminal-row-icon" aria-hidden="true">{Icon.terminal(18)}</span>
+          <div>
+            <strong>Prefer the terminal?</strong>
+            <span className="muted"> The CLI finds your key and sends it for you.</span>
+          </div>
+          <Cmd lines={[`npx sereno-ak send ${amount || "1"} ${to.trim() || "<to>"} --as ${me.trim() || "<you>"}`]} />
+        </div>
+      </div>
+    </div>
   );
 }
