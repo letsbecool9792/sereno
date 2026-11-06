@@ -8,6 +8,8 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
+    "@fontsource-variable/onest": "5.2.5",
+    "@fontsource-variable/unbounded": "5.2.5",
     "@sereno/shared": "workspace:*",
     "react": "19.1.1",
     "react-dom": "19.1.1",

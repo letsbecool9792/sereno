@@ -21,3 +21,10 @@ cre/**/.cre_build_tmp.js
 
 # local state written by scripts
 .state/
+
+# Impeccable local scratch (decision sketches, review captures, caches); design.json and surfaces/ are committed
+web/.impeccable/mocks/
+web/.impeccable/review/
+web/.impeccable/questions/
+web/.impeccable/hook.cache.json
+web/.impeccable/decision-payload.json

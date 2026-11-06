@@ -18,12 +18,29 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 ---
 
+## 2026-11-06 IST: Mohikshit's Claude (Linux): "Holo Card" redesign of the pay page (`ws3/holo-card`, PR for Suparno)
+
+- **What:** the web app gets a new look picked by Mohikshit from ten wallet-style directions (meant to sit beside Phantom and MetaMask). Dark violet night, white pill buttons, Unbounded + Onest (self-hosted through `@fontsource-variable`, so no font CDN request), and a lantern mascot. The developer is shown as a holographic card whose foil follows the pointer; it goes grey with a coral ring when the name and account disagree, and gets a "Received" stamp after a payment.
+- **Pay tab:** card, then amount with 1/5/10/25 quick picks and the Pay pill, then account/balance/keys. New: `?user=<login>` deep link; the search accepts `@name` or a profile URL; an empty state.
+- **Bug fixed:** the "Paid" message never stayed on screen, because `find()` (the balance refresh) cleared it right after `pay()` set it.
+- **Spend tab:** shows the developer's own card after Prepare; other logic untouched. **Bounties:** restyled through shared classes only.
+- **Design record:** `web/PRODUCT.md`, `web/DESIGN.md`, `web/.impeccable/design.json`, `web/.impeccable/surfaces/src-app-tsx.md`. Impeccable's local scratch is git-ignored.
+- **Tested:** `bun run typecheck` (all packages), `bun test` (11 pass), `vite build`; headless Chrome captures at 1440x900 and 390x844 with live chain data (`?user=octocat`). Not seen rendered: paying/paid with a real wallet, the refused card, Spend after Prepare.
+
+**WAITING ON:**
+- **Suparno:** review the PR; click through a real 1 USDC payment and a Spend prepare before merging; redeploy the hosted pay page after merge.
+
+---
+
 ## 2026-11-06 13:18 IST: Mohikshit's Claude: demo bounty PR is open (sereno-demo#2)
 
 - **[letsbecool9792/sereno-demo#2](https://github.com/letsbecool9792/sereno-demo/pull/2)**, "Add CONTRIBUTORS file": authored by `psycocodes`, adds `CONTRIBUTORS.md` (`- @psycocodes`), and the description says `Fixes #1`. GitHub lists #1 under the PR's closing issues. **Not merged**; Suparno merges it on stage.
 - It comes from a branch (`add-contributors`) in `sereno-demo`, not a fork: auto mode here blocks creating a public fork, and Mohikshit has write access. The PR is still in the same repo and by `psycocodes`, which is what `github-bounty` checks. On merge, the bounty pays Mohikshit's account (GitHub 172588240, `0x0d39…5809`).
 
 **WAITING ON:** Suparno: fund sereno-demo#1 on the Issue bounties tab before the demo, then merge #2 on stage. Delete the `add-contributors` branch after the demo.
+
+---
+
 
 ---
 
