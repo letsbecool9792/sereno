@@ -3,6 +3,24 @@
 import { useEffect, useState } from "react";
 import { call, chainName, copy, Err, Icon, Lantern, openTab, Steps, type State } from "./lib";
 
+/// "Badges on GitHub pages": reachable before setup and while locked (it needs no key).
+export function BadgesToggle() {
+  const [on, setOn] = useState<boolean | null>(null);
+  useEffect(() => {
+    call<{ settings: { badges: boolean } }>("state").then((s) => setOn(s.settings.badges), () => {});
+  }, []);
+  if (on === null) return null;
+  return (
+    <label className="toggle card" style={{ padding: "10px 14px" }}>
+      <span>
+        Show sereno info on GitHub
+        <span className="small muted" style={{ display: "block", fontWeight: 400 }}>Bounties, balances, payment status. Off: only when you click Check</span>
+      </span>
+      <input type="checkbox" checked={on} onChange={async (e) => { const v = e.target.checked; setOn(v); await call("settings", { patch: { badges: v } }); }} />
+    </label>
+  );
+}
+
 export function Lock({ onDone }: { onDone: () => void }) {
   const [pw, setPw] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -30,6 +48,7 @@ export function Lock({ onDone }: { onDone: () => void }) {
         <Err e={err} />
         <button className="block" disabled={busy || !pw}>{busy ? "Unlocking…" : "Unlock"}</button>
       </form>
+      <BadgesToggle />
     </main>
   );
 }
@@ -64,6 +83,7 @@ function Welcome({ state, next }: { state: State; next: () => void }) {
       </div>
       <button className="block" onClick={next}>Create a browser key <Icon name="send" /></button>
       <button className="secondary block" onClick={() => openTab(state.payUrl)}>Pay from another wallet</button>
+      <BadgesToggle />
     </main>
   );
 }

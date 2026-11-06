@@ -295,7 +295,11 @@ function render() {
   const at = anchor(page.kind);
   if (at) {
     b.classList.remove("sereno-float");
-    if (b.previousElementSibling !== at) at.after(b);
+    // Already right under the anchor (other sereno bars between are fine): don't move, or two bars would keep
+    // swapping places and the page would flash.
+    let prev = b.isConnected ? b.previousElementSibling : null;
+    while (prev?.classList.contains("sereno-bar")) prev = prev.previousElementSibling;
+    if (prev !== at) at.after(b);
   } else if (!b.isConnected) {
     b.classList.add("sereno-float");
     document.body.append(b);
@@ -312,6 +316,11 @@ function schedule() {
     render();
   }, 250);
 }
+
+// One copy per page: an older install of this extension (another ID) steps aside for this one.
+const owner = document.documentElement.dataset.serenoExt;
+if (owner && owner !== chrome.runtime.id) throw new Error("another sereno extension is already on this page");
+document.documentElement.dataset.serenoExt = chrome.runtime.id;
 
 void send<boolean>({ type: "badges" })
   .catch(() => false)

@@ -22,9 +22,26 @@ const parseRoute = () => {
 
 function App() {
   const [state, setState] = useState<State | null>(null);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
   const [route, setRoute] = useState(parseRoute);
+  // The service worker may be starting (or restarting after an update): retry a few times before showing the error.
   const refresh = useCallback(() => {
-    call<State>("state").then(setState);
+    let alive = true;
+    void (async () => {
+      for (let i = 0; i < 6 && alive; i++) {
+        try {
+          setState(await call<State>("state"));
+          setLoadErr(null);
+          return;
+        } catch (e) {
+          setLoadErr((e as Error).message);
+          await new Promise((r) => setTimeout(r, 300 * (i + 1)));
+        }
+      }
+    })();
+    return () => {
+      alive = false;
+    };
   }, []);
   useEffect(refresh, [refresh]);
   useEffect(() => {
@@ -34,7 +51,20 @@ function App() {
   }, []);
   const go = (path: string) => (location.hash = path);
 
-  if (!state) return <div className="app"><main><div className="skel" style={{ height: 120 }} /></main></div>;
+  if (!state)
+    return (
+      <div className="app">
+        <main>
+          <div className="skel" style={{ height: 120 }} />
+          {loadErr && (
+            <>
+              <div className="notice err">The extension's background didn't answer: {loadErr}</div>
+              <button className="secondary" onClick={() => location.reload()}>Retry</button>
+            </>
+          )}
+        </main>
+      </div>
+    );
   const ready = state.hasVault && state.unlocked && state.profile;
   const synced = ready; // the Home card shows sync state itself
 

@@ -55,7 +55,7 @@ export function Settings({ state, refresh }: { state: State; refresh: () => void
       <h2>Settings</h2>
       <div className="card">
         <label className="toggle">
-          Badges on GitHub pages
+          Show sereno info on GitHub
           <input type="checkbox" checked={s.badges} onChange={(e) => setting({ badges: e.target.checked })} />
         </label>
         <p className="small muted">Bounties, balances and payment status as you browse. Off: nothing is looked up until you click.</p>
