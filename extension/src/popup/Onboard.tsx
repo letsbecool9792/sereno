@@ -56,11 +56,12 @@ export function Lock({ onDone }: { onDone: () => void }) {
 export function Onboard({ state, onDone }: { state: State; onDone: () => void }) {
   const stage = !state.hasVault ? "welcome" : !state.profile ? "connect" : "sync";
   const [step, setStep] = useState<"welcome" | "password" | "connect" | "sync">(stage);
-  useEffect(() => setStep((s) => (s === "password" ? s : stage)), [stage]);
+  // Stay on the password form only until the key exists; then follow the state (connect, then sync).
+  useEffect(() => setStep((s) => (s === "password" && !state.hasVault ? s : stage)), [stage, state.hasVault]);
   return step === "welcome" ? (
     <Welcome state={state} next={() => setStep("password")} />
   ) : step === "password" ? (
-    <Password next={onDone} />
+    <Password next={() => { setStep("connect"); onDone(); }} />
   ) : step === "connect" ? (
     <Connect state={state} next={onDone} />
   ) : (

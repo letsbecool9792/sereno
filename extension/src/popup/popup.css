@@ -33,8 +33,10 @@
   color-scheme: dark;
 }
 *, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; background: var(--ground); color: var(--ink); }
-body { width: 380px; min-height: 600px; font: 400 14px/1.5 var(--font-ui); -webkit-font-smoothing: antialiased; }
+html, body { margin: 0; background: var(--ground); color: var(--ink); overflow-x: hidden; }
+/* Chrome caps popups at 600px high: stay under it so no scrollbar narrows the content. */
+html:not(:has(body.window)) { width: 380px; }
+body { width: 100%; min-height: 560px; font: 400 14px/1.5 var(--font-ui); -webkit-font-smoothing: antialiased; }
 body.window { width: auto; min-height: 100vh; }
 body::after { content: ""; position: fixed; inset: 0; pointer-events: none; background: var(--noise); opacity: 0.05; mix-blend-mode: overlay; z-index: 50; }
 ::selection { background: rgb(242 179 91 / 0.3); }
@@ -55,7 +57,7 @@ code, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
 .flame { fill: var(--l-flame); filter: drop-shadow(0 0 2.5px var(--l-glow)); animation: breathe 4s ease-in-out infinite; transform-origin: 16px 17px; }
 @keyframes breathe { 50% { opacity: 0.78; } }
 
-.app { min-height: 600px; display: flex; flex-direction: column; }
+.app { min-height: 560px; display: flex; flex-direction: column; }
 body.window .app { min-height: 100vh; }
 .top { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .wordmark { font: 600 18px/1 var(--font-display); letter-spacing: -0.04em; }
