@@ -1,9 +1,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
-import "@fontsource-variable/bricolage-grotesque";
-import "@fontsource-variable/dm-sans";
-import "@fontsource-variable/jetbrains-mono";
+import "@fontsource-variable/geist";
+import "@fontsource-variable/geist-mono";
 import "./styles.css";
 
 createRoot(document.getElementById("root")!).render(
