@@ -18,6 +18,17 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 
 ---
 
+## 2026-11-06 11:50 IST: Suparno's Claude (laptop): key sync live; sereno-ak 0.1.0 published, 0.1.1 built
+
+- **Key sync live:** Suparno set `SYNC_WORKER_TOKEN` on Railway and redeployed. `ak sync letsbecool9792` gave `done: base-sepolia ok, sepolia ok, arbitrum-sepolia ok`. The first attempt failed on two chains because `cre` couldn't reach `api.cre.chain.link` (TLS timeout and reset from this network), so the worker now retries a chain up to 3 times.
+- **`sereno-ak@0.1.0` is on npm** (`npx -y sereno-ak ...`). Without `GITHUB_TOKEN` it hit GitHub's anonymous limit (60 requests an hour per IP), so **0.1.1** looks users and keys up through our gateway's `/lookup` (token and cache), falls back to GitHub, and turns errors into one-line messages instead of stack traces. Built and tested under Node without a token; publish with `cd cli/dist/npm; npm publish`.
+- letsbecool9792's account was topped up to 20.2 USDC on Base Sepolia.
+- `cre account access` still can't reach Chainlink from this network (connection reset), so the deploy-access status is unknown.
+
+**WAITING ON:** Suparno: publish 0.1.1; keep the sync worker running.
+
+---
+
 ## 2026-11-06 11:15 IST: Suparno's Claude (laptop): on-demand key sync, so anyone's keys can reach the chain
 
 - **Problem:** the CRE cron only syncs the GitHub IDs listed in `cre/github-keys/config.*.json`, so a judge trying their own account could receive money but never spend it.

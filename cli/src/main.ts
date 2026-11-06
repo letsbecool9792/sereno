@@ -24,6 +24,8 @@ import {
   SIGNING_NAMESPACE,
   sshAccountAbi,
   type ChainConfig,
+  type GithubUser,
+  HOSTED_GATEWAY_URL,
   HOSTED_RELAYER_URL,
 } from "@sereno/shared";
 
@@ -39,10 +41,11 @@ const USAGE = `ak: pay and spend with the SSH key already on your GitHub profile
 (for example ~/.ssh/id_ed25519; a .pub file works when the key is in ssh-agent).
 commit-pay makes a signed commit whose message is the payment; --push pushes it and has the relayer
 pay it from GitHub, --relay submits the local commit directly.
-Env: GITHUB_TOKEN (higher GitHub rate limit), AK_RELAYER (another relayer URL),
+Env: GITHUB_TOKEN (ask GitHub directly instead of our gateway), AK_RELAYER, AK_GATEWAY (other hosts),
 AK_SSH_KEYGEN (another ssh-keygen, e.g. Win32-OpenSSH 10.x for a phone key on Windows).`;
 
 const RELAYER = process.env.AK_RELAYER ?? HOSTED_RELAYER_URL;
+const GATEWAY = process.env.AK_GATEWAY ?? HOSTED_GATEWAY_URL;
 const SSH_KEYGEN = process.env.AK_SSH_KEYGEN ?? "ssh-keygen";
 const TOKEN = process.env.GITHUB_TOKEN;
 const DECIMALS = 6;
@@ -70,6 +73,22 @@ const need = (v: string | true | undefined, what: string) => (typeof v === "stri
 if (!CORE) die("contracts not deployed (run `bun run sync`)");
 const core = CORE!;
 
+/// A GitHub user and their SSH keys. Without GITHUB_TOKEN, GitHub allows 60 requests an hour per IP, so ask our gateway
+/// first (it has a token and caches), and GitHub directly only with a token or when the gateway is unreachable.
+async function profile(login: string): Promise<{ user: GithubUser; keys: string[] }> {
+  if (!TOKEN) {
+    const res = await fetch(`${GATEWAY}/lookup/${encodeURIComponent(login)}`).catch(() => null);
+    if (res?.status === 404) die(`no GitHub user "${login}"`);
+    if (res?.ok) {
+      const p = (await res.json()) as { login: string; id: string; name: string | null; avatarUrl: string; keys: string[] };
+      return { user: { login: p.login, id: BigInt(p.id), name: p.name, avatarUrl: p.avatarUrl }, keys: p.keys };
+    }
+  }
+  const user = await githubUser(login, TOKEN);
+  return { user, keys: await githubKeys(user.id, TOKEN) };
+}
+const userOf = async (login: string) => (await profile(login)).user;
+
 const client = (c: ChainConfig) => createPublicClient({ chain: c.chain, transport: http(c.rpc, { retryCount: 3 }) });
 
 async function accountOf(c: ChainConfig, githubId: bigint): Promise<Address> {
@@ -78,7 +97,7 @@ async function accountOf(c: ChainConfig, githubId: bigint): Promise<Address> {
 
 async function recipient(c: ChainConfig, to: string): Promise<{ address: Address; label: string }> {
   if (isAddress(to)) return { address: getAddress(to), label: to };
-  const u = await githubUser(to, TOKEN);
+  const u = await userOf(to);
   return { address: await accountOf(c, u.id), label: `${u.login} (GitHub ${u.id})` };
 }
 
@@ -127,7 +146,7 @@ function showText(what: string, text: string) {
 }
 
 async function cmdAccount(login: string, c: ChainConfig) {
-  const u = await githubUser(login, TOKEN);
+  const { user: u, keys } = await profile(login);
   const account = await accountOf(c, u.id);
   const pub = client(c);
   const code = await pub.getCode({ address: account });
@@ -139,7 +158,7 @@ async function cmdAccount(login: string, c: ChainConfig) {
   console.log(`balance   ${formatUnits(balance, DECIMALS)} USDC   nonce ${nonce}`);
   if (ENS_DEPLOYMENT) console.log(`name      ${u.login.toLowerCase()}.${ENS_DEPLOYMENT.parentName}`);
   console.log("keys on GitHub (auth + signing) -> listed on-chain by the oracle?");
-  for (const line of await githubKeys(u.id, TOKEN)) {
+  for (const line of keys) {
     const since = await pub.readContract({ address: core.KeyOracle, abi: keyOracleAbi, functionName: "firstSeen", args: [u.id, keyHash(line)] });
     const [type, , comment] = line.split(" ");
     console.log(`  ${type} ${comment ?? ""} -> ${since > 0n ? `listed since ${new Date(Number(since) * 1000).toISOString()}` : `not yet (ak sync ${u.login})`}`);
@@ -149,7 +168,7 @@ async function cmdAccount(login: string, c: ChainConfig) {
 async function cmdSend(pos: string[], opts: Record<string, string | true>, c: ChainConfig, asCommit: boolean) {
   const [amountStr, toStr] = [need(pos[1], "<amount>"), need(pos[2], "<to>")];
   const key = need(opts.key, "--key <ssh key file>");
-  const me = await githubUser(need(opts.as, "--as <your GitHub user>"), TOKEN);
+  const me = await userOf(need(opts.as, "--as <your GitHub user>"));
   const to = await recipient(c, toStr);
   const amount = parseUnits(amountStr, DECIMALS);
   const fee = parseUnits(typeof opts.fee === "string" ? opts.fee : "0.02", DECIMALS);
@@ -220,7 +239,7 @@ async function cmdSync(login: string) {
 
 async function cmdClaim(opts: Record<string, string | true>) {
   if (!ENS_DEPLOYMENT) die("ENS not set up");
-  const me = await githubUser(need(opts.as, "--as <your GitHub user>"), TOKEN);
+  const me = await userOf(need(opts.as, "--as <your GitHub user>"));
   const label = me.login.toLowerCase();
   const pub = client(CHAINS.sepolia);
   const text = Buffer.from(
@@ -233,6 +252,11 @@ async function cmdClaim(opts: Record<string, string | true>) {
   console.log(`\nclaimed ${label}.${ENS_DEPLOYMENT!.parentName}: ${r.url}`);
   console.log(`see it: https://sepolia.app.ens.domains/${label}.${ENS_DEPLOYMENT!.parentName}`);
 }
+
+process.on("unhandledRejection", (e) => {
+  const msg = (e as Error).message ?? String(e);
+  die(/GitHub (403|429)/.test(msg) ? `${msg}: GitHub's rate limit (60 requests an hour without a token). Set GITHUB_TOKEN, or try again later.` : msg.split("\n")[0]!);
+});
 
 const { pos, opts } = parseArgs(process.argv.slice(2));
 const chain = chainByKey(typeof opts.chain === "string" ? opts.chain : DEFAULT_CHAIN);

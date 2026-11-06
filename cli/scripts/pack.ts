@@ -8,7 +8,7 @@
 import { chmodSync, copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const VERSION = "0.1.0";
+const VERSION = "0.1.1";
 const cli = join(import.meta.dir, "..");
 const out = join(cli, "dist/npm");
 rmSync(out, { recursive: true, force: true });
