@@ -50,12 +50,14 @@ export function makeSyncQueue(workerToken: string | undefined, githubToken: stri
     return got.length === want.length && timingSafeEqual(got, want);
   };
 
-  /// Queues `job` unless the same one is queued, running, or finished within the cooldown.
-  const enqueue = (job: Omit<Job, "state" | "at">): Job => {
+  /// Queues `job` unless the same one is queued, running, or finished within the cooldown. In the last case the
+  /// answer carries `cooldown`: the seconds until it can run again (the old "done" is not a fresh run).
+  const enqueue = (job: Omit<Job, "state" | "at">): Job & { cooldown?: number } => {
     const j = jobs.get(job.id);
     const busy = j && (j.state === "queued" || j.state === "running");
     const recent = j && j.state === "done" && Date.now() - j.at < COOLDOWN_MS;
-    if (!busy && !recent) jobs.set(job.id, { ...job, state: "queued", at: Date.now() });
+    if (recent) return { ...j, cooldown: Math.ceil((COOLDOWN_MS - (Date.now() - j.at)) / 1000) };
+    if (!busy) jobs.set(job.id, { ...job, state: "queued", at: Date.now() });
     return jobs.get(job.id)!;
   };
 

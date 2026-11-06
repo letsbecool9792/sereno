@@ -2,8 +2,8 @@
 // ak: pay and spend with the SSH key already on your GitHub profile. Runs under Bun (bun cli/src/main.ts) or, bundled
 // by cli/scripts/pack.ts, under Node as the npm package `sereno-ak` (npx sereno-ak ...).
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createPublicClient, erc20Abi, formatUnits, getAddress, http, isAddress, parseUnits, type Address, type Hex } from "viem";
@@ -106,14 +106,26 @@ async function recipient(c: ChainConfig, to: string): Promise<{ address: Address
   return { address: await accountOf(c, u.id), label: `${u.login} (GitHub ${u.id})` };
 }
 
+/// The key file as an absolute path. Expands a leading `~` ourselves: PowerShell passes it through literally, and
+/// Windows' ssh-keygen doesn't expand it either.
+function keyFile(key: string): string {
+  const p = resolve(key.replace(/^~(?=$|[\\/])/, homedir()));
+  if (!existsSync(p)) {
+    const pub = existsSync(`${p}.pub`) ? "" : " (use the private key file, or its .pub when the key is in ssh-agent)";
+    die(`no SSH key file at ${p}${pub}. List yours with: ls ${join(homedir(), ".ssh")}`);
+  }
+  return p;
+}
+
 /// Signs `text` with ssh-keygen in our namespace (SHA-256 message hash) and returns the armored signature.
 function sshSign(text: string, key: string): string {
   const dir = mkdtempSync(join(tmpdir(), "ak-"));
   try {
     const f = join(dir, "message.txt");
     writeFileSync(f, text);
-    const r = spawnSync(SSH_KEYGEN, ["-Y", "sign", "-n", SIGNING_NAMESPACE, "-O", "hashalg=sha256", "-f", resolve(key), f], { stdio: ["inherit", "inherit", "inherit"] });
-    if (r.status !== 0) die(`ssh-keygen failed (exit ${r.status})`);
+    const r = spawnSync(SSH_KEYGEN, ["-Y", "sign", "-n", SIGNING_NAMESPACE, "-O", "hashalg=sha256", "-f", keyFile(key), f], { stdio: ["inherit", "inherit", "inherit"] });
+    if (r.error) die(`couldn't run ${SSH_KEYGEN}: ${r.error.message}`);
+    if (r.status !== 0) die("ssh-keygen didn't sign (see its message above)");
     return readFileSync(`${f}.sig`, "utf8");
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -196,7 +208,7 @@ async function cmdSend(pos: string[], opts: Record<string, string | true>, c: Ch
     // Same relative path from cli/src/main.ts and from the bundled ak.js in the npm package.
     const wrapper = join(dirname(fileURLToPath(import.meta.url)), "../bin/sha256-sign.sh").replace(/\\/g, "/");
     const git = (...args: string[]) => spawnSync("git", ["-C", repo, ...args], { encoding: "utf8", stdio: ["inherit", "pipe", "inherit"] });
-    const r = git("-c", "gpg.format=ssh", "-c", `user.signingkey=${resolve(key)}`, "-c", `gpg.ssh.program=${wrapper}`, "commit", "-S", "--allow-empty", "--cleanup=verbatim", "-F", msg);
+    const r = git("-c", "gpg.format=ssh", "-c", `user.signingkey=${keyFile(key)}`, "-c", `gpg.ssh.program=${wrapper}`, "commit", "-S", "--allow-empty", "--cleanup=verbatim", "-F", msg);
     if (r.status !== 0) die("git commit failed");
     const raw = git("cat-file", "commit", "HEAD").stdout;
     const commit = parseCommitObject(raw);
@@ -230,7 +242,13 @@ async function cmdSend(pos: string[], opts: Record<string, string | true>, c: Ch
 }
 
 async function cmdSync(login: string) {
-  const r = await post("/sync", { login });
+  let r = await post("/sync", { login });
+  // A sync finished moments ago: wait, then run a fresh one (a key deleted since then must be seen).
+  while (r.cooldown) {
+    console.log(`last sync for ${r.login} was moments ago; syncing again in ${r.cooldown}s`);
+    await new Promise((res) => setTimeout(res, (Number(r.cooldown) + 1) * 1000));
+    r = await post("/sync", { login });
+  }
   console.log(`key sync for ${r.login} (GitHub ${r.githubId}) ${r.state}`);
   for (let i = 0, last = ""; i < 120; i++) {
     const s = (await (await fetch(`${RELAYER}/sync/status/${r.githubId}`)).json()) as Record<string, string>;

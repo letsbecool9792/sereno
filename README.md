@@ -20,9 +20,9 @@ Every GitHub user already has an account anyone can pay, by username. The SSH ke
 ```sh
 npx sereno-ak account <github-user>                                         # address, balance, which keys are on-chain
 npx sereno-ak sync <you>                                                    # copy your GitHub keys on-chain
-npx sereno-ak send 1 alice --as <you> --key ~/.ssh/id_ed25519               # signs with ssh-keygen, relayer submits
-npx sereno-ak commit-pay 1 alice --as <you> --key ~/.ssh/id_ed25519 --push  # in any GitHub repo: the push is the payment
-npx sereno-ak claim --as <you> --key ~/.ssh/id_ecdsa                        # make <you>.sereno.eth a real ENSv2 subname
+npx sereno-ak send 1 <friend> --as <you> --key "$HOME/.ssh/id_ed25519"     # signs with ssh-keygen, relayer submits
+npx sereno-ak commit-pay 1 <friend> --as <you> --key "$HOME/.ssh/id_ed25519" --push  # in any GitHub repo: the push is the payment
+npx sereno-ak claim --as <you> --key "$HOME/.ssh/id_ecdsa"                  # make <you>.sereno.eth a real ENSv2 subname
 npx sereno-ak bounty https://github.com/owner/repo/issues/12 --settle        # settle an issue bounty and pay the PR author
 ```
 
@@ -39,6 +39,8 @@ Every step, in demo order, with what to do and what you should see. `<you>` is y
 - **Node 20+, git and OpenSSH** for the terminal steps (`npx sereno-ak …` needs no install).
 
 Keep amounts small: a key that first appeared on-chain less than 72 hours ago can't spend more than 50 USDC at a time.
+
+Commands write key paths as `"$HOME/.ssh/<your key>"`: that works in PowerShell and in bash or zsh, while `~` doesn't work with Windows' `ssh-keygen`. Replace `<your key>` with your private key's file name (`ls "$HOME/.ssh"` lists them, e.g. `id_ed25519` or `id_ecdsa`; use the file without `.pub`).
 
 ### 1. Your GitHub account is already a wallet
 
@@ -72,22 +74,22 @@ Keep amounts small: a key that first appeared on-chain less than 72 hours ago ca
    - press **Prepare payment**.
 
    You should see the exact text you'll sign: chain, account, nonce, amount, token, recipient and relayer fee.
-2. Press **Download intent.txt**. In a terminal, in the folder where it downloaded, run the command the page shows:
+2. Press **Download intent.txt**. In a terminal, in the folder where it downloaded, run the command the page shows. If your browser saved it as `intent (1).txt`, delete the old file and download again: the command expects `intent.txt`.
    ```sh
-   ssh-keygen -Y sign -n sereno@v1 -O hashalg=sha256 -f ~/.ssh/<your key> intent.txt
+   ssh-keygen -Y sign -n sereno@v1 -O hashalg=sha256 -f "$HOME/.ssh/<your key>" intent.txt
    ```
 3. Paste the contents of `intent.txt.sig`, or pick the file, and press **Send payment**.
 
    You should see: *Paid* with a transaction link. The recipient's balance goes up, yours goes down by the amount plus the relayer fee, and your nonce goes up by one.
 
-From a terminal, in one command: `npx sereno-ak send 1 <friend> --as <you> --key ~/.ssh/<your key>`.
+From a terminal, in one command: `npx sereno-ak send 1 <friend> --as <you> --key "$HOME/.ssh/<your key>"`.
 
 ### 4. Pay with a git commit
 
 1. **For GitHub's "Verified" badge (optional):** add the key on GitHub as a **Signing Key** as well, and commit with your GitHub noreply or verified email.
 2. In a clone of any GitHub repo you can push to:
    ```sh
-   npx sereno-ak commit-pay 1 <friend> --as <you> --key ~/.ssh/<your key> --push
+   npx sereno-ak commit-pay 1 <friend> --as <you> --key "$HOME/.ssh/<your key>" --push
    ```
    You should see:
    - a signed, empty commit whose message is exactly the payment text;
@@ -135,11 +137,13 @@ One claim per GitHub account.
 
 ### 7. Revocation
 
-1. Make a throwaway key (`ssh-keygen -t ecdsa -f throwaway`), add `throwaway.pub` on GitHub, and sync it (step 1.3).
-2. On the Spend tab, prepare a small payment and sign `intent.txt` with `throwaway` as in step 3, but don't send it yet.
-3. Delete the throwaway key on GitHub, then sync again (`npx sereno-ak sync <you>`).
+1. Make a throwaway key in your Downloads folder (`ssh-keygen -t ecdsa -f throwaway`), add `throwaway.pub` on GitHub (Authentication or Signing key), and sync it (step 1.3).
 
-   You should see: `npx sereno-ak account <you>` no longer lists that key.
+   You should see: the sync ends with one key more than before, e.g. `done: 3 key(s); base-sepolia ok, …`.
+2. On the Spend tab, enter `throwaway` as the key file, prepare a small payment, and sign `intent.txt` with the command shown, as in step 3. Don't send it yet.
+3. Delete the throwaway key on GitHub, then sync again (`npx sereno-ak sync <you>`). If you synced in the last minute, it waits a moment and then runs a fresh sync.
+
+   You should see: the sync ends with one key fewer.
 4. Paste the signature you made in step 2 and press **Send payment**.
 
    You should see: it's refused with `KeyNotOnProfile`. A signature made before the delete stops working too.

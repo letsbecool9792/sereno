@@ -73,7 +73,14 @@ export function Spend() {
     setError(null);
     setSyncMsg("Asking for a key sync…");
     try {
-      const r = (await relay("/sync", { login: prep.user.login })) as unknown as { githubId: string; workerAge: number | null };
+      type SyncReply = { githubId: string; workerAge: number | null; cooldown?: number };
+      let r = (await relay("/sync", { login: prep.user.login })) as unknown as SyncReply;
+      // A sync finished moments ago: wait, then run a fresh one, so a key just deleted on GitHub is seen.
+      while (r.cooldown) {
+        setSyncMsg(`Your keys were synced moments ago; syncing again in ${r.cooldown}s…`);
+        await new Promise((res) => setTimeout(res, (r.cooldown! + 1) * 1000));
+        r = (await relay("/sync", { login: prep.user.login })) as unknown as SyncReply;
+      }
       if (r.workerAge === null || r.workerAge > 60) setSyncMsg("Queued. The sync worker looks offline right now, so this may take a while.");
       for (let i = 0; i < 120; i++) {
         const s = (await (await fetch(`${RELAYER}/sync/status/${r.githubId}`)).json()) as { state: string; detail?: string };
@@ -191,7 +198,9 @@ export function Spend() {
     }
   }
 
-  const k = keyPath.trim() || "~/.ssh/id_ed25519";
+  // As a shell argument that works in PowerShell and bash alike: PowerShell doesn't expand `~` for programs and
+  // Windows' ssh-keygen doesn't either, but both shells expand "$HOME" inside double quotes.
+  const k = `"${(keyPath.trim() || "~/.ssh/id_ed25519").replace(/^~(?=$|[\\/])/, "$HOME")}"`;
   const needed = prep ? prep.amount + prep.fee : 0n;
   const listed = prep?.keys.some((x) => x.listed);
 
