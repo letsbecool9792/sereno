@@ -34,3 +34,4 @@ extension/*.zip
 
 # Manim renders
 video/media/
+__pycache__/
