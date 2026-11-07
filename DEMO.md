@@ -77,14 +77,15 @@ live link and judges' questions.
 | Time | Segment | What it proves |
 |---|---|---|
 | 0:00–0:15 | Product teaser (already made) | |
-| 0:15–1:00 | How it works: one diagram that builds up | Technicality, originality |
-| 1:00–1:40 | **1 · Pay anyone by username** | Usability; ENS wildcard |
-| 1:40–2:30 | **2 · The commit is the payment** | The wow; EF "Secure" |
-| 2:30–3:15 | **3 · Merge is the payout** | Chainlink CRE, shown in the CLI |
+| 0:15–1:05 | How it works: the Manim animation (`video/how_it_works.py`) | Technicality, originality |
+| 1:05–1:45 | **1 · Pay anyone by username** | Usability; ENS wildcard |
+| 1:45–2:35 | **2 · The commit is the payment** | The wow; EF "Secure" |
+| 2:35–3:15 | **3 · Merge is the payout** | Chainlink CRE, shown in the CLI |
 | 3:15–3:45 | **4 · A phone claims the name** | ENSv2 claim, hardware key |
 | 3:45–4:00 | Close: the popup, same address on two chains | |
 
-The voiceover is about 500 words, roughly 140 a minute, so there's room to breathe.
+The voiceover is about 500 words, roughly 140 a minute, so there's room to breathe. It's written the way you'd explain
+it to a friend, not as a pitch: reword anything that doesn't sound like you, and keep it about as long.
 
 ### Before recording
 1. Everything in §1: the Railway services, the sync worker, the extension, MetaMask, and USDC in your sereno account.
@@ -119,21 +120,29 @@ The voiceover is about 500 words, roughly 140 a minute, so there's room to breat
 - **Only speed up waits, and label them** with a small "4×" badge: MetaMask, Chainlink, the phone. Never cut in the
   middle of an action.
 
-### 0:15 · How it works (45 s)
-**On screen:** one diagram that adds a block about every 10 seconds:
-1. SSH signature verified on-chain;
-2. an account from the GitHub ID;
-3. Chainlink copies the keys;
-4. the ENS name.
+### 0:15 · How it works (50 s)
+**On screen:** the Manim animation, `video/how_it_works.py` (to render it, see `video/README.md`). It has four parts,
+and a row across the top shows which one is playing. Each part lasts about as long as its line below.
 
-> Here's what's under the hood. Our contract verifies OpenSSH signatures on-chain: regular SSH keys, hardware security
-> keys, even a phone. So the ssh-keygen and git you already use can sign transactions; a signed git commit is a valid
-> payment. Every GitHub user also already has an account. Its address comes from their permanent GitHub ID, it's the
-> same on every chain, and money can arrive before it's ever deployed. A Chainlink CRE workflow copies each user's
-> GitHub keys on-chain, and revokes the ones they delete. And ENS gives every one of them a name: username dot sereno
-> dot eth. Let's see it.
+**1 · The signature** (about 14 s): a signed payment text goes into the contract, which ticks it; the key types
+appear underneath.
+> So, how it works. The main thing is our contract can check SSH signatures on-chain: normal SSH keys, hardware keys,
+> even a phone. So signing with ssh-keygen, or signing a git commit, is enough to move money.
 
-### 1:00 · Scene 1: Pay anyone by username (40 s, one take)
+**2 · The account** (about 14 s): @psycocodes becomes his GitHub ID, then his address, the same on Base and Arbitrum.
+> Every GitHub user already has an account. We take their GitHub ID, which never changes, and get an address from it.
+> Same address on every chain, and you can send money there before anything's deployed.
+
+**3 · The keys** (about 15 s): his GitHub keys go through three Chainlink nodes into the KeyOracle; then one key is
+deleted on GitHub and revoked on-chain.
+> The contract also needs to know which keys are yours. A Chainlink CRE workflow reads your keys from GitHub, the nodes
+> agree, and it writes them on-chain. Delete a key on GitHub and it stops working.
+
+**4 · The name** (about 9 s): psycocodes.sereno.eth resolves to the same address as part 2.
+> And every GitHub user gets an ENS name, like psycocodes.sereno.eth, pointing at that same account. Okay, let me show
+> you.
+
+### 1:05 · Scene 1: Pay anyone by username (40 s, one take)
 **On screen:**
 1. psycocodes' GitHub profile, with the extension's buttons under his name.
 2. Click **Other wallet**. The pay page opens, filled in: his card and `psycocodes.sereno.eth`.
@@ -143,13 +152,13 @@ The voiceover is about 500 words, roughly 140 a minute, so there's room to breat
 Use **Other wallet**, not **Pay @psycocodes**. Pay @psycocodes spends from your own sereno account with the browser
 key, which is a spend; this scene is about money coming in from an ordinary wallet.
 
-> This is my teammate's GitHub profile. He doesn't need to have set anything up. Our extension adds a Pay button right
-> here. I'll pay from an ordinary wallet, so I click "Other wallet", and it opens our website, already filled in.
-> Without the extension you'd just type his username. His name, psycocodes.sereno.eth, resolves through an ENSv2
-> wildcard resolver: our gateway looks up his GitHub ID and returns his account address, signed. Five USDC, confirm in
-> MetaMask… received. No address was exchanged, and he signed up for nothing.
+> So this is Mohikshit's GitHub profile. He's my teammate, but he doesn't need to have set anything up. Our extension
+> adds these buttons. I'll pay from a normal wallet, so I hit "Other wallet", and it opens our site with him already
+> filled in. Without the extension you'd just type his username here. This name, psycocodes.sereno.eth, is an ENS name:
+> our gateway looks up his GitHub ID and gives back his account address. Five USDC, confirm in MetaMask… and it's there.
+> I never asked him for an address.
 
-### 1:40 · Scene 2: The commit is the payment (50 s, one take)
+### 1:45 · Scene 2: The commit is the payment (50 s, one take)
 **On screen:**
 1. The terminal in the `sereno-demo` clone:
    ```sh
@@ -159,14 +168,14 @@ key, which is a spend; this scene is about money coming in from an ordinary wall
 2. Open the commit on GitHub: the **Verified** badge, and the extension's **Paid** chip.
 3. Click through to Basescan.
 
-> Now the other side. I'm a developer with money in my Sereno account, and I'll spend it with git. In this repo I run
-> commit-pay: one USDC to psycocodes. It finds the SSH key that's on my GitHub profile and prints exactly what I'm
-> signing: the chain, my account, the nonce, the amount, the recipient, the relayer's fee. Readable text, never blind
-> calldata. That text becomes the commit message; git signs it with my SSH key; I push. On GitHub: Verified. And our
-> relayer has already picked it up: Paid. The contract rebuilt that text, verified the SSH signature on-chain, checked
-> the key is on my profile, and paid. The push was the broadcast.
+> Okay, that's money coming in. Now spending it. I've got some USDC in my account, and I'll pay him one USDC with git.
+> So I run commit-pay. It finds my SSH key that's on GitHub, and shows exactly what I'm signing: the chain, my account,
+> the amount, who it's going to, and the fee. Just text you can read. That becomes the commit message, git signs it with
+> my SSH key, and I push. GitHub says Verified, and the extension says it's already paid: our relayer saw the commit and
+> sent it, and the contract checked the signature and that the key's on my profile. So pushing the commit basically is
+> the payment.
 
-### 2:30 · Scene 3: Merge is the payout (45 s, one take; speed up the wait with a "4×" badge)
+### 2:35 · Scene 3: Merge is the payout (40 s, one take; speed up the wait with a "4×" badge)
 Chainlink's track asks for the CLI simulation on screen, and the sync worker only prints summary lines. So for this
 scene, **stop the sync worker** (Ctrl+C) beforehand and run the workflow yourself, where the camera can see it. Start
 the worker again after the scene.
@@ -182,12 +191,10 @@ the worker again after the scene.
    Let the output scroll to "closed by merged PR #… from g4ntavya" and the written report.
 4. Back on the issue (refresh): the bounty chip and a **Pay out** button. Click it: **Paid out**.
 
-> Bounties. This issue has two USDC on it, funded from a normal wallet. Gantavya opened a pull request that fixes it,
-> and the extension tells us merging pays him. I merge. Nobody has to trust us to decide who won: a Chainlink CRE
-> workflow does. Our relayer runs it automatically when an issue closes; here it is in the CRE CLI. It asks GitHub's
-> API whether a merged pull request closed this issue, and who wrote it; the nodes must agree before a report goes
-> on-chain, and the contract records the winner. Back on the issue, anyone can press Pay out: it goes to the account
-> of his GitHub ID. Merge is the payout.
+> Now bounties. This issue has two USDC on it. Gantavya made a PR that fixes it, and the extension shows merging it pays
+> him. So I merge. Who decides who won? Not us, a Chainlink CRE workflow. Our relayer normally starts it automatically,
+> but I'm running it here so you can see it. It asks GitHub if a merged PR closed this issue and who wrote it, the nodes
+> agree, and the winner goes on-chain. Back on the issue, anyone can hit Pay out, and it goes to Gantavya's account.
 
 ### 3:15 · Scene 4: A phone claims the name (30 s; the phone in picture-in-picture, sped up)
 **Off camera, just before:** Bluetooth and Location on, the phone next to the laptop and unlocked. In the terminal you'll
@@ -217,17 +224,17 @@ To rehearse the QR and fingerprint step without using up the claim:
 If the phone fails on camera, use the backup take. Android sometimes says "something went wrong" even though the
 signature worked; check the terminal before retrying.
 
-> Last, names. psycocodes.sereno.eth has resolved all along through the wildcard. Now he claims it as a real ENSv2
-> subname, and he signs with a phone: scan the code, touch the fingerprint sensor. The registrar verified that phone
-> signature on-chain and checked the key against his GitHub. In the ENS app: a real subname, owned by his Sereno
-> account, with its own resolver. No seed phrase anywhere.
+> Last thing, names. psycocodes.sereno.eth has worked this whole time, but he can claim it as a real ENSv2 name. And
+> this time he signs with a phone: scan the code, fingerprint, done. The contract checked that signature and that the
+> key's on his GitHub. Here it is in the ENS app: a real name, owned by his account, with its own resolver. No seed
+> phrase anywhere.
 
 ### 3:45 · Close (15 s)
 **On screen:** the extension popup's Home (one address; Base and Arbitrum balances), then History with this video's
 payments.
 
-> All of it lives in one account, at the same address on Base and Arbitrum. No new wallet, no seed phrase, no signup.
-> We didn't build a wallet. GitHub already was one.
+> And that's my account in the extension: same address on Base and Arbitrum. No new wallet, no seed phrase, no signup.
+> We didn't really build a wallet. GitHub already was one.
 
 ### The 3-minute cut, for the submission
 The EF CROPS prize asks for a demo video of 3 minutes or less.
@@ -235,10 +242,10 @@ The EF CROPS prize asks for a demo video of 3 minutes or less.
 | Segment | Length | Change |
 |---|---|---|
 | Teaser | 15 s | |
-| How it works | 25 s | Drop the ENS sentence; scene 4 covers it |
+| How it works | 30 s | Parts 1–3 of the animation only, one short sentence each; scene 4 covers the name |
 | Scene 1 | 30 s | |
 | Scene 2 | 45 s | |
-| Scene 3 | 40 s | |
+| Scene 3 | 35 s | |
 | Scene 4 | 20 s | |
 | Close | 5 s | The tagline only |
 

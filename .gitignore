@@ -31,3 +31,6 @@ web/.impeccable/decision-payload.json
 
 # browser extension build
 extension/*.zip
+
+# Manim renders
+video/media/
