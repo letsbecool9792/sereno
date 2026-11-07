@@ -92,8 +92,20 @@ The voiceover is about 500 words, roughly 140 a minute, so there's room to breat
 3. **A phone key on psycocodes' profile, for scene 4:**
    - Why: `letsbecool9792.sereno.eth` is already claimed and each account claims once; `psycocodes` and `g4ntavya`
      are free (checked 7 Nov).
-   - Mohikshit adds your `phone_sk.pub` as a **Signing Key** on his GitHub. Then run `npx sereno-ak sync psycocodes`.
+   - `phone_sk` can't be reused: it's already on your GitHub, and GitHub refuses a key that's on another account ("Key
+     is already in use"). Make a second phone key, a new credential on the same phone, with Win32-OpenSSH 10.4
+     (Windows' built-in 9.5 can't make phone keys; 10.4 is unzipped at `D:\Apps\OpenSSH-Win64`):
+     ```powershell
+     & "D:\Apps\OpenSSH-Win64\ssh-keygen.exe" -t ecdsa-sk -f "$HOME\.ssh\phone_psycocodes" -C "sereno demo: psycocodes"
+     ```
+     Choose "iPhone, iPad, or Android device", scan the QR code, use your fingerprint, and press Enter twice for no
+     passphrase.
+   - Mohikshit adds `phone_psycocodes.pub` at github.com/settings/ssh/new as a **Signing Key**.
+   - Run `npx sereno-ak sync psycocodes`, and wait for all three chains; the claim is checked on Sepolia.
+   - Check: `npx sereno-ak account psycocodes` lists the key as on-chain.
    - While the key is there, your phone can sign Verified commits as him, so he removes it after recording.
+   - Do a dry run of the QR and fingerprint step with `ssh-keygen -Y sign` on a scratch file (see scene 4), not with
+     `claim`: a claim can only happen once.
 4. **Windows and tabs:**
    - 1920×1080, browser zoom 125%, bookmarks bar hidden, GitHub in dark mode;
    - terminal font about 18 pt, click highlighting on;
@@ -178,14 +190,32 @@ the worker again after the scene.
 > of his GitHub ID. Merge is the payout.
 
 ### 3:15 · Scene 4: A phone claims the name (30 s; the phone in picture-in-picture, sped up)
+**Off camera, just before:** Bluetooth and Location on, the phone next to the laptop and unlocked. In the terminal you'll
+record, tell the CLI to use OpenSSH 10.4 (Windows' built-in 9.5 can't reach the phone):
+```powershell
+$env:AK_SSH_KEYGEN = "D:\Apps\OpenSSH-Win64\ssh-keygen.exe"
+```
+To rehearse the QR and fingerprint step without using up the claim:
+```powershell
+"test" | Out-File -Encoding ascii test.txt; & $env:AK_SSH_KEYGEN -Y sign -n sereno@v1 -O hashalg=sha256 -f "$HOME\.ssh\phone_psycocodes" test.txt
+```
+
 **On screen:**
-1. The terminal:
-   ```sh
-   npx sereno-ak claim --as psycocodes --key "$HOME\.ssh\phone_sk"
+1. Optional, 3 seconds: psycocodes' Pay page shows `psycocodes.sereno.eth` without the "claimed" tag.
+2. The terminal:
+   ```powershell
+   npx sereno-ak claim --as psycocodes --key "$HOME\.ssh\phone_psycocodes"
    ```
-2. The QR code; the phone in a corner: scan, then fingerprint.
-3. The transaction confirms.
-4. `sepolia.app.ens.domains/psycocodes.sereno.eth`: the owner is his account, with its own resolver.
+   It prints the exact claim text it's about to sign (the name, his GitHub ID, his account).
+3. Windows shows the security-key prompt: choose "iPhone, iPad, or Android device". Show the QR code on screen, and
+   the phone in a corner: scan, then fingerprint. Speed up the wait.
+4. The terminal prints `claimed psycocodes.sereno.eth: <transaction>` and a `see it:` link.
+5. Open the `see it:` link (`sepolia.app.ens.domains/psycocodes.sereno.eth`). Point at the owner (his account,
+   `0x…` from scene 1) and the resolver (its own PermissionedResolver).
+6. Optional, 3 seconds: refresh his Pay page: the name now has the "claimed" tag.
+
+If the phone fails on camera, use the backup take. Android sometimes says "something went wrong" even though the
+signature worked; check the terminal before retrying.
 
 > Last, names. psycocodes.sereno.eth has resolved all along through the wildcard. Now he claims it as a real ENSv2
 > subname, and he signs with a phone: scan the code, touch the fingerprint sensor. The registrar verified that phone
