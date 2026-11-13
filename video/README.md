@@ -1,6 +1,6 @@
 # Demo video assets
 
-`how_it_works.py` is the "how it works" animation for the demo video (DEMO.md §2). It runs about 52 seconds in four
+`how_it_works.py` is the "how it works" animation for the demo video (docs/DEMO.md §2). It runs about 52 seconds in four
 parts (the signature, the account, the keys, the name), each held for `PART_SECONDS` so the voiceover fits. Change
 those numbers to match your recording, and re-render.
 

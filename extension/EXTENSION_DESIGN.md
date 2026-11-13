@@ -1,7 +1,7 @@
 # Sereno browser extension: design
 
 Status: **built on 6 Nov** (see `README.md`), except three cuts: GitHub OAuth device flow (onboarding uses copy and paste), "Pay with refund" (escrow) on profiles, and passkey unlock. Owner: WS3 (Suparno). Written by Mohikshit with Claude, 6 Nov 2026.
-It covers extras C1/C2 from `CLAUDE.md` §4 and goes further: an in-browser signing key, automations (sweep to a
+It covers extras C1/C2 from `docs/CLAUDE.md` §4 and goes further: an in-browser signing key, automations (sweep to a
 MetaMask wallet, recurring payments), transaction history, and a button on github.com for every core feature.
 
 It changes no section-5 interface and no contract. Every number below comes from the code on `main`
@@ -179,7 +179,7 @@ count and password length matter.
 - **Cooling down again:** a replacement key is new, so for 72 h it can only send up to 50 USDC per payment. The
   user's older keys (laptop, security key) aren't affected.
 - **Lost GitHub account:** the funds can only be spent by keys GitHub lists for the ID, so GitHub's own account
-  recovery is the backstop. This is the trust assumption already stated under S in `CLAUDE.md` §9.
+  recovery is the backstop. This is the trust assumption already stated under S in `docs/CLAUDE.md` §9.
 
 ### 3.7 Not now: a passkey as the SSH key itself
 
@@ -389,7 +389,7 @@ The submission deadline is 09:00 Sat and the freeze is 04:00. This is post-hacka
 
 0. **Tonight, if there's time (about 1–2 h), slide otherwise:** the content script only. "Pay @user" on profiles
    and "Tip author" on commits and PRs open `sereno-eth.vercel.app/?user=<login>`. It needs no keys and no
-   signing. It is extra C1/C2 as written in `CLAUDE.md`.
+   signing. It is extra C1/C2 as written in `docs/CLAUDE.md`.
 1. **Browser key and vault** (§3.1, §3.5). Start with a forge test: sign an intent with WebCrypto P-256 in TS,
    verify it through `SshSigVerifier`, and check that it's accepted. Then the vault (password first, passkey
    second), lock and auto-lock, device flow, add the key, sync.

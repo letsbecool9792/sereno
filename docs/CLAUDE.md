@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Context for every Claude (or other agent) session in this repo. Read this file first, then the newest entries at the top of `PROGRESS-LOG.md`. Keep this file current; it is the single source of truth for the plan, the interfaces between workstreams and the technical facts.
+Context for every Claude (or other agent) session in this repo (`.claude/CLAUDE.md` imports it, so sessions load it automatically). Read this file first, then the newest entries at the top of `docs/PROGRESS-LOG.md`. Keep this file current; it is the single source of truth for the plan, the interfaces between workstreams and the technical facts.
 
 **Sereno.** A *sereno* was the night watchman of 18th-century Spanish towns: he carried the lantern and the **keys**, walked the rounds, and called out the hour and that all was calm ("¡Las once y sereno!"). Our product keeps watch over the keys developers already have.
 
@@ -241,7 +241,9 @@ cli/              `ak` CLI, Bun + TS (WS3): wraps ssh-keygen and git; npm packag
 web/              pay page, Vite + React + viem (WS3): "Pay someone" and "Spend your balance" (#spend: sign with stock ssh-keygen, or paste a payment commit link)
 extension/        MV3 browser extension (extras C1/C2, WS3; extension/README.md, EXTENSION_DESIGN.md): a P-256 browser key in a password vault, popup (Send with the exact signed text, History, Automate, Settings), sweeps and recurring payments, native helper (`ak connect`), and buttons on GitHub profiles, issues, PRs, commits, repos and settings/keys. Fixed ID `fnffhlmjmpnglceomjiigjdfhildhpdl` (`EXTENSION_ID`)
 packages/shared/  intent builder, ABIs, addresses, chain config
-.github/          CI (forge test, typecheck, tests), PR template, CODEOWNERS
+video/            the Manim "how it works" animation
+docs/             this file, PROGRESS-LOG.md, DEMO.md, WALKTHROUGH.md (the README's step-by-step guide), assets/ (README images)
+.github/          the reusable relay Action (sereno-relay.yml); no CI yet
 ```
 
 - **Bun workspaces** for every TS package (the CRE TS SDK needs Bun anyway). viem for chain access.

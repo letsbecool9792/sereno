@@ -24,7 +24,7 @@ cd .. && GITHUB_TOKEN_ALL=$(gh auth token) cre workflow simulate github-bounty -
 ```
 Targets: `base-settings`, `arbitrum-settings`. Without `--broadcast` nothing is written. A forwarder "success" doesn't
 prove the board ran, so after a broadcast look for BountyBoard's `Settled` event or read the bounty. `--broadcast` also
-needs `-e ../.secrets/cre.env` (a key on the gate's broadcaster list; see CLAUDE.md 8.4).
+needs `-e ../.secrets/cre.env` (a key on the gate's broadcaster list; see docs/CLAUDE.md §8.4).
 
 The gate routes by `nameKey(workflow-name)` and the simulation owner `0xaaaa…aaaa`:
 

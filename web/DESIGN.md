@@ -203,5 +203,5 @@ Suparno (+ Claude), branch `ws3/extension-redesign` from `ws3/redesign`, all in 
 3. Manifest and store copy, and check every injected button on github.com in both light and dark themes.
 4. After `ws3/redesign` merges:
    - polish `Bounties` and `LinkWallet` against this file;
-   - refresh `DEMO.md` and README screenshots;
+   - refresh `docs/DEMO.md` and README screenshots;
    - re-record anything in the demo video that shows the old look.

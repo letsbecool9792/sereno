@@ -1,4 +1,4 @@
-"""The "how it works" animation for the demo video (DEMO.md §2), about 52 seconds at 1920x1080.
+"""The "how it works" animation for the demo video (docs/DEMO.md §2), about 52 seconds at 1920x1080.
 
 Four parts, each held for PART_SECONDS so the voiceover fits: the signature, the account, the keys, the name.
 The values are real: psycocodes' GitHub ID, his account address and his two keys' hashes.
@@ -28,7 +28,7 @@ EDGE = "#26305c"
 SANS = "Inter"
 MONO = "Cascadia Mono"
 
-PART_SECONDS = [14, 14, 15, 9]  # match the voiceover lines in DEMO.md
+PART_SECONDS = [14, 14, 15, 9]  # match the voiceover lines in docs/DEMO.md
 
 GITHUB_ID = "172588240"
 ACCOUNT = "0x0d39…5809"  # AccountFactory.addressOf(172588240)

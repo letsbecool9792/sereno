@@ -46,7 +46,7 @@ The account and the keys already exist: the GitHub profile is the wallet. No sig
 ## Evidence on Hand
 
 - Working pay page and Spend tab (`web/src/App.tsx`, `web/src/Spend.tsx`), working CLI (`cli/src/main.ts`).
-- Deployed contracts on Base Sepolia, Arbitrum Sepolia and Sepolia (addresses in the repo `CLAUDE.md`).
+- Deployed contracts on Base Sepolia, Arbitrum Sepolia and Sepolia (addresses in `contracts/deployments/`).
 - No users, testimonials, metrics or press exist; never fabricate them.
 
 ## Product Principles
