@@ -1,6 +1,6 @@
 # PROGRESS-LOG
 
-Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` first.
+Shared log between the team's Claude sessions (and humans). Read `docs/CLAUDE.md` first.
 
 **Protocol:**
 1. `git pull --rebase`, then read the newest entries; they're at the top.
@@ -14,9 +14,27 @@ Shared log between the team's Claude sessions (and humans). Read `CLAUDE.md` fir
 |---|---|---|---|---|
 | WS1 contracts and relayer | Mohikshit | frontend reform v2 (`ws3/redesign`, web half); see 7 Nov 01:15 entry | Suparno takes the extension half | 7 Nov 01:25 |
 | WS2 CRE and ENS | Gantavya | 10 demo bounty PRs open (sereno-demo #15 to #24); frontend redesign PR #26; pay-to-SSH task queued | Suparno reviews #26 and merges one demo PR per run; VM access, a throwaway key, test USDC (Gantavya) | 6 Nov 22:52 |
-| WS3 clients and demo | Suparno + Claude | extension half of reform v2 (PR #30) | Suparno merges #30 | 7 Nov 01:35 |
+| WS3 clients and demo | Suparno + Claude | post-hackathon cleanup: README and docs/ (see 13 Nov entry) | CRE deploy access (requested) | 13 Nov |
 
 ---
+
+## 2026-11-13 IST: Suparno's Claude: post-hackathon cleanup, README and docs/
+
+- **Hackathon result:** no prize (finalist and the Chainlink pitch, plus ENS and EF entries). The plan now is to finish Sereno as a complete project.
+- **docs/:** `CLAUDE.md`, `DEMO.md` and this log moved from the repo root into `docs/`. `.claude/CLAUDE.md` imports `docs/CLAUDE.md`, so Claude sessions still load the spec. Every reference to the old paths is updated.
+- **README:**
+  - the cover image, then links: live app, demo video (youtu.be/lGAjhjdORrc), ETHGlobal showcase (ethglobal.com/showcase/sereno-ypni6), npm;
+  - a rewritten "How it works" with the math and a gas table, and four screenshots;
+  - "Built by", and corrections (addresses in `contracts/deployments/`, how to run your own gateway and relayer, Escrow's client).
+  - The step-by-step walkthrough is now `docs/WALKTHROUGH.md`.
+- **Found while checking (13 Nov):**
+  - The sync worker has been offline since 7 Nov (relayer `/health`, `syncWorkerAge` about 6 days). New users' key syncs and bounty settlement wait in the queue; bounties #5, #11 and #13 on sereno-demo are stuck.
+  - There's no CI: `.github/workflows` has only the relay Action.
+  - The relayer `0xc0EE…F16f` is low on gas: about 0.0009 ETH on Base Sepolia, 0.001 on Arbitrum Sepolia, 0.0003 on Sepolia.
+  - Caps on commit-signed spends (F1–F3) were never built, though the Q&A answers mention them.
+- **WAITING ON:**
+  - Chainlink: CRE deploy access (Suparno requested production access).
+  - Suparno: decide where the sync worker runs until then (the Oracle VM?).
 
 ## 2026-11-07 04:55 IST: Suparno's Claude: DEMO.md §2 is now the 4-minute video script
 

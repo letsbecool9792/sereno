@@ -1,20 +1,59 @@
+<p align="center"><img src="docs/assets/cover.png" alt="Sereno: We didn't build a wallet. GitHub already was one." width="100%"></p>
+
 # Sereno
 
-**We didn't build a wallet. GitHub already was one.**
+**Pay any developer by GitHub username. They spend with the SSH key they already use for git.**
+
+[Live app](https://sereno-eth.vercel.app) · [Demo video](https://youtu.be/lGAjhjdORrc) · [ETHGlobal showcase](https://ethglobal.com/showcase/sereno-ypni6) · [CLI on npm](https://www.npmjs.com/package/sereno-ak) · [Walkthrough](docs/WALKTHROUGH.md)
+
+Every GitHub user already has an account anyone can pay by username, even before they've heard of Sereno. The SSH keys on their GitHub profile are what spend from it. They sign a readable payment with the `ssh-keygen` and `git commit -S` they already use, and our contract verifies the SSH signature on-chain. A signed git commit can itself be the payment: push it, and GitHub shows it as Verified while our relayer pays it. No app, no seed phrase, no signup.
+
+Built at ETHGlobal Mumbai 2026. Runs on testnets: Base Sepolia, Arbitrum Sepolia and Ethereum Sepolia (for ENS).
 
 *A sereno was the night watchman of old Spanish towns: he kept the keys and called out that all was calm.*
 
-Every GitHub user already has an account anyone can pay, by username. The SSH key they push code with is what spends from it: they sign with the `ssh-keygen` and `git commit -S` they already use. No app, no seed phrase, no signup.
+## How it works
+
+Ethereum transactions are signed with secp256k1 keys. SSH keys use other algorithms: ed25519, P-256 (on disk, or on a phone or security key) and RSA. So each user's money sits in a smart contract that checks SSH signatures itself.
+
+1. **The account.** Each user's account is a contract at a CREATE2 address computed from their numeric GitHub ID: `keccak256(0xff ‖ factory ‖ githubId ‖ keccak256(code))`. Anyone can compute it today, it's the same on every chain, and money can arrive before it's deployed. We use the ID because it never changes, while GitHub gives a renamed username to whoever asks for it next.
+2. **The signature.** `ssh-keygen -Y sign` signs an envelope: `SSHSIG`, a namespace, the hash algorithm and the SHA-256 of the message. The account rebuilds the payment text from the call's arguments, rebuilds the envelope and verifies the signature:
+   - P-256 through the precompile at `0x100`;
+   - phone and security keys the same way, over their authenticator data, with the user-present flag required;
+   - RSA through the modexp precompile;
+   - ed25519 in Solidity.
+3. **The keys.** A contract can't call GitHub, so a [Chainlink CRE](https://docs.chain.link/cre) workflow does. Each node fetches the user's keys, the nodes agree on the sorted list of key hashes, and the result is written to the `KeyOracle`. A key deleted on GitHub disappears at the next run. A spend passes only if the hash of the signature's public key is listed for that GitHub ID.
+4. **The commit.** Git's SSH commit signature is the same envelope, with the namespace `git`, over the raw commit object. When the commit message is exactly the payment text, the signed commit is the payment. GitHub verifies the same signature and shows Verified, and the relayer reads the commit and submits it.
+5. **The name.** `<user>.sereno.eth` resolves through an ENSv2 wildcard resolver and a CCIP-read gateway: username → GitHub ID → address, signed by the gateway. Claiming the name makes it a real ENSv2 subname owned by the account.
+
+The payment text fixes the chain, account, GitHub ID, nonce, amount, token, recipient and relayer fee. A signature can't be replayed or redirected, and the relayer can't take a bigger fee. A key first seen less than 72 hours ago can't move more than 50 USDC.
+
+| Key type | Verified with | Gas per payment (Base Sepolia) |
+|---|---|---|
+| P-256 (`ecdsa`), phone or security key (`ecdsa-sk`) | P-256 precompile `0x100` | ~189k |
+| RSA | modexp precompile `0x05` | ~287k |
+| ed25519 | Solidity (vendored library) | ~1.05M |
+
+On Base mainnet, that would be roughly $0.002, $0.004 and $0.015 per payment.
+
+## Screenshots
+
+| Pay anyone by GitHub username | Spend with stock `ssh-keygen` |
+|---|---|
+| ![Pay page](docs/assets/pay.png) | ![Spend tab](docs/assets/spend.png) |
+| **The commit is the payment (Verified on GitHub)** | **Issue bounties settled by Chainlink CRE** |
+| ![Payment commit, Verified](docs/assets/commit-verified.png) | ![Issue bounties](docs/assets/bounties.png) |
 
 ## Try it
 
 **Live (testnet): [sereno-eth.vercel.app](https://sereno-eth.vercel.app)**. Payments are Circle USDC on Base Sepolia or Arbitrum Sepolia ([faucet](https://faucet.circle.com)).
 
-- **Pay someone:** type any GitHub username, pay from any wallet. It works even if they've never heard of Sereno; the money waits in their account.
+- **Pay someone:** type any GitHub username, then pay from any wallet. It works even if they've never heard of Sereno; the money waits in their account.
 - **Spend your balance** (the *Spend* tab): it builds the payment text and gives you the stock command to sign it, `ssh-keygen -Y sign …` or `git commit -S`. Paste the signature, or the link of the pushed commit, and the relayer pays. Your key never touches the page.
   - First time? Press **Sync my keys from GitHub**, so the Chainlink key oracle copies your SSH keys on-chain.
   - Any SSH key on your GitHub profile works, authentication or signing.
-- **Issue bounties** (the *Issue bounties* tab): put USDC on any GitHub issue from your wallet. When a merged PR closes it, anyone presses *Check GitHub and pay the PR author*: a Chainlink CRE workflow confirms it with GitHub, and the author is paid into their Sereno account by GitHub ID. Funders can take their money back after their deadline if nobody earns it.
+- **Issue bounties** (the *Issue bounties* tab): put USDC on any GitHub issue from your wallet. When a merged PR closes the issue, a Chainlink CRE workflow confirms it with GitHub, and the PR author is paid into their Sereno account by GitHub ID. Funders can take their money back after their deadline if nobody earns it.
+- **Browser extension** ([`extension/`](extension/README.md)): Pay, bounty and tip buttons on github.com profiles, issues, PRs and commits.
 - **CLI** (Node 20+): [`sereno-ak`](https://www.npmjs.com/package/sereno-ak)
 
 ```sh
@@ -26,235 +65,67 @@ npx sereno-ak claim --as <you>                                              # ma
 npx sereno-ak bounty https://github.com/owner/repo/issues/12 --settle        # settle an issue bounty and pay the PR author
 ```
 
-A name claim is verified on Ethereum Sepolia, where the ed25519 verifier doesn't fit the gas limit, so it needs a P-256 key (`ssh-keygen -t ecdsa`) or a security key / phone (`-t ecdsa-sk`). Payments accept ed25519, P-256, RSA and security keys.
+A name claim is verified on Ethereum Sepolia, where the ed25519 verifier doesn't fit the gas limit. So a claim needs a P-256 key (`ssh-keygen -t ecdsa`) or a security key or phone (`-t ecdsa-sk`). Payments accept ed25519, P-256, RSA and security keys.
 
-## Walkthrough: test every feature
+**[The walkthrough](docs/WALKTHROUGH.md)** goes through every feature step by step, with what you should see and how to fix what can go wrong.
 
-Every step, in demo order, with what to do and what you should see. `<you>` is your GitHub username and `<friend>` is any other GitHub user. Everything is on testnets.
-
-### What you need
-
-- **A GitHub account with an SSH key** (Settings → SSH and GPG keys; an Authentication or Signing key, any type). For step 6 you need a P-256 or security key (`ssh-keygen -t ecdsa` or `-t ecdsa-sk`).
-- **A browser wallet** (MetaMask, Rabby or Phantom) on Base Sepolia, with a little ETH for gas and some Circle USDC ([faucet](https://faucet.circle.com)).
-- **Node 20+, git and OpenSSH** for the terminal steps (`npx sereno-ak …` needs no install).
-
-Keep amounts small: a key that first appeared on-chain less than 72 hours ago can't spend more than 50 USDC at a time.
-
-**Which key file?** You don't need to know. `npx sereno-ak` looks in your `~/.ssh` folder for the key whose public half is on your GitHub profile and says which one it uses. The Spend tab lists your GitHub keys with the file name `ssh-keygen` gives each type (`id_ed25519`, `id_ecdsa`, `id_rsa`, `id_ecdsa_sk`) and its fingerprint. If your key lives elsewhere, pass `--key <file>` to the CLI, or choose *another file* on the Spend tab. Write paths as `"$HOME/..."` rather than `~/...`: Windows' `ssh-keygen` doesn't understand `~`.
-
-### 1. Your GitHub account is already a wallet
-
-1. Open `https://github.com/<you>.keys`. These are your public SSH keys, published by GitHub. (It lists only authentication keys; signing keys count too.)
-2. On [sereno-eth.vercel.app](https://sereno-eth.vercel.app), type `<you>` in the search and press **Pay**. It opens the Pay page on your profile; nothing is paid until you press Pay there.
-
-   You should see:
-   - your account address, derived from your numeric GitHub ID;
-   - `<you>.sereno.eth`;
-   - your SSH keys, each marked *on-chain* or *not synced yet*.
-3. If any key says *not synced yet*, run `npx sereno-ak sync <you>`, or press **Sync my keys from GitHub** on the Spend tab.
-
-   You should see: a Chainlink CRE workflow copies your key hashes on-chain, `done … base-sepolia ok …`, and the keys switch to *on-chain*.
-
-`npx sereno-ak account <you>` shows the same in a terminal: address, balance, nonce, and which keys are on-chain.
-
-### 2. Receive money by username
-
-1. On the **Pay someone** tab, type `<you>` (or `<friend>`), enter an amount, press **Pay @`<user>`** and confirm in your wallet.
-
-   You should see: a *Received* stamp on the card, the transaction link, and the account's balance going up. This works even if the account isn't deployed yet: it shows *new, it can already receive*.
-2. Open the account address on Basescan.
-
-   You should see: the USDC sitting at that address.
-
-### 3. Spend it with `ssh-keygen`
-
-```sh
-npx sereno-ak send 1 <friend> --as <you>
-```
-
-You should see:
-- which key it uses (the one in `~/.ssh` that is on your GitHub profile);
-- the exact text it signs: chain, account, nonce, amount, token, recipient, relayer fee;
-- `ssh-keygen` signing it;
-- `paid: <transaction link>`.
-
-`<friend>`'s balance goes up, and yours goes down by the amount plus the 0.02 USDC relayer fee.
-
-**If it doesn't work:**
-
-- **`ak: no key in …/.ssh matches an SSH key on <you>'s GitHub profile`.** Your key isn't in `~/.ssh`, or isn't on your GitHub profile.
-  - If the key is somewhere else, either pass it with `--key "<path to your private key>"`, or copy the private key and its `.pub` into `.ssh`.
-
-    PowerShell:
-    ```powershell
-    New-Item -ItemType Directory -Force "$HOME\.ssh" | Out-Null
-    Copy-Item "<path to your private key>", "<path to your private key>.pub" "$HOME\.ssh\"
-    ```
-    bash or zsh (`ssh-keygen` refuses a private key that other users can read):
-    ```sh
-    mkdir -p ~/.ssh && cp "<path to your private key>" "<path to your private key>.pub" ~/.ssh/
-    chmod 600 ~/.ssh/<file name>
-    ```
-  - **No `.pub` next to the private key?** Make it with `ssh-keygen -y -f "<private key>"`, saving the output as `<private key>.pub`. In PowerShell, use `| Out-File -Encoding ascii "<private key>.pub"` rather than `>`, which writes UTF-16.
-  - **Not on GitHub yet?** Paste the `.pub` contents at github.com/settings/keys, then run `npx sereno-ak sync <you>`.
-- **The key lives only in ssh-agent** (1Password, KeePassXC, a hardware agent). Pass the public key instead: `--key "<path to the key>.pub"`. `ssh-keygen` then asks the agent to sign.
-- **`ak: no SSH key file at …`.** The `--key` path is wrong. On Windows, write `"$HOME\..."` rather than `~`.
-- **`couldn't run ssh-keygen`.** OpenSSH isn't installed or isn't on PATH.
-  - Windows: Settings → Optional features → OpenSSH Client, or use Git for Windows' copy: `$env:AK_SSH_KEYGEN = "C:\Program Files\Git\usr\bin\ssh-keygen.exe"`.
-  - Linux: install `openssh-client`.
-- **`retrying without -O hashalg=sha256`.** Your OpenSSH is older than 8.9 (Windows 10's built-in 8.1, Ubuntu 20.04). The payment still works, with SHA-512 and more gas. A name claim (step 6) needs OpenSSH 8.9+.
-- **`relayer refused: KeyNotOnProfile`.** The key you signed with isn't on-chain for your GitHub ID:
-  - it was added after the last sync: run `npx sereno-ak sync <you>`;
-  - or it's on another GitHub account than `--as`.
-- **`relayer refused: NewKeyCoolingDown`.** The key first appeared on-chain less than 72 hours ago, and the payment is over 50 USDC. Send 50 or less, or wait.
-- **`relayer refused: TransferFailed`.** The account holds less than the amount plus the 0.02 USDC fee. `npx sereno-ak account <you>` shows the balance.
-- **The sync stays `queued`.** Key syncs run on our worker while the Chainlink workflow is in simulation, and the worker is offline. The request waits in the queue; try again later.
-- **ssh-keygen asks for a passphrase.** That's your key's own passphrase. With a security key or phone, it asks for a touch or a QR scan instead.
-
-**No terminal:** the **Spend your balance** tab does the same in the browser:
-1. Prepare the payment and download `intent.txt`.
-2. Run the one `ssh-keygen` command it shows.
-3. Paste the signature, and press **Send payment**.
-
-### 4. Pay with a git commit
-
-1. **For GitHub's "Verified" badge (optional):** add the key on GitHub as a **Signing Key** as well, and commit with your GitHub noreply or verified email.
-2. In a clone of any GitHub repo you can push to:
-   ```sh
-   npx sereno-ak commit-pay 1 <friend> --as <you> --push
-   ```
-   You should see:
-   - a signed, empty commit whose message is exactly the payment text;
-   - the push;
-   - then `paid: <transaction link>`. The relayer read the commit from GitHub.
-3. Open the commit on GitHub.
-
-   You should see: the payment text as the commit message, and **Verified** if you did step 1.
-
-Without the CLI, use the Spend tab: choose **Pay with a git commit**, run the `git commit -S … -F intent.txt` and `git push` it shows, then paste the commit's link under **Paste a payment commit**.
-
-### 5. Issue bounty
-
-1. Open an issue in a GitHub repo you can merge into.
-2. On the **Issue bounties** tab, paste the issue link and press Find. Enter an amount and a refund delay, press **Fund bounty**, and confirm twice in your wallet (approve, then fund).
-
-   You should see: the bounty amount on the card.
-3. Open a pull request, from any account, whose description says `Fixes #<issue number>`. Merge it, and check that GitHub closed the issue.
-   - Fund before merging: once an issue is settled, nobody can add to it.
-   - Don't close the issue by hand: a manual close pays nobody.
-4. Back on the tab, press **Check GitHub and pay the PR author**.
-
-   You should see:
-   - *Chainlink's bounty workflow is asking GitHub…*;
-   - then *Settled and paid to the PR author's account*, with a transaction link;
-   - the winner shown as `@<PR author>`, and the PR author's Sereno balance goes up.
-
-From a terminal: `npx sereno-ak bounty https://github.com/<owner>/<repo>/issues/<n> --settle`.
-
-### 6. Claim your ENS name with a phone or security key
-
-1. **Make a security key:**
-   - on Windows with Win32-OpenSSH 10.x, `ssh-keygen -t ecdsa-sk` and choose "iPhone, iPad, or Android device" (scan the QR code, then use your fingerprint);
-   - elsewhere, a USB security key works the same way.
-
-   Add the `.pub` on GitHub and sync it (step 1.3). A plain P-256 key (`-t ecdsa`) also works.
-2. Run `npx sereno-ak claim --as <you>`. It picks a P-256 key from `~/.ssh` that is on your profile; pass `--key <file>` to choose. With a phone: scan the QR code and confirm with your fingerprint.
-
-   You should see:
-   - the claim text you signed;
-   - a Sepolia transaction;
-   - [sepolia.app.ens.domains/`<you>`.sereno.eth](https://sepolia.app.ens.domains) shows the name as a real ENSv2 subname owned by your account, with its own resolver.
-
-One claim per GitHub account.
-
-### 7. Revocation
-
-1. Make a throwaway key (press Enter twice for no passphrase), add `throwaway.pub` on GitHub (Settings → SSH and GPG keys), then sync:
-   ```sh
-   ssh-keygen -t ecdsa -f throwaway
-   npx sereno-ak sync <you>
-   ```
-   You should see: the sync ends with one key more than before, e.g. `done: 3 key(s); base-sepolia ok, …`.
-2. Spend with it: `npx sereno-ak send 0.1 <friend> --as <you> --key throwaway`.
-
-   You should see: `paid:`.
-3. Delete the throwaway key on GitHub, then sync again: `npx sereno-ak sync <you>`. If you synced in the last minute, it waits a moment, then runs a fresh sync.
-
-   You should see: the sync ends with one key fewer.
-4. Spend with it again: `npx sereno-ak send 0.1 <friend> --as <you> --key throwaway`.
-
-   You should see: `relayer refused: KeyNotOnProfile`.
-
-A signature made *before* the delete is refused too. From the repo, `bun packages/ops/src/revoke-demo.ts <you> --key throwaway` shows that in one command: it signs first, waits for you to delete the key, syncs, then submits.
-
-### 8. Same address on every chain
-
-Run `npx sereno-ak account <you> --chain arbitrum-sepolia`, or switch the chain on the pay page.
-
-You should see: the same account address as on Base Sepolia. Payments work there too.
-
-**While the CRE workflows run in simulation,** key syncs (steps 1, 6 and 7) and bounty settlement (step 5) are carried out by a worker on our machine. If it's offline, those steps wait in a queue. Everything else is hosted.
-
-## How it works
-
-1. **Account.** Every GitHub user has a smart account at a CREATE2 address derived from their numeric GitHub ID, the same on every EVM chain. Money can arrive before it is deployed.
-2. **Name.** `<github-user>.sereno.eth` resolves to that account (ENSv2 wildcard plus a CCIP-read gateway). Claiming turns it into a real ENSv2 subname owned by the account.
-3. **Keys.** A Chainlink CRE workflow reads the user's SSH keys from GitHub, the nodes agree, and the key hashes go on-chain. Removing a key on GitHub revokes it. It runs on a schedule, and on demand for any user (`ak sync`, or the Spend page's button).
-4. **Spend.** Sign a plain-text payment with `ssh-keygen -Y sign`, or make it the message of a signed git commit and push. The contract verifies the SSH signature on-chain and pays.
+**Status:** the CRE workflows run in simulation until Chainlink enables deploy access for us. Until then, key syncs and bounty settlement go through a worker on our machine. If it's offline, they wait in a queue; keys already on-chain keep working.
 
 ## Repo layout
 
 | Path | What |
 |---|---|
-| `contracts/` | Foundry: SSH signature verifier, account and factory, key oracle, ENS resolver and name registrar |
-| `cre/` | Chainlink CRE workflows: `github-keys` syncs GitHub keys on-chain; `github-bounty` confirms a merged PR closed an issue |
-| `gateway/` | CCIP-read gateway for `<user>.sereno.eth` |
-| `relayer/` | Submits SSH-signed payments and pushed payment commits |
-| `cli/` | `ak`: sign and send payments, commit-pay, claim your name |
-| `web/` | Pay page: pay any GitHub user by username; Spend tab to spend with stock `ssh-keygen` or `git` |
-| `packages/ops/` | Ops scripts: key sync worker, revocation demo, ENS setup |
-| `packages/shared/` | Intent text, chains, addresses and ABIs shared by every client |
+| [`contracts/`](contracts) | Foundry: SSH signature verifier, account and factory, key oracle, report gate, bounty board, escrow, ENS resolver and name registrar |
+| [`cre/`](cre) | Chainlink CRE workflows: `github-keys` syncs GitHub keys on-chain; `github-bounty` confirms a merged PR closed an issue |
+| [`gateway/`](gateway) | CCIP-read gateway for `<user>.sereno.eth` |
+| [`relayer/`](relayer) | Submits SSH-signed payments, pushed payment commits and name claims; watches bounties |
+| [`cli/`](cli) | `ak` (npm `sereno-ak`): send, commit-pay, claim, sync, bounty |
+| [`web/`](web) | The site: pay any GitHub user by username, spend with stock `ssh-keygen` or `git`, issue bounties |
+| [`extension/`](extension) | Browser extension: buttons on github.com, plus an optional browser key |
+| [`packages/shared/`](packages/shared) | Payment text, chains, addresses and ABIs shared by every client |
+| [`packages/ops/`](packages/ops) | Ops scripts: key sync worker, revocation demo, ENS setup |
+| [`video/`](video) | The Manim "how it works" animation |
+| [`docs/`](docs) | Walkthrough, design spec, demo script and the hackathon log |
 
 ## Run it
 
-Needs [Bun](https://bun.sh) and, for contracts, [Foundry](https://getfoundry.sh). Contracts are deployed on Base Sepolia, Arbitrum Sepolia and Sepolia (addresses in `CLAUDE.md`).
+Needs [Bun](https://bun.sh) and, for contracts, [Foundry](https://getfoundry.sh). Contracts are deployed on Base Sepolia, Arbitrum Sepolia and Sepolia, at the same addresses on each. The addresses are in [`contracts/deployments/`](contracts/deployments).
 
 ```sh
 bun install
 ```
 
-The pay page and the CLI use our hosted gateway (`sereno-production.up.railway.app`) and relayer (`happy-curiosity-production-7074.up.railway.app`) by default, so `cd web; bun run dev` (http://localhost:5173) and `bun run ak ...` are all you need. To run everything yourself, three terminals from the repo root (PowerShell shown; in bash use `GITHUB_TOKEN=$(gh auth token) bun ...`), then point the clients at them with `VITE_GATEWAY_URL` / `VITE_RELAYER_URL` (pay page) and `AK_GATEWAY` / `AK_RELAYER` (CLI):
+The site and the CLI use our hosted gateway and relayer by default. So `cd web; bun run dev` (http://localhost:5173) and `bun run ak ...` are all you need.
+
+To run everything yourself, use three terminals from the repo root, then point the clients at them with `VITE_GATEWAY_URL` / `VITE_RELAYER_URL` (site) and `AK_GATEWAY` / `AK_RELAYER` (CLI). In bash, use `GITHUB_TOKEN=$(gh auth token) bun ...` instead of the PowerShell lines:
 
 ```powershell
-# 1. ENS gateway (CCIP-read for <user>.sereno.eth, and profile lookups for the pay page) on :8787
+# 1. ENS gateway (CCIP-read for <user>.sereno.eth, and profile lookups for the site) on :8787
 $env:GITHUB_TOKEN = gh auth token; bun gateway/src/main.ts
 # 2. relayer (submits SSH-signed payments, commits and name claims) on :8788
 $env:GITHUB_TOKEN = gh auth token; bun relayer/src/main.ts
-# 3. pay page on http://localhost:5173
+# 3. site on http://localhost:5173
 cd web; bun run dev
 ```
 
-The gateway needs `.secrets/gateway.key` and the relayer `.secrets/relayer.key` (or `deployer.key`); ask Suparno.
+The gateway needs a signing key that the ENS resolver trusts (`.secrets/gateway.key`). The relayer needs a key with a little gas on each chain (`.secrets/relayer.key`). Our keys aren't in the repo. A gateway you run yourself needs its own resolver, because ours only accepts answers signed by our key. Any relayer key works.
 
-CLI from the repo: `bun run ak <command>` (same commands as `npx sereno-ak`). Build the npm package with `bun cli/scripts/pack.ts`, then `cd cli/dist/npm && npm publish`.
-
-**Key sync worker.** While the CRE workflow runs in simulation, on-demand key syncs (`POST /sync` on the relayer) are carried out by a worker on a machine with the `cre` login and an allowlisted broadcaster key: `bun packages/ops/src/sync-worker.ts` (it needs `.secrets/cre.env` and the relayer's `SYNC_WORKER_TOKEN` in `.secrets/sync-worker.token`). Deployed on a CRE DON, the workflow's HTTP trigger would take these requests itself.
-
-Restarting the worker:
-```
-cd D:\Programming\sereno
-git pull
-$env:GITHUB_TOKEN = gh auth token
-$env:CRE_BIN = "$env:LOCALAPPDATA\Programs\cre\cre.exe"
-$env:SYNC_ATTEMPTS = 4
-bun packages/ops/src/sync-worker.ts
-```
+CLI from the repo: `bun run ak <command>` (the same commands as `npx sereno-ak`). Build the npm package with `bun cli/scripts/pack.ts`, then `cd cli/dist/npm && npm publish`.
 
 Contracts: `cd contracts && forge test`.
 
+**Key sync worker.** While the CRE workflows run in simulation, on-demand key syncs and bounty checks are queued on the relayer. A worker on a machine with the `cre` login and an allowlisted broadcaster key carries them out. It needs `.secrets/cre.env` and the relayer's `SYNC_WORKER_TOKEN` in `.secrets/sync-worker.token`:
+
+```powershell
+$env:GITHUB_TOKEN = gh auth token
+bun packages/ops/src/sync-worker.ts
+```
+
+Deployed on a CRE network, the workflows' HTTP triggers would take these requests themselves.
+
 ### Relay payment commits from your own repo (no server)
 
-Add `.github/workflows/pay.yml` to any repo. Every push then pays the commits made with `ak commit-pay`, using a relayer key you hold. That key needs a little ETH on the payment's chain, and you store it as the repo secret `SERENO_RELAYER_KEY`:
+Add `.github/workflows/pay.yml` to any repo, and every push pays the commits made with `ak commit-pay`. It uses a relayer key you hold. That key needs a little ETH on the payment's chain, and you store it as the repo secret `SERENO_RELAYER_KEY`:
 
 ```yaml
 on: push
@@ -269,47 +140,60 @@ The relayer can only submit or refuse. The signed commit fixes the recipient, th
 
 ### Contracts beyond payments
 
-- **`BountyBoard`** (issue bounties, above): no owner; pots per token, so a junk token can't block USDC; the CRE `github-bounty` workflow records the PR author as the winner, and anyone can then call `payout`. Funders reclaim after their own deadline while unsettled.
-- **`Escrow`** (contract only; no client yet): pay a GitHub ID with a deadline. The recipient claims with an SSH signature over a readable claim text, and the sender can reclaim after the deadline if it's unclaimed. It's the answer to "what if they never touch the money?"
+- **`BountyBoard`** (issue bounties, above):
+  - It has no owner, and each token has its own pot, so a junk token can't block a USDC bounty.
+  - The CRE `github-bounty` workflow records the PR author as the winner, and anyone can then call `payout`.
+  - Funders can take their money back after their own deadline while the bounty is unsettled.
+- **`Escrow`:** pay a GitHub ID with a deadline. The recipient claims with an SSH signature over a readable claim text; the extension shows waiting escrows and claims them. The sender can take it back after the deadline if it's unclaimed. No client makes deposits yet.
 
-Both are at the same address on Base Sepolia and Arbitrum Sepolia (`contracts/deployments/extras.json`).
+Both are at the same address on Base Sepolia and Arbitrum Sepolia ([`contracts/deployments/extras.json`](contracts/deployments/extras.json)).
 
-## CROPS
+## Security and trust (CROPS)
 
-Lead property: **S (secure).** Sereno exists so that developers can hold and spend money with the keys they already protect best, without a new wallet, seed phrase or browser extension holding a hot key.
+Lead property: **S (secure).** Sereno exists so that developers can hold and spend money with the keys they already protect best, without a new wallet, a seed phrase or a browser extension holding a hot key.
 
 - **S (secure), the lead.**
   - Private keys never leave `ssh-agent`, the user's phone or their hardware security key. Sereno only ever sees signatures.
   - Users sign readable text (chain, account, nonce, amount, token, recipient, relayer fee), never blind calldata. The contract rebuilds that exact text and verifies the SSH signature on-chain.
-  - Signing reuses OpenSSH, the most widely audited signing stack developers already run. Phone signatures also prove a fingerprint check (the user-verified flag).
-  - Guards against a stolen GitHub account: a key first seen less than 72 hours ago can't move more than 50 USDC.
+  - Signing reuses OpenSSH, the widely audited signing stack developers already run. A phone signature also proves a fingerprint check (the user-verified flag).
+  - Against a stolen GitHub account: a key first seen less than 72 hours ago can't move more than 50 USDC.
   - The nonce stops replay, including a payment commit pushed to many forks.
   - **Trust assumptions:**
     - GitHub decides which keys are on a profile.
-    - The CRE oracle: in a deployed workflow, multiple nodes must agree on GitHub's answer before anything is written on-chain. For the hackathon it runs as a CRE simulation, whose forwarder checks no signatures, so reports pass through our `ReportGate`: only our broadcaster keys and our own workflows get through.
+    - The CRE oracle. Deployed, a workflow needs several nodes to agree on GitHub's answer before anything is written on-chain. In simulation, which is how it runs today, the forwarder checks no signatures. So reports pass through our `ReportGate`, which only lets our broadcaster keys and our own workflows through.
 - **C (censorship resistance).** We run a relayer, a CCIP-read gateway and a CRE workflow, and none of them is a gatekeeper.
-  - **The relayer:** `execute` and `executeCommit` are permissionless. Anyone can run `relayer/` with their own key or submit the signed payment themselves. The signed text fixes the recipient and fee, so a relayer can't redirect money.
-  - **Payment commits:** any repo can relay its own with the reusable GitHub Action above, using its own key, so pushing a payment never depends on our relayer.
-  - **The gateway:** anyone can run `gateway/`. The account address is also computable without it: `AccountFactory.addressOf(githubId)`.
-  - **Key syncs and bounty settlement:** while the CRE workflows run in simulation, on-demand runs (new users' keys, bounty checks) go through a worker we run, so if it's down, new keys wait (keys already on-chain keep working, and anyone with CRE access can run `cre/` and the worker). Deploying the workflow to a CRE DON removes this; we've requested deploy access.
+  - **The relayer:** `execute` and `executeCommit` are permissionless. Anyone can run `relayer/` with their own key, or submit the signed payment themselves. The signed text fixes the recipient and fee, so a relayer can't redirect money.
+  - **Payment commits:** any repo can relay its own with the reusable GitHub Action above, using its own key, so a payment never depends on our relayer.
+  - **The gateway:** anyone can run `gateway/`. The account address can also be computed without it: `AccountFactory.addressOf(githubId)`.
+  - **Key syncs and bounty settlement:** while the CRE workflows run in simulation, on-demand runs go through a worker we run. If it's down, new keys wait; keys already on-chain keep working, and anyone with CRE access can run `cre/` and the worker. Deploying the workflows to a CRE network removes this, and we've requested deploy access.
   - **Trade-off:** GitHub can remove a user's keys or account, and the oracle follows GitHub.
-- **O (open source).** MIT licensed, including the contracts, workflow, gateway, relayer, CLI and pay page. Everything builds and runs from this repo with Bun and Foundry (see *Run it*). Vendored third-party code keeps its own license (`contracts/lib/ed25519`, Apache-2.0). One front-end piece isn't OSI open source: the GSAP animation library (Standard no-charge licence). It's decoration: removing it leaves every feature working. The landing page's dithered sky is our own WebGL shader (`web/src/Dither.tsx`, MIT).
+- **O (open source).**
+  - The contracts, workflows, gateway, relayer, CLI, site and extension are MIT licensed. Everything builds and runs from this repo with Bun and Foundry (see *Run it*).
+  - Vendored code keeps its own license (`contracts/lib/ed25519`, Apache-2.0).
+  - One front-end piece isn't OSI open source: the GSAP animation library (the Standard no-charge licence). It's decoration; removing it leaves every feature working. The landing page's dithered sky is our own WebGL shader (`web/src/Dither.tsx`, MIT).
 - **P (privacy).** A payment is public on-chain, like any transfer, and an account is linked to a GitHub ID by design.
   - **What each third party learns:**
-    - **The gateway:** which names and usernames are looked up (the pay page and CLI look up profiles through it).
+    - **The gateway:** which names and usernames are looked up (the site and the CLI look up profiles through it).
     - **The relayer:** the signed payments it submits, which are public on-chain anyway, and key sync requests.
     - **GitHub:** profile and key lookups from our services.
     - **RPC providers:** the requests sent to them.
   - Only key hashes go on-chain, not the keys.
-  - The pay page and CLI carry no trackers or analytics.
+  - The site, the CLI and the extension carry no trackers or analytics.
+
+## Built by
+
+- [Suparno Saha](https://suparno.me)
+- [Mohikshit Ghorai](https://github.com/psycocodes)
+- [Gantavya Rohilla](https://github.com/g4ntavya)
 
 ## AI usage
 
 The project was written during the hackathon with [Claude Code](https://claude.com/claude-code) as a pair programmer for every team member.
-- **What Claude did:** contracts, tests, CRE workflow, gateway, relayer, CLI, pay page, deploy scripts and docs, from the team's design and under review.
-- **What the team did:** chose the design and reviewed and ran every change. Live checks (on-chain payments, commit-as-payment, name claims) were run by the team on real testnets.
+
+- **What Claude did:** the contracts, tests, CRE workflows, gateway, relayer, CLI, site, extension, deploy scripts and docs, from the team's design and under review.
+- **What the team did:** chose the design, and reviewed and ran every change. The live checks (on-chain payments, commit-as-payment, name claims) were run by the team on real testnets.
 - **Attribution:** commits made with Claude carry a `Co-Authored-By: Claude` trailer.
-- **Shared notes:** [`CLAUDE.md`](CLAUDE.md) is the shared context we gave every session, and [`PROGRESS-LOG.md`](PROGRESS-LOG.md) is how the team's sessions handed work to each other.
+- **Shared notes:** [`docs/CLAUDE.md`](docs/CLAUDE.md) is the shared context we gave every session, and [`docs/PROGRESS-LOG.md`](docs/PROGRESS-LOG.md) is how the team's sessions handed work to each other.
 
 ## License
 
